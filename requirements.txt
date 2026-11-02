@@ -1,3 +1,5 @@
 # 실행 의존성
 # pico2d 설치 시 PySDL2, PySDL2-DLL(SDL2 바이너리)이 함께 설치된다.
 pico2d==1.5.1
+# 주인공 상태 머신 (docs/DECISIONS.md D-011)
+transitions==0.9.3
