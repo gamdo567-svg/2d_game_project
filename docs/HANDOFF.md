@@ -16,6 +16,30 @@
 
 ---
 
+## 2026-11-03 — 주인공 기본 이동 + Idle/Walk 애니메이션 (Claude Code)
+
+- **브랜치**: `claude/player-move-anim` (Pull Request로 검토, `main` 자동 병합 안 함)
+  - 미병합 상태였던 `codex/player-animation-fsm-spec`(명세 문서)을 기준으로 삼기 위해 이 브랜치에 포함했습니다. 해당 PR을 따로 병합해도 충돌 없이 합쳐집니다.
+- **한 일**
+  - `game/player/` 패키지 추가: `movement.py`(칸 이동·보간·화면 경계), `facing.py`(4방향과 front/back/side 선택), `state_machine.py`(transitions idle/walk), `animation.py`(dt 기반 반복 애니메이션), `player.py`(묶음)
+  - `game/scenes/field_scene.py` 추가, `game/core/app.py`가 `BootScene` 대신 `FieldScene`을 실행. (`BootScene`과 그 테스트는 남겨 둠)
+  - 입력: `Action.MOVE_UP/DOWN/LEFT/RIGHT`, WASD·방향키 배치, `InputState.move_direction()`
+  - `Renderer.draw_sprite_frame()`(스프라이트 시트 프레임, 좌우 반전, 정수 픽셀, nearest)
+  - 스프라이트 6장 `assets/images/player/` (참고 시트에서 추출한 **임시 에셋**), 참고 시트 `assets/concepts/player_body_animation_reference.png` 커밋
+  - `requirements.txt`에 `transitions==0.9.3` 추가
+- **현재 상태**: `python -m unittest` 77개 통과. `python main.py --frames 60` 실제 창 실행 성공. 코드로 입력을 흉내 낸 실제 창 캡처에서 방향별 그림·반전·발 위치·선명도 확인.
+  **사람이 키보드로 직접 조작해 본 확인은 하지 않았습니다.**
+- **다음 작업자가 알아야 할 것**
+  - 개발 환경: Windows, Python 3.14.7, `.venv`. 스프라이트 추출에만 Pillow를 썼고 `requirements.txt`에는 넣지 않았습니다.
+  - 새 상태 추가는 `state_machine.py`의 `STATES`·`TRANSITIONS`와 `Player.animations`에 항목을 더하고 `<상태>_<방향>.png`를 넣으면 됩니다.
+  - 화면 맨 위 줄(row 17)에 서면 48px 그림의 머리 16px가 화면 밖으로 잘립니다(논리 위치는 화면 안).
+- **남은 문제 / 다음 할 일**
+  - 정식 도트 에셋으로 교체 (임시 에셋 문제점은 `assets/README.md`)
+  - PRE-PRD 2.1 [미정] 대각선 이동 시간 결정, [제안] 이동 입력 버퍼 여부
+  - `AGENTS.md` 2장 폴더 구조에 `game/player/` 반영 (공통 규칙 문서라 사용자 승인 후)
+
+---
+
 ## 2026-11-02 — 주인공 애니메이션/FSM 설계 정리 (ChatGPT)
 
 - **브랜치**: `codex/player-animation-fsm-spec` (PR에서 검토 후 병합)
