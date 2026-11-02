@@ -1,5 +1,6 @@
 import unittest
 
+from game import config
 from game.input.input_state import InputState
 from game.scenes.boot_scene import BootScene
 from game.world.grid import Grid
@@ -27,11 +28,11 @@ def _run(scene, fps, seconds):
 
 class BootSceneTest(unittest.TestCase):
     def make_scene(self):
-        return BootScene(Grid(cols=30, rows=20, tile_size=32))
+        return BootScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE))
 
     def test_marker_starts_at_grid_center(self):
         scene = self.make_scene()
-        self.assertEqual((scene.marker_col, scene.marker_row), (15, 10))
+        self.assertEqual((scene.marker_col, scene.marker_row), (16, 9))
 
     def test_time_progress_is_independent_of_fps(self):
         # 같은 실제 시간 동안 실행하면 FPS 가 달라도 결과가 같아야 한다.

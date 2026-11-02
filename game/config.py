@@ -5,13 +5,18 @@
 """
 
 # ----- 화면 (픽셀) -----
-SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 640
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 576
 
 # ----- 칸(타일) -----
 TILE_SIZE = 32  # 한 칸이 화면에 그려지는 크기(픽셀)
-GRID_COLS = SCREEN_WIDTH // TILE_SIZE  # 30
-GRID_ROWS = SCREEN_HEIGHT // TILE_SIZE  # 20
+GRID_COLS = SCREEN_WIDTH // TILE_SIZE  # 32
+GRID_ROWS = SCREEN_HEIGHT // TILE_SIZE  # 18
+
+# ----- 플레이어 아트 기준 크기 (렌더링 픽셀) -----
+# 실제 스프라이트/애니메이션 제작 전 기준값. 충돌은 논리적 타일 좌표로 처리한다.
+PLAYER_SPRITE_WIDTH = 32
+PLAYER_SPRITE_HEIGHT = 48
 
 # ----- 시간 -----
 # 한 프레임 delta time 의 상한(초).
