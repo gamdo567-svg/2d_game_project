@@ -16,6 +16,29 @@
 
 ---
 
+## 2026-11-03 — 플레이어 4방향 이동 기획 변경 (ChatGPT)
+
+- **브랜치**: `codex/player-animation-fsm-spec` (기존 PR #2에 추가 커밋)
+- **사용자 결정**: 좀비고등학교 스타일의 상·하·좌·우 4방향 칸 이동으로 변경. 대각선 이동 금지.
+- **유지 사항**: 정면/후면/측면 3방향 원본에 좌우반전 적용, Idle/Walk/Jump/Dodge/Sword Attack/Parry/Hurt/Stun 8개 애니메이션 상태, `transitions` 예정.
+- **미정 사항**: 두 방향키 동시 입력 시 우선 방향 선택 규칙.
+- **변경 문서**: `PRE-PRD.md`, `README.md`, `TASKS.md`, `docs/DECISIONS.md`, `docs/PLAYER_ANIMATION_SPEC.md`.
+- **구현 상태**: 기획 문서만 변경했으며 Python 이동 코드는 아직 별도 변경하지 않음.
+- **다음 작업**: Claude Code가 이동을 구현할 때 4방향 규칙을 준수하고 대각선 이동 테스트를 제거/방지해야 함.
+
+---
+
+## 2026-11-02 — 주인공 애니메이션/FSM 설계 정리 (ChatGPT)
+
+- **브랜치**: `codex/player-animation-fsm-spec` (PR에서 검토 후 병합)
+- **기획 반영**: idle/walk/jump/dodge/sword_attack/parry/hurt/stun = 8개, 3방향 원본+측면 반전, 각 4~5프레임 초기 목표.
+- **전투 구분**: Jump=하단 공격 회피, Dodge=별도 회피, Hurt=피격 자세, Stun=강공격 후 2~3초 행동 불가.
+- **기술 결정**: 수업에서 사용한 `transitions`를 상태 머신에 사용하기로 사용자 결정.
+- **코드 변경 여부**: 이번 작업은 기획 및 명세 문서만 수정. 실제 이미지 생성·transitions 설치·코드 구현 및 런타임 테스트는 아직 진행하지 않음.
+- **다음 작업**: 캐릭터의 정면/후면/측면 정지 원본을 공식 컨셉 기준으로 제작 후 애니메이션 프레임 확정.
+
+---
+
 ## 2026-11-02 — 화면·타일·주인공 스프라이트 규격 변경 (ChatGPT)
 
 - **브랜치**: `codex/display-and-sprite-sizing` (main 병합 전 PR 검토 필요)

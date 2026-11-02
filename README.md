@@ -2,7 +2,7 @@
 
 Python과 [Pico2D](https://pypi.org/project/pico2d/)로 만드는 **탑다운 2D 액션 RPG**입니다.
 
-- 8방향 실시간 칸 이동
+- **4방향(상·하·좌·우) 실시간 칸 이동** (대각선 이동 없음)
 - 검술 · 회피 · 패링 전투
 - 마법석을 검에 부여해 전투 능력이 바뀌는 성장
 - 던전 탐험, 일반 몬스터, 보스전
@@ -100,6 +100,7 @@ python main.py --frames 60   # 60프레임 실행 후 자동 종료
 | [`TASKS.md`](TASKS.md) | 기능별 개발 진행 상황 |
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | AI 간 작업 인수인계 |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | 주요 기술적 결정 기록 |
+| [`docs/PLAYER_ANIMATION_SPEC.md`](docs/PLAYER_ANIMATION_SPEC.md) | 주인공 방향별 애니메이션·FSM 제작 명세 |
 | [`assets/README.md`](assets/README.md) | 에셋 규칙, 출처·라이선스 기록 |
 
 ## 개발 방식
