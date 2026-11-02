@@ -57,8 +57,13 @@ class GridTest(unittest.TestCase):
 
     def test_config_grid_fits_screen(self):
         grid = Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE)
-        self.assertLessEqual(grid.width_px, config.SCREEN_WIDTH)
-        self.assertLessEqual(grid.height_px, config.SCREEN_HEIGHT)
+        self.assertEqual(grid.width_px, config.SCREEN_WIDTH)
+        self.assertEqual(grid.height_px, config.SCREEN_HEIGHT)
+
+    def test_confirmed_screen_and_player_art_dimensions(self):
+        self.assertEqual((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), (1024, 576))
+        self.assertEqual((config.GRID_COLS, config.GRID_ROWS), (32, 18))
+        self.assertEqual((config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT), (32, 48))
 
 
 if __name__ == "__main__":

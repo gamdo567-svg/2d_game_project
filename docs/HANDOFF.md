@@ -16,6 +16,16 @@
 
 ---
 
+## 2026-11-02 — 화면·타일·주인공 스프라이트 규격 변경 (ChatGPT)
+
+- **브랜치**: `codex/display-and-sprite-sizing` (main 병합 전 PR 검토 필요)
+- **변경 사항**: 화면 1024×576, 타일 32×32, 화면 격자 32×18, 스프라이트 표시 기준 32×48px 설정.
+- **변경 파일**: `game/config.py`, 테스트, `PRE-PRD.md`, `README.md`, `docs/DECISIONS.md`, `TASKS.md`.
+- **검증**: 설정값 및 격자 연산 정합성 검토, GitHub 연결 환경에서는 Pico2D 실제 실행 테스트 미실시. 사용자 VS Code에서 `python -m unittest`와 `python main.py` 검증 필요.
+- **다음 작업**: 주인공 스프라이트 제작 후 렌더링 구현. 실제 에셋은 아직 적용되지 않음.
+
+---
+
 ## 2026-11-02 — 프로젝트 초기 환경 구성 (Claude Code)
 
 - **브랜치 / 마지막 커밋**: `main` / `git log`로 확인 (이 문서는 해당 커밋들에 포함됨)
