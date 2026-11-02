@@ -1,4 +1,4 @@
-"""주인공: 칸 이동, 바라보는 방향, 상태 머신, 애니메이션을 묶는다.
+"""주인공: 칸 이동(상하좌우), 바라보는 방향, 상태 머신, 애니메이션을 묶는다.
 
 - 논리적 위치와 충돌 영역은 칸 하나 (self.col, self.row) 이다.
 - 그림 크기(32×48)는 그리기에만 쓰며 충돌 판정과 무관하다.
@@ -23,13 +23,7 @@ def sprite_sheet_path(state: str, view: str) -> str:
 class Player:
     def __init__(self, grid: Grid, col: int, row: int) -> None:
         self.grid = grid
-        self.mover = GridMover(
-            grid,
-            col,
-            row,
-            speed=config.PLAYER_MOVE_SPEED,
-            diagonal_time_scale=config.PLAYER_DIAGONAL_TIME_SCALE,
-        )
+        self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED)
         self.facing = Facing.DOWN
         self.animations: dict[str, LoopAnimation] = {
             IDLE: LoopAnimation(config.PLAYER_ANIMATION_FRAMES, config.PLAYER_IDLE_FRAME_DURATION),

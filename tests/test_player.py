@@ -77,6 +77,24 @@ class PlayerTest(unittest.TestCase):
         self.player.update(STEP / 4, self.input)  # 아직 오른쪽으로 가는 중
         self.assertEqual(self.player.facing, Facing.RIGHT)
 
+    def test_two_keys_move_only_one_axis(self):
+        self.input.press(Action.MOVE_UP)
+        self.input.press(Action.MOVE_RIGHT)
+        for _ in range(30):
+            self.player.update(1 / 60, self.input)
+        self.assertEqual(self.player.row, 5)  # 위로는 움직이지 않음
+        self.assertGreater(self.player.col, 5)
+        self.assertEqual(self.player.facing, Facing.RIGHT)
+
+    def test_walk_animation_keeps_cycling_across_tiles(self):
+        # 칸이 바뀔 때마다 첫 프레임으로 돌아가면 걷는 동작이 보이지 않는다.
+        self.input.press(Action.MOVE_RIGHT)
+        seen = set()
+        for _ in range(60):  # 1초 = 6칸
+            self.player.update(1 / 60, self.input)
+            seen.add(self.player.animation.frame_index)
+        self.assertEqual(seen, set(range(config.PLAYER_ANIMATION_FRAMES)))
+
     def test_pressing_into_edge_turns_without_moving(self):
         player = make_player(col=0, row=0)
         self.input.press(Action.MOVE_LEFT)

@@ -22,6 +22,15 @@ class Action(Enum):
     MOVE_RIGHT = auto()
 
 
+# 이동 행동 -> 칸 좌표 방향 (dx, dy). dy 는 위쪽이 +1.
+MOVE_VECTORS: dict[Action, tuple[int, int]] = {
+    Action.MOVE_UP: (0, 1),
+    Action.MOVE_DOWN: (0, -1),
+    Action.MOVE_LEFT: (-1, 0),
+    Action.MOVE_RIGHT: (1, 0),
+}
+
+
 class InputState:
     """현재 프레임의 입력 상태."""
 
@@ -29,6 +38,7 @@ class InputState:
         self._held: set[Action] = set()
         self._pressed: set[Action] = set()
         self._released: set[Action] = set()
+        self._move_order: list[Action] = []  # 누르고 있는 이동 행동, 나중에 누른 것이 뒤
         self.quit_requested = False  # 창 닫기 버튼 등
 
     def begin_frame(self) -> None:
@@ -39,11 +49,15 @@ class InputState:
     def press(self, action: Action) -> None:
         if action not in self._held:
             self._pressed.add(action)
+            if action in MOVE_VECTORS:
+                self._move_order.append(action)
         self._held.add(action)
 
     def release(self, action: Action) -> None:
         if action in self._held:
             self._released.add(action)
+            if action in MOVE_VECTORS:
+                self._move_order.remove(action)
         self._held.discard(action)
 
     def request_quit(self) -> None:
@@ -53,6 +67,7 @@ class InputState:
         """모든 키를 뗀 상태로 만든다 (창 포커스를 잃었을 때 등)."""
         self._released.update(self._held)
         self._held.clear()
+        self._move_order.clear()
 
     def is_held(self, action: Action) -> bool:
         """현재 누르고 있는지."""
@@ -67,10 +82,11 @@ class InputState:
         return action in self._released
 
     def move_direction(self) -> tuple[int, int]:
-        """누르고 있는 이동 키로 만든 방향 (dx, dy). 각 성분은 -1, 0, 1.
+        """누르고 있는 이동 키의 방향 (dx, dy). 상하좌우 4방향 중 하나이거나 (0, 0).
 
-        dy 는 칸 좌표 기준으로 위쪽이 +1 이다. 반대 방향을 함께 누르면 그 축은 0 이 된다.
+        대각선 이동은 없다. 여러 방향을 함께 누르면 가장 나중에 누른 방향을 따르고,
+        그 키를 떼면 아직 누르고 있는 이전 방향으로 돌아간다.
         """
-        dx = int(self.is_held(Action.MOVE_RIGHT)) - int(self.is_held(Action.MOVE_LEFT))
-        dy = int(self.is_held(Action.MOVE_UP)) - int(self.is_held(Action.MOVE_DOWN))
-        return dx, dy
+        if not self._move_order:
+            return 0, 0
+        return MOVE_VECTORS[self._move_order[-1]]

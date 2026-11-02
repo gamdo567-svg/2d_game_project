@@ -25,10 +25,7 @@ PLAYER_SPRITE_HEIGHT = 48
 
 # ----- 플레이어 이동 -----
 # [임시값] PRE-PRD 2.1 [제안] 초기값 후보. 실제 플레이 후 조정한다.
-PLAYER_MOVE_SPEED = 6.0  # 칸/초 (직선 한 칸 이동 시간 = 1 / 6초)
-# [임시값] PRE-PRD 2.1 [미정] 대각선 한 칸 이동 시간 배율.
-# 1.0 = 직선과 같은 시간, 1.41 = 거리 비율만큼 더 오래 걸림. 결정 전까지 1.0 으로 둔다.
-PLAYER_DIAGONAL_TIME_SCALE = 1.0
+PLAYER_MOVE_SPEED = 6.0  # 칸/초 (한 칸 이동 시간 = 1 / 6초)
 # 시작 위치 (칸 좌표). 화면 중앙 칸.
 PLAYER_START_COL = GRID_COLS // 2
 PLAYER_START_ROW = GRID_ROWS // 2

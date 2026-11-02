@@ -6,8 +6,8 @@ from game.world.grid import Grid
 SPEED = 4.0  # 칸/초 -> 한 칸 0.25초
 
 
-def make_mover(col=5, row=5, diagonal_time_scale=1.0):
-    return GridMover(Grid(10, 8, 32), col, row, SPEED, diagonal_time_scale)
+def make_mover(col=5, row=5):
+    return GridMover(Grid(10, 8, 32), col, row, SPEED)
 
 
 def run(mover, seconds, dx, dy, fps=100):
@@ -62,39 +62,35 @@ class GridMoverTest(unittest.TestCase):
         self.assertAlmostEqual(slow.visual_position[0], fast.visual_position[0], places=6)
         self.assertEqual(slow.col, fast.col)
 
-    def test_diagonal_move(self):
+    def test_vertical_move(self):
         mover = make_mover()
-        mover.update(0.25, -1, 1)
-        self.assertEqual((mover.col, mover.row), (4, 6))
+        mover.update(0.25, 0, -1)
+        self.assertEqual((mover.col, mover.row), (5, 4))
         self.assertFalse(mover.is_moving)
 
-    def test_diagonal_time_scale(self):
-        mover = make_mover(diagonal_time_scale=2.0)
-        mover.update(0.25, 1, 1)
-        self.assertTrue(mover.is_moving)  # 직선의 2배(0.5초)가 걸린다
-        self.assertAlmostEqual(mover.visual_position[0], 5.5)
+    def test_diagonal_is_rejected(self):
+        with self.assertRaises(ValueError):
+            make_mover().update(0.1, 1, 1)
 
     def test_move_direction(self):
         mover = make_mover()
         self.assertEqual(mover.move_direction, (0, 0))
-        mover.update(0.1, -1, -1)
-        self.assertEqual(mover.move_direction, (-1, -1))
+        mover.update(0.1, -1, 0)
+        self.assertEqual(mover.move_direction, (-1, 0))
 
     def test_cannot_leave_grid(self):
         mover = make_mover(col=0, row=0)
-        run(mover, 1.0, -1, -1)
+        run(mover, 1.0, -1, 0)
+        run(mover, 1.0, 0, -1)
         self.assertEqual((mover.col, mover.row), (0, 0))
         self.assertFalse(mover.is_moving)
 
     def test_stops_at_far_edge(self):
         mover = make_mover(col=7, row=7)
-        run(mover, 2.0, 1, 1)
+        run(mover, 2.0, 1, 0)
         self.assertEqual((mover.col, mover.row), (9, 7))  # 10x8 격자의 끝
-
-    def test_diagonal_slides_along_edge(self):
-        mover = make_mover(col=3, row=0)
-        mover.update(0.25, 1, -1)  # 아래는 막혔으므로 오른쪽으로만
-        self.assertEqual((mover.col, mover.row), (4, 0))
+        run(mover, 1.0, 0, 1)
+        self.assertEqual((mover.col, mover.row), (9, 7))
 
     def test_invalid_start(self):
         with self.assertRaises(ValueError):
