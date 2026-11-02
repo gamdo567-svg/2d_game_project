@@ -100,6 +100,7 @@ python main.py --frames 60   # 60프레임 실행 후 자동 종료
 | [`TASKS.md`](TASKS.md) | 기능별 개발 진행 상황 |
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | AI 간 작업 인수인계 |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | 주요 기술적 결정 기록 |
+| [`docs/PLAYER_ANIMATION_SPEC.md`](docs/PLAYER_ANIMATION_SPEC.md) | 주인공 방향별 애니메이션·FSM 제작 명세 |
 | [`assets/README.md`](assets/README.md) | 에셋 규칙, 출처·라이선스 기록 |
 
 ## 개발 방식
