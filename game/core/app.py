@@ -13,7 +13,7 @@ from game.core.clock import FrameClock
 from game.input.input_state import Action, InputState
 from game.input.pico2d_input import poll_input
 from game.render.renderer import Renderer
-from game.scenes.boot_scene import BootScene
+from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
 
 
@@ -30,7 +30,7 @@ def run(max_frames: int | None = None) -> int:
         renderer = Renderer(config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
         input_state = InputState()
         clock = FrameClock(config.MAX_DELTA_TIME)
-        scene = BootScene(grid)
+        scene = FieldScene(grid)
 
         frames = 0
         while True:

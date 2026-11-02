@@ -24,6 +24,10 @@ class Renderer:
         self.screen_width = screen_width
         self.screen_height = screen_height
         self._font = self._load_font(font_size)
+        self._images: dict[str, pico2d.Image | None] = {}
+        # 도트 그래픽이 흐려지지 않도록 확대·축소 시 가장 가까운 픽셀을 쓴다.
+        # 이 힌트는 이후에 만드는 텍스처(이미지)에 적용된다.
+        pico2d.SDL_SetHint(pico2d.SDL_HINT_RENDER_SCALE_QUALITY, b"0")
 
     @staticmethod
     def _load_font(size: int):
@@ -70,3 +74,44 @@ class Renderer:
         """칸 하나를 채운다. inset 만큼 안쪽으로 여백을 둔다."""
         left, bottom, right, top = grid.tile_to_pixel_rect(col, row)
         self.fill_rect(left + inset, bottom + inset, right - inset, top - inset, color)
+
+    # ----- 이미지 -----
+    def _image(self, path: str) -> pico2d.Image | None:
+        """이미지를 처음 쓸 때 한 번만 불러와 보관한다.
+
+        불러오지 못하면 경고를 한 번 출력하고 None 을 돌려준다 (그림만 생략).
+        SDL 더미 비디오 드라이버(창 없는 스모크 테스트)에서는 렌더러가 없어 항상 실패한다.
+        """
+        if path not in self._images:
+            try:
+                self._images[path] = pico2d.load_image(path)
+            except (IOError, OSError):
+                print(f"WARNING: 이미지를 불러오지 못했습니다: {path}")
+                self._images[path] = None
+        return self._images[path]
+
+    def draw_sprite_frame(
+        self,
+        path: str,
+        frame_index: int,
+        frame_width: int,
+        frame_height: int,
+        center_x: float,
+        bottom: float,
+        flip_horizontal: bool = False,
+    ) -> None:
+        """가로로 이어 붙인 스프라이트 시트에서 frame_index 번째 프레임을 그린다.
+
+        (center_x, bottom) 은 그림의 아래 가운데 (발끝) 픽셀 좌표다.
+        원본 크기 그대로, 정수 픽셀 위치에 그려 도트가 번지지 않게 한다.
+        """
+        image = self._image(path)
+        if image is None:
+            return
+        x = round(center_x)
+        y = round(bottom) + frame_height // 2  # pico2d 는 그림 중심 좌표를 받는다
+        left = frame_index * frame_width
+        flip = "h" if flip_horizontal else ""
+        image.clip_composite_draw(
+            left, 0, frame_width, frame_height, 0, flip, x, y, frame_width, frame_height
+        )

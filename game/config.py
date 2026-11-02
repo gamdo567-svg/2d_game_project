@@ -3,6 +3,11 @@
 현재 수치 대부분은 초기 환경 구성용 임시값이다.
 값을 바꾸면 docs/DECISIONS.md 의 관련 항목도 함께 갱신한다.
 """
+from pathlib import Path
+
+# ----- 경로 -----
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PLAYER_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "player"
 
 # ----- 화면 (픽셀) -----
 SCREEN_WIDTH = 1024
@@ -17,6 +22,23 @@ GRID_ROWS = SCREEN_HEIGHT // TILE_SIZE  # 18
 # 실제 스프라이트/애니메이션 제작 전 기준값. 충돌은 논리적 타일 좌표로 처리한다.
 PLAYER_SPRITE_WIDTH = 32
 PLAYER_SPRITE_HEIGHT = 48
+
+# ----- 플레이어 이동 -----
+# [임시값] PRE-PRD 2.1 [제안] 초기값 후보. 실제 플레이 후 조정한다.
+PLAYER_MOVE_SPEED = 6.0  # 칸/초 (직선 한 칸 이동 시간 = 1 / 6초)
+# [임시값] PRE-PRD 2.1 [미정] 대각선 한 칸 이동 시간 배율.
+# 1.0 = 직선과 같은 시간, 1.41 = 거리 비율만큼 더 오래 걸림. 결정 전까지 1.0 으로 둔다.
+PLAYER_DIAGONAL_TIME_SCALE = 1.0
+# 시작 위치 (칸 좌표). 화면 중앙 칸.
+PLAYER_START_COL = GRID_COLS // 2
+PLAYER_START_ROW = GRID_ROWS // 2
+
+# ----- 플레이어 애니메이션 -----
+# 스프라이트 시트: 한 파일에 한 상태·방향의 프레임을 가로로 이어 붙인다.
+PLAYER_ANIMATION_FRAMES = 5  # 상태·방향별 프레임 수 (현재 idle, walk 모두 5)
+# [임시값] 프레임 하나를 보여 주는 시간(초). 실제 화면을 보며 조정한다.
+PLAYER_IDLE_FRAME_DURATION = 0.18
+PLAYER_WALK_FRAME_DURATION = 0.1
 
 # ----- 시간 -----
 # 한 프레임 delta time 의 상한(초).

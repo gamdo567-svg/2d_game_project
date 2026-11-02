@@ -46,6 +46,21 @@ class InputStateTest(unittest.TestCase):
         self.state.request_quit()
         self.assertTrue(self.state.quit_requested)
 
+    def test_move_direction_none(self):
+        self.assertEqual(self.state.move_direction(), (0, 0))
+
+    def test_move_direction_straight_and_diagonal(self):
+        self.state.press(Action.MOVE_UP)
+        self.assertEqual(self.state.move_direction(), (0, 1))
+        self.state.press(Action.MOVE_LEFT)
+        self.assertEqual(self.state.move_direction(), (-1, 1))
+
+    def test_move_direction_opposite_keys_cancel(self):
+        self.state.press(Action.MOVE_LEFT)
+        self.state.press(Action.MOVE_RIGHT)
+        self.state.press(Action.MOVE_DOWN)
+        self.assertEqual(self.state.move_direction(), (0, -1))
+
 
 if __name__ == "__main__":
     unittest.main()

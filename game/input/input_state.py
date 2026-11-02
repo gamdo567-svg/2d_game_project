@@ -16,6 +16,10 @@ class Action(Enum):
     """
 
     QUIT = auto()  # 게임 종료 (현재 ESC)
+    MOVE_UP = auto()
+    MOVE_DOWN = auto()
+    MOVE_LEFT = auto()
+    MOVE_RIGHT = auto()
 
 
 class InputState:
@@ -61,3 +65,12 @@ class InputState:
     def was_released(self, action: Action) -> bool:
         """이번 프레임에 떼어졌는지."""
         return action in self._released
+
+    def move_direction(self) -> tuple[int, int]:
+        """누르고 있는 이동 키로 만든 방향 (dx, dy). 각 성분은 -1, 0, 1.
+
+        dy 는 칸 좌표 기준으로 위쪽이 +1 이다. 반대 방향을 함께 누르면 그 축은 0 이 된다.
+        """
+        dx = int(self.is_held(Action.MOVE_RIGHT)) - int(self.is_held(Action.MOVE_LEFT))
+        dy = int(self.is_held(Action.MOVE_UP)) - int(self.is_held(Action.MOVE_DOWN))
+        return dx, dy
