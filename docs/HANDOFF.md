@@ -16,6 +16,18 @@
 
 ---
 
+## 2026-11-03 — 플레이어 4방향 이동 기획 변경 (ChatGPT)
+
+- **브랜치**: `codex/player-animation-fsm-spec` (기존 PR #2에 추가 커밋)
+- **사용자 결정**: 좀비고등학교 스타일의 상·하·좌·우 4방향 칸 이동으로 변경. 대각선 이동 금지.
+- **유지 사항**: 정면/후면/측면 3방향 원본에 좌우반전 적용, Idle/Walk/Jump/Dodge/Sword Attack/Parry/Hurt/Stun 8개 애니메이션 상태, `transitions` 예정.
+- **미정 사항**: 두 방향키 동시 입력 시 우선 방향 선택 규칙.
+- **변경 문서**: `PRE-PRD.md`, `README.md`, `TASKS.md`, `docs/DECISIONS.md`, `docs/PLAYER_ANIMATION_SPEC.md`.
+- **구현 상태**: 기획 문서만 변경했으며 Python 이동 코드는 아직 별도 변경하지 않음.
+- **다음 작업**: Claude Code가 이동을 구현할 때 4방향 규칙을 준수하고 대각선 이동 테스트를 제거/방지해야 함.
+
+---
+
 ## 2026-11-02 — 주인공 애니메이션/FSM 설계 정리 (ChatGPT)
 
 - **브랜치**: `codex/player-animation-fsm-spec` (PR에서 검토 후 병합)
