@@ -16,6 +16,26 @@
 
 ---
 
+## 2026-11-03 — 주인공 Idle/Walk v3 에셋 보정·적용 (Claude Code)
+
+- **브랜치**: `claude/player-idle-walk-v3` (`claude/render-scale-2x` 위에서 분기. 앞선 PR들이 아직 `main`에 병합되지 않음)
+- **한 일**
+  - `player_idle_reference_v3.png`, `player_walk_reference_v3.png`에서 `assets/images/player/{idle,walk}/{front,back,side}.png` 생성 (각 4프레임 128×48)
+  - 컨셉아트 기준 색 보정 + 공용 28색 팔레트, Idle 몸 고정(망토 끝만), Walk 머리 고정 (D-018)
+  - 코드: `sprite_sheet_path`를 `<상태>/<방향>.png`로, `PLAYER_IDLE_FRAMES = 4`, `PLAYER_IDLE_FRAME_DURATION = 0.2`. 이동·상태 머신·그리기는 그대로
+  - 에셋 검사 테스트 확장 (발·알파·초록, Idle 고정 영역, Walk 머리·다리 중복)
+- **현재 상태**: `python -m unittest` 88개 통과. `python main.py --frames 60` 실제 창 실행 성공.
+  실제 창 캡처(코드로 입력)에서 4방향 Idle/Walk 재생, 전환 시 발 위치 0px 변화, 화면 초록 픽셀 0개 확인. **사람이 키보드로 조작해 본 확인은 안 함.**
+- **다음 작업자가 알아야 할 것**
+  - 작업 폴더에 커밋하지 않은 이전 시도 파일이 있습니다: `assets/images/player/master/`, `palette.json`, `sprites.json`(player_master_v1, 64×96 기준),
+    `assets/concepts/player_idle_walk_source_sheet.png`. 게임 코드는 이 파일들을 쓰지 않습니다.
+  - `player_character_concept_v1.png`는 작업 폴더에서 RGB→RGBA로만 바뀌어 있고 픽셀은 같습니다 (커밋하지 않음).
+- **남은 문제 / 다음 할 일**
+  - Walk 정면 2번째 프레임(중립이 아님), Walk 측면 3번째 프레임(다리 명암만 보정) 재작업
+  - 32×48 축소로 작은 디테일이 뭉개짐 — 32×48 도트로 직접 손보는 것이 가장 확실함
+
+---
+
 ## 2026-11-03 — 화면 표시 2배 확대 + 추적 카메라 (Claude Code)
 
 - **브랜치**: `claude/render-scale-2x` (`claude/player-walk-sprites` 위에서 분기. 앞선 PR들이 아직 `main`에 병합되지 않았기 때문)

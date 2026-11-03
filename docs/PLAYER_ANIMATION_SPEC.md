@@ -49,13 +49,13 @@
 
 ```text
 assets/images/player/
-  idle_front.png
-  idle_back.png
-  idle_side.png
-  walk_front.png
-  walk_back.png
-  walk_side.png
-  jump_front.png
+  idle/front.png   (2026-11-03 구현: <상태>/<방향>.png 폴더 구조)
+  idle/back.png
+  idle/side.png
+  walk/front.png
+  walk/back.png
+  walk/side.png
+  jump/front.png
   ...
   dodge_*.png
   sword_attack_*.png
