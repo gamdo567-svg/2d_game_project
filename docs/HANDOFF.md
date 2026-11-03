@@ -16,6 +16,22 @@
 
 ---
 
+## 2026-11-03 — 새 Walk 스프라이트 적용 (Claude Code)
+
+- **브랜치**: `claude/player-walk-sprites` (`claude/player-move-anim` 위에서 분기. 그 PR이 아직 `main`에 병합되지 않았기 때문)
+- **한 일**
+  - 사용자가 만든 `assets/concepts/player_walk_reference.png`(3×4, 초록 배경)에서 `walk_{front,back,side}.png` 재추출 (각 128×48, 4프레임)
+  - 상태별 프레임 수 설정 `PLAYER_IDLE_FRAMES = 5`, `PLAYER_WALK_FRAMES = 4` (D-016). 이동·상태 머신·그리기 코드는 그대로
+  - Walk 프레임의 발 위치·알파·초록 잔여 픽셀 검사 테스트 추가 (표준 라이브러리로 PNG 읽기)
+- **현재 상태**: `python -m unittest` 80개 통과. `python main.py --frames 60` 실제 창 실행 성공.
+  코드로 입력을 흉내 낸 실제 창 캡처에서 4방향 Walk 재생, 왼쪽 반전, Idle 복귀, 발 높이 유지, 화면에 초록 픽셀 0개 확인.
+  **사람이 키보드로 직접 조작해 본 확인은 하지 않았습니다.**
+- **다음 작업자가 알아야 할 것**
+  - 추출 방법과 품질 문제는 `assets/README.md`. 추출 스크립트는 저장소에 넣지 않았습니다 (Pillow 필요, requirements 밖).
+  - Idle은 예전 임시 에셋이라 새 Walk와 그림체·측면 키(약 3px)가 다릅니다. Idle도 같은 방식의 참고 시트로 다시 만드는 것을 권합니다.
+
+---
+
 ## 2026-11-03 — 대각선 이동 제거, 걷기 모션 점검 (Claude Code)
 
 - **브랜치**: `claude/player-move-anim` (같은 PR에 추가)

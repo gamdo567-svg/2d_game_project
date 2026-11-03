@@ -10,6 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
+| T-018 | 새 Walk 참고 시트로 걷기 스프라이트 교체 | 검토 중 | Claude Code | `claude/player-walk-sprites` | T-017 브랜치 위에서 작업. walk 4프레임(D-016), 초록 배경 제거, Idle과 발·후드 정렬 |
 
 ## 대기 (백로그)
 
@@ -17,7 +18,7 @@
 
 | ID | 작업 | 상태 | PRE-PRD | 비고 |
 |---|---|---|---|---|
-| T-015 | 주인공 8개 상태 애니메이션 에셋 제작 | 대기 | 2.7 | idle/walk는 임시 추출본만 있음(T-017). 32×48 도트로 다시 그린 정식 에셋 필요. `docs/PLAYER_ANIMATION_SPEC.md` 참고 |
+| T-015 | 주인공 8개 상태 애니메이션 에셋 제작 | 진행 중 | 2.7 | walk는 새 참고 시트로 교체(T-018). idle은 아직 임시 추출본(T-017) — walk와 그림체가 달라 재제작 필요. `docs/PLAYER_ANIMATION_SPEC.md` 참고 |
 | T-016 | `transitions` 기반 주인공 상태 머신 구현 | 진행 중 | 2.7 | idle/walk 구현(T-017). jump/dodge/sword_attack/parry/hurt/stun은 해당 기능 개발 시 추가 |
 | T-001 | 맵(칸 데이터) 표시 | 대기 | 2.4 | 고정 맵 형식 결정 필요 |
 | T-002 | 플레이어 ~~8방향~~ 4방향 칸 이동 | 진행 중 | 2.1 | 기본 이동은 T-017. 대각선 제거(D-015). 입력 버퍼 미구현 |
