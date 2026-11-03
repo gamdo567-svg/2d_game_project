@@ -16,6 +16,24 @@
 
 ---
 
+## 2026-11-03 — 화면 표시 2배 확대 + 추적 카메라 (Claude Code)
+
+- **브랜치**: `claude/render-scale-2x` (`claude/player-walk-sprites` 위에서 분기. 앞선 PR들이 아직 `main`에 병합되지 않았기 때문)
+- **한 일**
+  - 설정 분리: `LOGICAL_TILE_SIZE = 32`, `RENDER_SCALE = 2`, `RENDER_TILE_SIZE = 64`, `PLAYER_RENDER_WIDTH/HEIGHT = 64×96`. `TILE_SIZE` 삭제 (D-017)
+  - `Renderer.draw_sprite_frame`에 표시 크기(`draw_width`, `draw_height`) 추가, nearest 확대
+  - `game/world/camera.py` `Camera` 추가, `FieldScene`이 주인공을 따라 스크롤 (맵 32×18칸, 화면 16×9칸)
+  - PRE-PRD 2.5·3.2의 [확정] 크기 항목을 취소선으로 남기고 갱신 (사용자 요청)
+- **현재 상태**: `python -m unittest` 86개 통과. `python main.py --frames 60` 실제 창 실행 성공.
+  실제 창 캡처로 타일 64px, 주인공 64×96 nearest 확대(2×2 블록), 카메라 중앙 추적·맵 모서리 정지 확인.
+  **사람이 키보드로 직접 조작해 본 확인은 하지 않았습니다.**
+- **다음 작업자가 알아야 할 것**
+  - 크기를 바꿀 때는 `RENDER_SCALE`만 바꾸세요. 로직(칸 좌표)과 에셋 원본 크기는 그대로입니다.
+  - 카메라 위치는 `Grid.origin_x/origin_y`에 반영됩니다. 같은 `Grid`를 쓰는 `GridMover`는 원점을 쓰지 않으므로 영향이 없습니다.
+  - 맵 맨 위 줄에서 주인공 머리 32px가 화면 위로 잘립니다.
+
+---
+
 ## 2026-11-03 — 새 Walk 스프라이트 적용 (Claude Code)
 
 - **브랜치**: `claude/player-walk-sprites` (`claude/player-move-anim` 위에서 분기. 그 PR이 아직 `main`에 병합되지 않았기 때문)
