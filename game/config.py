@@ -32,7 +32,9 @@ PLAYER_START_ROW = GRID_ROWS // 2
 
 # ----- 플레이어 애니메이션 -----
 # 스프라이트 시트: 한 파일에 한 상태·방향의 프레임을 가로로 이어 붙인다.
-PLAYER_ANIMATION_FRAMES = 5  # 상태·방향별 프레임 수 (현재 idle, walk 모두 5)
+# 상태별 프레임 수 (방향마다 같음). 시트 가로 크기 = 프레임 수 × PLAYER_SPRITE_WIDTH
+PLAYER_IDLE_FRAMES = 5
+PLAYER_WALK_FRAMES = 4  # 오른발 디딤 → 모음 → 왼발 디딤 → 모음
 # [임시값] 프레임 하나를 보여 주는 시간(초). 실제 화면을 보며 조정한다.
 PLAYER_IDLE_FRAME_DURATION = 0.18
 PLAYER_WALK_FRAME_DURATION = 0.1

@@ -26,8 +26,8 @@ class Player:
         self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED)
         self.facing = Facing.DOWN
         self.animations: dict[str, LoopAnimation] = {
-            IDLE: LoopAnimation(config.PLAYER_ANIMATION_FRAMES, config.PLAYER_IDLE_FRAME_DURATION),
-            WALK: LoopAnimation(config.PLAYER_ANIMATION_FRAMES, config.PLAYER_WALK_FRAME_DURATION),
+            IDLE: LoopAnimation(config.PLAYER_IDLE_FRAMES, config.PLAYER_IDLE_FRAME_DURATION),
+            WALK: LoopAnimation(config.PLAYER_WALK_FRAMES, config.PLAYER_WALK_FRAME_DURATION),
         }
         self.fsm = PlayerStateMachine(on_state_changed=self._on_state_changed)
 

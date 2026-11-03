@@ -93,7 +93,7 @@ class PlayerTest(unittest.TestCase):
         for _ in range(60):  # 1초 = 6칸
             self.player.update(1 / 60, self.input)
             seen.add(self.player.animation.frame_index)
-        self.assertEqual(seen, set(range(config.PLAYER_ANIMATION_FRAMES)))
+        self.assertEqual(seen, set(range(config.PLAYER_WALK_FRAMES)))
 
     def test_pressing_into_edge_turns_without_moving(self):
         player = make_player(col=0, row=0)
