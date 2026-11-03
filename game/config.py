@@ -14,19 +14,32 @@ SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 576
 
 # ----- 칸(타일) -----
-TILE_SIZE = 32  # 한 칸이 화면에 그려지는 크기(픽셀)
-GRID_COLS = SCREEN_WIDTH // TILE_SIZE  # 32
-GRID_ROWS = SCREEN_HEIGHT // TILE_SIZE  # 18
+# 논리 칸 크기: 도트 원본(에셋) 기준 한 칸의 픽셀 크기. 게임 로직은 칸 좌표만 쓴다.
+LOGICAL_TILE_SIZE = 32
+# 화면 표시 배율. 이 값만 바꾸면 타일·주인공 표시 크기가 함께 바뀐다 (확대/축소).
+# 도트가 흐려지지 않도록 정수 배율을 권장한다.
+RENDER_SCALE = 2
+RENDER_TILE_SIZE = LOGICAL_TILE_SIZE * RENDER_SCALE  # 64: 한 칸이 화면에 그려지는 크기(픽셀)
 
-# ----- 플레이어 아트 기준 크기 (렌더링 픽셀) -----
-# 실제 스프라이트/애니메이션 제작 전 기준값. 충돌은 논리적 타일 좌표로 처리한다.
+# 맵(월드) 크기 (칸). 표시 배율과 무관하다.
+GRID_COLS = 32
+GRID_ROWS = 18
+# 한 화면에 보이는 칸 수 (참고용). 1024×576 / 64 = 16×9
+VIEW_COLS = SCREEN_WIDTH / RENDER_TILE_SIZE
+VIEW_ROWS = SCREEN_HEIGHT / RENDER_TILE_SIZE
+
+# ----- 플레이어 그림 크기 -----
+# 스프라이트 시트 원본 프레임 크기 (에셋 픽셀). 충돌은 논리적 칸 좌표로 처리한다.
 PLAYER_SPRITE_WIDTH = 32
 PLAYER_SPRITE_HEIGHT = 48
+# 화면에 그리는 크기 (렌더링 픽셀) = 원본 × RENDER_SCALE
+PLAYER_RENDER_WIDTH = PLAYER_SPRITE_WIDTH * RENDER_SCALE  # 64
+PLAYER_RENDER_HEIGHT = PLAYER_SPRITE_HEIGHT * RENDER_SCALE  # 96
 
 # ----- 플레이어 이동 -----
 # [임시값] PRE-PRD 2.1 [제안] 초기값 후보. 실제 플레이 후 조정한다.
 PLAYER_MOVE_SPEED = 6.0  # 칸/초 (한 칸 이동 시간 = 1 / 6초)
-# 시작 위치 (칸 좌표). 화면 중앙 칸.
+# 시작 위치 (칸 좌표). 맵 중앙 칸.
 PLAYER_START_COL = GRID_COLS // 2
 PLAYER_START_ROW = GRID_ROWS // 2
 

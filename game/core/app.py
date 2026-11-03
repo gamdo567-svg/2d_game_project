@@ -26,7 +26,7 @@ def run(max_frames: int | None = None) -> int:
     try:
         pico2d.hide_lattice()  # pico2d 기본 격자 배경 끄기
 
-        grid = Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE)
+        grid = Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE)
         renderer = Renderer(config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
         input_state = InputState()
         clock = FrameClock(config.MAX_DELTA_TIME)

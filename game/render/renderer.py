@@ -98,20 +98,24 @@ class Renderer:
         frame_height: int,
         center_x: float,
         bottom: float,
+        draw_width: int,
+        draw_height: int,
         flip_horizontal: bool = False,
     ) -> None:
         """가로로 이어 붙인 스프라이트 시트에서 frame_index 번째 프레임을 그린다.
 
         (center_x, bottom) 은 그림의 아래 가운데 (발끝) 픽셀 좌표다.
-        원본 크기 그대로, 정수 픽셀 위치에 그려 도트가 번지지 않게 한다.
+        원본 프레임(frame_width × frame_height)을 draw_width × draw_height 로 확대해 그린다.
+        확대는 nearest(가장 가까운 픽셀) 방식이고 정수 픽셀 위치에 그려 도트가 번지지 않게 한다.
         """
         image = self._image(path)
         if image is None:
             return
-        x = round(center_x)
-        y = round(bottom) + frame_height // 2  # pico2d 는 그림 중심 좌표를 받는다
+        # pico2d 는 그림 중심 좌표를 받는다. 왼쪽 아래 모서리를 정수 픽셀에 맞춘 뒤 중심을 계산한다.
+        x = round(center_x - draw_width / 2) + draw_width / 2
+        y = round(bottom) + draw_height / 2
         left = frame_index * frame_width
         flip = "h" if flip_horizontal else ""
         image.clip_composite_draw(
-            left, 0, frame_width, frame_height, 0, flip, x, y, frame_width, frame_height
+            left, 0, frame_width, frame_height, 0, flip, x, y, draw_width, draw_height
         )

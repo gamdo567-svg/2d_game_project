@@ -28,7 +28,7 @@ def _run(scene, fps, seconds):
 
 class BootSceneTest(unittest.TestCase):
     def make_scene(self):
-        return BootScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE))
+        return BootScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
 
     def test_marker_starts_at_grid_center(self):
         scene = self.make_scene()

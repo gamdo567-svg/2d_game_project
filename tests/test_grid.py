@@ -55,15 +55,21 @@ class GridTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             Grid(cols=1, rows=1, tile_size=0)
 
-    def test_config_grid_fits_screen(self):
-        grid = Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE)
-        self.assertEqual(grid.width_px, config.SCREEN_WIDTH)
-        self.assertEqual(grid.height_px, config.SCREEN_HEIGHT)
+    def test_render_sizes_follow_scale(self):
+        # 표시 크기는 논리(원본) 크기 × RENDER_SCALE 로만 정해진다.
+        scale = config.RENDER_SCALE
+        self.assertEqual(config.RENDER_TILE_SIZE, config.LOGICAL_TILE_SIZE * scale)
+        self.assertEqual(config.PLAYER_RENDER_WIDTH, config.PLAYER_SPRITE_WIDTH * scale)
+        self.assertEqual(config.PLAYER_RENDER_HEIGHT, config.PLAYER_SPRITE_HEIGHT * scale)
 
     def test_confirmed_screen_and_player_art_dimensions(self):
         self.assertEqual((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), (1024, 576))
         self.assertEqual((config.GRID_COLS, config.GRID_ROWS), (32, 18))
         self.assertEqual((config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT), (32, 48))
+        # 2026-11-03: 화면 표시 2배 확대
+        self.assertEqual((config.LOGICAL_TILE_SIZE, config.RENDER_TILE_SIZE), (32, 64))
+        self.assertEqual((config.PLAYER_RENDER_WIDTH, config.PLAYER_RENDER_HEIGHT), (64, 96))
+        self.assertEqual((config.VIEW_COLS, config.VIEW_ROWS), (16, 9))
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ class _RecordingRenderer:
 
 
 def make_player(col=5, row=5):
-    return Player(Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE), col, row)
+    return Player(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE), col, row)
 
 
 class PlayerTest(unittest.TestCase):
@@ -123,9 +123,10 @@ class PlayerTest(unittest.TestCase):
         self.assertEqual(name, "draw_sprite_frame")
         self.assertEqual(args[0], sprite_sheet_path(WALK, "side"))
         self.assertEqual(args[2:4], (config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT))
+        self.assertEqual(args[6:8], (config.PLAYER_RENDER_WIDTH, config.PLAYER_RENDER_HEIGHT))
         self.assertTrue(kwargs["flip_horizontal"])
         # 발끝 위치: 4.5칸(보간 중) 칸의 아래 가운데
-        tile = config.TILE_SIZE
+        tile = config.RENDER_TILE_SIZE
         self.assertAlmostEqual(args[4], 4.5 * tile + tile / 2)
         self.assertAlmostEqual(args[5], 5 * tile)
 
@@ -135,20 +136,34 @@ class PlayerTest(unittest.TestCase):
 
 class FieldSceneTest(unittest.TestCase):
     def test_player_starts_at_configured_tile(self):
-        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE))
+        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
         self.assertEqual(
             (scene.player.col, scene.player.row),
             (config.PLAYER_START_COL, config.PLAYER_START_ROW),
         )
 
     def test_draw_uses_renderer_only(self):
-        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.TILE_SIZE))
+        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
         scene.update(0.016, InputState())
         renderer = _RecordingRenderer()
         scene.draw(renderer)
         names = [call[0] for call in renderer.calls]
         self.assertIn("fill_screen", names)
         self.assertIn("draw_sprite_frame", names)
+
+    def test_camera_keeps_player_on_screen(self):
+        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
+        inp = InputState()
+        for action in (Action.MOVE_RIGHT, Action.MOVE_UP, Action.MOVE_LEFT, Action.MOVE_DOWN):
+            inp.release_all()
+            inp.press(action)
+            for _ in range(240):  # 4초: 맵 끝까지 이동
+                scene.update(1 / 60, inp)
+                left, bottom, right, top = scene.grid.tile_to_pixel_rect(*scene.player.mover.visual_position)
+                self.assertGreaterEqual(left, 0)
+                self.assertLessEqual(right, config.SCREEN_WIDTH)
+                self.assertGreaterEqual(bottom, 0)
+                self.assertLessEqual(top, config.SCREEN_HEIGHT)
 
 
 if __name__ == "__main__":

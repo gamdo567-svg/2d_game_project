@@ -1,7 +1,7 @@
 """주인공: 칸 이동(상하좌우), 바라보는 방향, 상태 머신, 애니메이션을 묶는다.
 
 - 논리적 위치와 충돌 영역은 칸 하나 (self.col, self.row) 이다.
-- 그림 크기(32×48)는 그리기에만 쓰며 충돌 판정과 무관하다.
+- 그림 크기(원본 32×48, 화면 표시 64×96)는 그리기에만 쓰며 충돌 판정과 무관하다.
 - 캐릭터 본체 그림만 그린다. 검 등 장비는 별도 레이어로 나중에 추가한다.
 """
 from __future__ import annotations
@@ -77,5 +77,7 @@ class Player:
             config.PLAYER_SPRITE_HEIGHT,
             (left + right) / 2,
             bottom,
+            config.PLAYER_RENDER_WIDTH,
+            config.PLAYER_RENDER_HEIGHT,
             flip_horizontal=flip,
         )
