@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from game import config
 from game.input.input_state import Action, InputState
@@ -131,7 +132,7 @@ class PlayerTest(unittest.TestCase):
         self.assertAlmostEqual(args[5], 5 * tile)
 
     def test_sprite_sheet_path(self):
-        self.assertTrue(sprite_sheet_path(IDLE, "front").endswith("idle_front.png"))
+        self.assertEqual(Path(sprite_sheet_path(IDLE, "front")).parts[-2:], ("idle", "front.png"))
 
 
 class FieldSceneTest(unittest.TestCase):

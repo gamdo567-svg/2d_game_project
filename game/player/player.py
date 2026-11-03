@@ -16,8 +16,8 @@ from game.world.grid import Grid
 
 
 def sprite_sheet_path(state: str, view: str) -> str:
-    """상태·원본 방향에 해당하는 스프라이트 시트 경로. 예: idle_front.png"""
-    return str(config.PLAYER_IMAGE_DIR / f"{state}_{view}.png")
+    """상태·원본 방향에 해당하는 스프라이트 시트 경로. 예: idle/front.png"""
+    return str(config.PLAYER_IMAGE_DIR / state / f"{view}.png")
 
 
 class Player:

@@ -60,6 +60,20 @@ def read_rgba_pixels(path):
     return rows
 
 
+IDLE_FIXED_TOP_ROWS = 19   # 후드·얼굴·어깨 (스프라이트 생성 시 망토 줄은 19~43)
+IDLE_FIXED_FEET_ROWS = 4   # 부츠
+HEAD_ROWS = 17             # 후드·얼굴·턱
+LEG_ROWS = 8
+
+
+def frames_of(state, view):
+    """시트를 프레임별 [y][x] 픽셀 목록으로 나눈다."""
+    w = config.PLAYER_SPRITE_WIDTH
+    pixels = read_rgba_pixels(sprite_sheet_path(state, view))
+    count = len(pixels[0]) // w
+    return [[row[i * w:(i + 1) * w] for row in pixels] for i in range(count)]
+
+
 class PlayerAssetTest(unittest.TestCase):
     def test_sheets_exist_with_expected_size(self):
         frames = {IDLE: config.PLAYER_IDLE_FRAMES, WALK: config.PLAYER_WALK_FRAMES}
@@ -74,24 +88,47 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertEqual((width, height), (expected_width, config.PLAYER_SPRITE_HEIGHT))
                     self.assertEqual(color_type, COLOR_TYPE_RGBA)  # 투명 배경
 
-
-    def test_walk_frames_are_clean_and_aligned(self):
+    def test_frames_are_clean_and_aligned(self):
         # 발이 맨 아래 줄에 닿아야 idle <-> walk 전환과 프레임 전환 때 위아래로 튀지 않는다.
         # 초록 배경(#00FF00) 제거 후 반투명 경계나 초록 잔여 픽셀이 남으면 안 된다.
-        w, h = config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT
+        h = config.PLAYER_SPRITE_HEIGHT
+        for state in STATES:
+            for view in VIEWS:
+                for index, frame in enumerate(frames_of(state, view)):
+                    with self.subTest(state=state, view=view, frame=index):
+                        opaque_rows = set()
+                        for y, row in enumerate(frame):
+                            for r, g, b, a in row:
+                                self.assertIn(a, (0, 255))
+                                if a:
+                                    opaque_rows.add(y)
+                                    self.assertLessEqual(g, max(r, b) + 10, "초록 잔여 픽셀")
+                        self.assertEqual(max(opaque_rows), h - 1)
+
+    def test_idle_moves_only_cape(self):
+        # Idle: 후드·얼굴·몸통 윗부분과 발은 모든 프레임에서 같은 픽셀 (깜빡임 방지), 망토만 달라진다.
         for view in VIEWS:
-            pixels = read_rgba_pixels(sprite_sheet_path(WALK, view))
-            for frame in range(config.PLAYER_WALK_FRAMES):
-                with self.subTest(view=view, frame=frame):
-                    opaque_rows = set()
-                    for y in range(h):
-                        for x in range(frame * w, (frame + 1) * w):
-                            r, g, b, a = pixels[y][x]
-                            self.assertIn(a, (0, 255))
-                            if a:
-                                opaque_rows.add(y)
-                                self.assertLessEqual(g, max(r, b) + 10, "초록 잔여 픽셀")
-                    self.assertEqual(max(opaque_rows), h - 1)
+            frames = frames_of(IDLE, view)
+            with self.subTest(view=view):
+                for frame in frames[1:]:
+                    self.assertEqual(frame[:IDLE_FIXED_TOP_ROWS], frames[0][:IDLE_FIXED_TOP_ROWS])
+                    self.assertEqual(frame[-IDLE_FIXED_FEET_ROWS:], frames[0][-IDLE_FIXED_FEET_ROWS:])
+                self.assertGreater(len({tuple(map(tuple, f)) for f in frames}), 1, "망토가 움직이지 않음")
+
+    def test_walk_keeps_idle_head_and_has_distinct_frames(self):
+        # Walk: 머리(후드·얼굴)는 Idle 첫 프레임과 같은 그림을 상하 반동만큼만 옮겨 쓴다.
+        # 같은 프레임을 복사해 4프레임을 채우지 않았는지 다리 줄을 비교한다.
+        for view in VIEWS:
+            head = frames_of(IDLE, view)[0]
+            top = min(y for y, row in enumerate(head) if any(p[3] for p in row))
+            band = head[top:top + HEAD_ROWS]
+            walk = frames_of(WALK, view)
+            with self.subTest(view=view):
+                for index, frame in enumerate(walk):
+                    shifts = [dy for dy in range(-2, 3) if frame[top + dy:top + dy + HEAD_ROWS] == band]
+                    self.assertTrue(shifts, f"{index}번 프레임 머리 모양이 다름")
+                legs = [tuple(map(tuple, f[-LEG_ROWS:])) for f in walk]
+                self.assertEqual(len(set(legs)), len(legs), "다리 자세가 같은 프레임이 있음")
 
 
 if __name__ == "__main__":
