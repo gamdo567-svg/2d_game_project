@@ -41,18 +41,29 @@ class TimedAction:
 
 
 class Jump(TimedAction):
-    """제자리 점프. 진행도 1/4 은 웅크림, 가운데 1/2 은 공중, 마지막 1/4 은 착지.
+    """제자리 점프. frame_ends 는 각 프레임이 끝나는 진행도 (예: 웅크림 0.2, 도약 0.35, 공중 0.8, 착지 1.0).
 
+    첫 프레임(웅크림)이 끝나면 떠오르고, 마지막 프레임(착지)이 시작될 때 땅에 닿는다.
     height 는 그림을 띄우는 높이(칸 단위)이며 논리적 칸 위치는 바뀌지 않는다.
     """
 
-    def __init__(self, duration: float, max_height: float, frame_count: int) -> None:
-        super().__init__(duration, frame_count)
+    def __init__(self, duration: float, max_height: float, frame_ends: tuple[float, ...]) -> None:
+        super().__init__(duration, len(frame_ends))
+        if list(frame_ends) != sorted(frame_ends) or frame_ends[-1] != 1.0 or len(frame_ends) < 3:
+            raise ValueError("frame_ends 는 3개 이상, 오름차순, 마지막 값 1.0 이어야 합니다.")
         self.max_height = max_height
+        self.frame_ends = frame_ends
+        self._lift_off = frame_ends[0]
+        self._touch_down = frame_ends[-2]
+
+    @property
+    def frame_index(self) -> int:
+        p = self.progress
+        return next(i for i, end in enumerate(self.frame_ends) if p < end or end == 1.0)
 
     @property
     def height(self) -> float:
-        t = (self.progress - 0.25) / 0.5  # 공중 구간 0~1
+        t = (self.progress - self._lift_off) / (self._touch_down - self._lift_off)  # 공중 구간 0~1
         if not 0.0 < t < 1.0:
             return 0.0
         return self.max_height * math.sin(math.pi * t)

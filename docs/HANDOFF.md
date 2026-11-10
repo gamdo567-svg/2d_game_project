@@ -16,6 +16,19 @@
 
 ---
 
+## 2026-11-10 — 높은 점프 모션, 패링 애니메이션 제거 (Claude Code)
+
+- **브랜치**: `claude/player-jump-parry` (같은 PR에 추가)
+- **한 일 (사용자 피드백 반영)**
+  - 패링 검 레이어 제거 (사용자가 요청하지 않음)
+  - 점프: 높이 1칸·0.55초로 높게, 최고점에서 무릎을 가슴 쪽으로 당기는 모션. v3 Idle 위에 팔·다리를 v3 팔레트로 손그림 (`assets/README.md`)
+  - 점프 프레임 구간을 `PLAYER_JUMP_FRAME_ENDS`로 지정해 최고점에 무릎 당김 프레임이 보이게 함
+  - 패링 애니메이션 제거: F·판정 시간·상태는 유지, 그림은 서 있는 그림(`SPRITE_FALLBACK`). 공격 모션 때 함께 제작
+- **현재 상태**: `python -m unittest` 105개 통과, `python main.py --frames 60` 실행 성공. 키보드로 직접 조작해 본 확인은 안 함.
+- **다음 작업자가 알아야 할 것**: 그림은 ChatGPT 원본이 기준. 자세가 새로 필요한 경우만 Claude Code가 v3 위에 팔·다리를 덧그림.
+
+---
+
 ## 2026-11-10 — 주인공 점프·패링 (Claude Code)
 
 - **브랜치**: `claude/player-jump-parry` (`claude/player-idle-walk-v3` 위에서 분기. 앞선 PR들이 아직 `main`에 병합되지 않음)

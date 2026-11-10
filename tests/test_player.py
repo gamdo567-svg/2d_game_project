@@ -218,12 +218,14 @@ class JumpParryTest(unittest.TestCase):
         tile = config.RENDER_TILE_SIZE
         self.assertGreater(body_args[5], 5 * tile + tile * config.PLAYER_JUMP_HEIGHT * 0.8)
 
-    def test_parry_draws_body_only(self):
-        # 검은 아직 그리지 않는다 (사용자 요청 전). 패링 몸 그림 하나만 그린다.
+    def test_parry_draws_standing_sprite(self):
+        # 패링 애니메이션은 아직 없다 (공격 모션과 함께 제작). 서 있는 그림 첫 프레임만, 검 없이 그린다.
         self.tap(Action.PARRY)
+        self.run_for(0.2)
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
-        self.assertEqual([call[1][0] for call in renderer.calls], [sprite_sheet_path(PARRY, "front")])
+        (name, args, _), = renderer.calls
+        self.assertEqual((args[0], args[1]), (sprite_sheet_path(IDLE, "front"), 0))
 
 class FieldSceneTest(unittest.TestCase):
     def test_player_starts_at_configured_tile(self):

@@ -220,6 +220,9 @@
   - 점프는 이동 중에 누르면 진행 중인 한 칸 이동을 마친 뒤 시작(최대 1/6초 지연). 패링은 즉시 시작하고 진행 중인 한 칸만 마저 간다. 두 행동 중 새 이동 없음, 방향 고정.
   - 점프 높이는 그림만 띄운다(`Jump.height` × 칸 표시 크기). 논리적 칸 위치는 그대로이며, 공중 여부(`is_airborne`)는 하단 공격 판정용으로 남겨 둔다.
   - ~~무기 레이어: `assets/images/player/weapon/<상태>/<방향>.png`, 패링 중에만 검을 그린다.~~ (2026-11-10 사용자가 검은 아직 요청하지 않았다고 해 제거. 무기는 요청이 있을 때 별도 레이어로 추가)
-  - 설정값 (`game/config.py`): `PLAYER_JUMP_DURATION = 0.45`, `PLAYER_JUMP_HEIGHT = 0.5`칸, `PLAYER_PARRY_DURATION = 0.4`, `PLAYER_PARRY_WINDOW = 0.15`, 프레임 수 4.
+  - 설정값 (`game/config.py`): ~~`PLAYER_JUMP_DURATION = 0.45`, `PLAYER_JUMP_HEIGHT = 0.5`칸~~ → `0.55`초, `1.0`칸 (2026-11-10 높은 점프),
+    `PLAYER_JUMP_FRAME_ENDS = (0.2, 0.35, 0.8, 1.0)`: 프레임별 끝 진행도. 최고점 앞뒤로 무릎 당긴 프레임이 오래 보이도록 4등분 대신 구간 지정.
+    `PLAYER_PARRY_DURATION = 0.4`, `PLAYER_PARRY_WINDOW = 0.15`.
+  - (2026-11-10) 패링 애니메이션 제거: 전용 그림이 없는 상태는 `SPRITE_FALLBACK`(패링 → idle 첫 프레임)으로 그린다. 공격 모션 제작 때 패링 그림을 함께 만든다.
 - 남은 것: 패링 성공 효과·점프 하단 회피 판정은 몬스터 개발 때 연결. 점프·패링 몸 그림은 Idle 재조립 임시 에셋.
 

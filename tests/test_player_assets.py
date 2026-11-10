@@ -4,8 +4,8 @@ import unittest
 import zlib
 
 from game import config
-from game.player.player import SHADOW_PATH, sprite_sheet_path
-from game.player.state_machine import IDLE, JUMP, PARRY, STATES, WALK
+from game.player.player import SHADOW_PATH, SPRITE_FALLBACK, sprite_sheet_path
+from game.player.state_machine import IDLE, JUMP, STATES, WALK
 
 VIEWS = ("front", "back", "side")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -68,7 +68,6 @@ FRAMES = {
     IDLE: config.PLAYER_IDLE_FRAMES,
     WALK: config.PLAYER_WALK_FRAMES,
     JUMP: config.PLAYER_JUMP_FRAMES,
-    PARRY: config.PLAYER_PARRY_FRAMES,
 }
 AIRBORNE_FRAMES = {(JUMP, 2)}  # 공중에서 발을 당긴 프레임: 발이 바닥 줄에 닿지 않는다
 
@@ -84,8 +83,9 @@ def frames_of(state, view):
 class PlayerAssetTest(unittest.TestCase):
     def test_sheets_exist_with_expected_size(self):
         frames = FRAMES
-        self.assertEqual(set(frames), set(STATES))  # 상태를 추가하면 FRAMES 도 갱신
-        for state in STATES:
+        # 상태를 추가하면 FRAMES 도 갱신 (전용 그림이 없는 상태는 SPRITE_FALLBACK)
+        self.assertEqual(set(frames) | set(SPRITE_FALLBACK), set(STATES))
+        for state in FRAMES:
             expected_width = config.PLAYER_SPRITE_WIDTH * frames[state]
             for view in VIEWS:
                 path = sprite_sheet_path(state, view)
@@ -99,7 +99,7 @@ class PlayerAssetTest(unittest.TestCase):
         # 발이 맨 아래 줄에 닿아야 idle <-> walk 전환과 프레임 전환 때 위아래로 튀지 않는다.
         # 초록 배경(#00FF00) 제거 후 반투명 경계나 초록 잔여 픽셀이 남으면 안 된다.
         h = config.PLAYER_SPRITE_HEIGHT
-        for state in STATES:
+        for state in FRAMES:
             for view in VIEWS:
                 for index, frame in enumerate(frames_of(state, view)):
                     with self.subTest(state=state, view=view, frame=index):

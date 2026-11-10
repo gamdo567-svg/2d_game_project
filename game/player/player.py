@@ -24,6 +24,8 @@ def sprite_sheet_path(state: str, view: str) -> str:
 
 
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
+# 전용 그림이 아직 없는 상태 -> 대신 쓸 그림 상태. 패링은 공격 모션과 함께 만들 때까지 서 있는 그림(첫 프레임).
+SPRITE_FALLBACK = {PARRY: IDLE}
 
 
 class Player:
@@ -31,8 +33,8 @@ class Player:
         self.grid = grid
         self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED)
         self.facing = Facing.DOWN
-        self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAMES)
-        self.parry = Parry(config.PLAYER_PARRY_DURATION, config.PLAYER_PARRY_WINDOW, config.PLAYER_PARRY_FRAMES)
+        self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAME_ENDS)
+        self.parry = Parry(config.PLAYER_PARRY_DURATION, config.PLAYER_PARRY_WINDOW, frame_count=1)
         # 상태별 애니메이션. 점프·패링은 행동 진행도에 맞춰 프레임을 고른다.
         self.animations: dict[str, LoopAnimation | Jump | Parry] = {
             IDLE: LoopAnimation(config.PLAYER_IDLE_FRAMES, config.PLAYER_IDLE_FRAME_DURATION),
@@ -113,9 +115,11 @@ class Player:
             )
 
         # 그림의 발끝(아래 가운데)을 칸의 아래 가운데에 맞춘다. 점프 중에는 lift 만큼 띄운다.
+        sprite_state = SPRITE_FALLBACK.get(self.state, self.state)
+        frame_index = 0 if sprite_state != self.state else self.animation.frame_index
         renderer.draw_sprite_frame(
-            sprite_sheet_path(self.state, view),
-            self.animation.frame_index,
+            sprite_sheet_path(sprite_state, view),
+            frame_index,
             config.PLAYER_SPRITE_WIDTH,
             config.PLAYER_SPRITE_HEIGHT,
             center_x,
