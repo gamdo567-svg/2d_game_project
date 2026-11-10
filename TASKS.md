@@ -10,7 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
-| T-020 | 주인공 Idle/Walk v3 에셋 보정·적용 | 검토 중 | Claude Code | `claude/player-idle-walk-v3` | T-019 브랜치 위에서 작업. 4프레임, 공용 팔레트, Idle 몸 고정·Walk 머리 고정 (D-018). 정면 Walk 2번·측면 Walk 3번 프레임 재작업 권장 |
+| T-020 | 주인공 Idle/Walk v3 에셋 보정·적용 | 검토 중 | Claude Code | `claude/player-idle-walk-v3` | T-019 브랜치 위에서 작업. 4프레임, 공용 팔레트, Idle 몸 고정·Walk 머리 고정 (D-018). 정면 Walk 2번·측면 Walk 3번 프레임은 원본 픽셀 재조립으로 수정(2026-11-10) |
 | T-019 | 화면 표시 2배 확대 + 주인공 추적 카메라 | 검토 중 | Claude Code | `claude/render-scale-2x` | T-018 브랜치 위에서 작업. 타일 64×64·주인공 64×96 표시, 한 화면 16×9칸, 맵 32×18칸, `RENDER_SCALE` (D-017) |
 | T-018 | 새 Walk 참고 시트로 걷기 스프라이트 교체 | 검토 중 | Claude Code | `claude/player-walk-sprites` | T-017 브랜치 위에서 작업. walk 4프레임(D-016), 초록 배경 제거, Idle과 발·후드 정렬 |
 
