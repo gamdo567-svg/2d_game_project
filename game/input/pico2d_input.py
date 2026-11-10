@@ -12,9 +12,11 @@ from pico2d import (
     SDLK_ESCAPE,
     SDLK_LEFT,
     SDLK_RIGHT,
+    SDLK_SPACE,
     SDLK_UP,
     SDLK_a,
     SDLK_d,
+    SDLK_f,
     SDLK_s,
     SDLK_w,
     get_events,
@@ -33,6 +35,8 @@ KEY_BINDINGS: dict[int, Action] = {
     SDLK_s: Action.MOVE_DOWN,
     SDLK_a: Action.MOVE_LEFT,
     SDLK_d: Action.MOVE_RIGHT,
+    SDLK_SPACE: Action.JUMP,
+    SDLK_f: Action.PARRY,
 }
 
 # 지금 눌려 있는 키 코드. 한 행동에 키가 여러 개(예: W 와 ↑)일 때,

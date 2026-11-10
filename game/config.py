@@ -52,6 +52,18 @@ PLAYER_WALK_FRAMES = 4  # 오른발 디딤 → 모음 → 왼발 디딤 → 모�
 PLAYER_IDLE_FRAME_DURATION = 0.2
 PLAYER_WALK_FRAME_DURATION = 0.1
 
+# ----- 플레이어 점프 / 패링 -----
+# [임시값] 2026-11-10 사용자 승인. 4프레임은 행동 시간을 4등분해 재생한다.
+PLAYER_JUMP_DURATION = 0.45  # 초 (웅크림 1/4, 공중 1/2, 착지 1/4)
+PLAYER_JUMP_HEIGHT = 0.5  # 칸. 그림만 띄우며 논리적 칸 위치는 그대로
+PLAYER_PARRY_DURATION = 0.4  # 초. 이 동안 이동 불가
+PLAYER_PARRY_WINDOW = 0.15  # 초. 누른 순간부터 막기 판정
+PLAYER_JUMP_FRAMES = 4
+PLAYER_PARRY_FRAMES = 4
+# 점프 그림자 원본 크기 (assets/images/player/shadow.png)
+PLAYER_SHADOW_WIDTH = 24
+PLAYER_SHADOW_HEIGHT = 6
+
 # ----- 시간 -----
 # 한 프레임 delta time 의 상한(초).
 # 창을 드래그하거나 잠시 멈춘 뒤 큰 dt 가 들어와 로직이 튀는 것을 막는다.

@@ -1,7 +1,7 @@
 """주인공 상태 머신 (Python transitions 라이브러리 사용).
 
-현재 구현한 상태는 idle, walk 두 가지다.
-PRE-PRD 2.7 의 jump / dodge / sword_attack / parry / hurt / stun 은
+현재 구현한 상태는 idle, walk, jump, parry 네 가지다.
+PRE-PRD 2.7 의 dodge / sword_attack / hurt / stun 은
 해당 기능을 개발할 때 STATES 와 TRANSITIONS 에 추가한다.
 
 상태 머신은 '지금 어떤 상태인가'와 '어떤 전환이 허용되는가'만 관리한다.
@@ -15,13 +15,21 @@ from transitions import Machine
 
 IDLE = "idle"
 WALK = "walk"
+JUMP = "jump"
+PARRY = "parry"
 
-STATES: list[str] = [IDLE, WALK]
+STATES: list[str] = [IDLE, WALK, JUMP, PARRY]
+# 서 있거나 걷는 중에만 새 행동(점프, 패링)을 시작할 수 있다.
+FREE_STATES: list[str] = [IDLE, WALK]
 
 # 전환 규칙. 새 상태를 추가할 때 여기에 규칙을 함께 적는다.
-TRANSITIONS: list[dict[str, str]] = [
+TRANSITIONS: list[dict[str, str | list[str]]] = [
     {"trigger": "start_walk", "source": IDLE, "dest": WALK},
     {"trigger": "stop_walk", "source": WALK, "dest": IDLE},
+    {"trigger": "jump", "source": FREE_STATES, "dest": JUMP},
+    {"trigger": "land", "source": JUMP, "dest": IDLE},
+    {"trigger": "parry", "source": FREE_STATES, "dest": PARRY},
+    {"trigger": "end_parry", "source": PARRY, "dest": IDLE},
 ]
 
 

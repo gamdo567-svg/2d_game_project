@@ -4,8 +4,8 @@ from pathlib import Path
 from game import config
 from game.input.input_state import Action, InputState
 from game.player.facing import Facing
-from game.player.player import Player, sprite_sheet_path
-from game.player.state_machine import IDLE, WALK
+from game.player.player import SHADOW_PATH, Player, sprite_sheet_path, weapon_sheet_path
+from game.player.state_machine import IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
 
@@ -133,6 +133,109 @@ class PlayerTest(unittest.TestCase):
 
     def test_sprite_sheet_path(self):
         self.assertEqual(Path(sprite_sheet_path(IDLE, "front")).parts[-2:], ("idle", "front.png"))
+
+
+class JumpParryTest(unittest.TestCase):
+    def setUp(self):
+        self.player = make_player()
+        self.input = InputState()
+
+    def tap(self, action):
+        self.input.begin_frame()
+        self.input.press(action)
+        self.player.update(1 / 60, self.input)
+        self.input.begin_frame()
+        self.input.release(action)
+
+    def run_for(self, seconds):
+        for _ in range(round(seconds * 60)):
+            self.input.begin_frame()
+            self.player.update(1 / 60, self.input)
+
+    def test_jump_in_place_then_idle(self):
+        self.tap(Action.JUMP)
+        self.assertEqual(self.player.state, JUMP)
+        heights = []
+        for _ in range(round(config.PLAYER_JUMP_DURATION * 60) + 2):
+            heights.append(self.player.jump.height)
+            self.input.begin_frame()
+            self.player.update(1 / 60, self.input)
+        self.assertGreater(max(heights), 0)
+        self.assertEqual(self.player.state, IDLE)
+        self.assertEqual((self.player.col, self.player.row), (5, 5))  # 제자리
+
+    def test_no_movement_during_jump(self):
+        self.tap(Action.JUMP)
+        self.input.press(Action.MOVE_RIGHT)
+        self.run_for(config.PLAYER_JUMP_DURATION * 0.8)
+        self.assertEqual(self.player.state, JUMP)
+        self.assertEqual(self.player.col, 5)
+        self.run_for(config.PLAYER_JUMP_DURATION * 0.2 + STEP)
+        self.assertGreater(self.player.col, 5)  # 착지 후 다시 걷는다
+
+    def test_jump_pressed_while_walking_waits_for_tile(self):
+        self.input.press(Action.MOVE_RIGHT)
+        self.player.update(STEP / 2, self.input)  # 한 칸 이동 도중
+        self.assertTrue(self.player.mover.is_moving)
+        self.input.begin_frame()
+        self.input.press(Action.JUMP)
+        self.player.update(STEP / 4, self.input)
+        self.assertEqual(self.player.state, WALK)  # 아직 이동 중: 점프 대기
+        self.input.begin_frame()
+        self.player.update(STEP / 2, self.input)
+        self.assertEqual(self.player.state, JUMP)
+        self.assertEqual(self.player.col, 6)  # 다음 칸으로는 가지 않고 도착 칸에서 점프
+        self.assertFalse(self.player.mover.is_moving)
+
+    def test_parry_starts_immediately_and_blocks_movement(self):
+        self.input.press(Action.MOVE_UP)
+        self.player.update(STEP / 2, self.input)  # 한 칸 이동 도중
+        self.input.begin_frame()
+        self.input.press(Action.PARRY)
+        self.player.update(1 / 60, self.input)
+        self.assertEqual(self.player.state, PARRY)
+        self.assertTrue(self.player.parry.is_active)
+        self.run_for(config.PLAYER_PARRY_DURATION * 0.9)
+        self.assertEqual(self.player.row, 6)  # 진행 중이던 한 칸만 마저 가고 멈춤
+        self.assertEqual(self.player.facing, Facing.UP)
+        self.run_for(config.PLAYER_PARRY_DURATION * 0.1 + 2 / 60)
+        self.assertNotEqual(self.player.state, PARRY)
+
+    def test_parry_window_from_config(self):
+        self.tap(Action.PARRY)
+        self.run_for(config.PLAYER_PARRY_WINDOW + 1 / 60)
+        self.assertFalse(self.player.parry.is_active)
+        self.assertEqual(self.player.state, PARRY)
+
+    def test_jump_draws_shadow_and_lifts_sprite(self):
+        self.tap(Action.JUMP)
+        self.run_for(config.PLAYER_JUMP_DURATION / 2 - 1 / 60)  # 최고점 근처
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        (shadow_name, shadow_args, _), (body_name, body_args, _) = renderer.calls
+        self.assertEqual(shadow_args[0], SHADOW_PATH)
+        self.assertEqual(body_args[0], sprite_sheet_path(JUMP, "front"))
+        tile = config.RENDER_TILE_SIZE
+        self.assertGreater(body_args[5], 5 * tile + tile * config.PLAYER_JUMP_HEIGHT * 0.8)
+
+    def test_parry_draws_sword_layer(self):
+        for facing_action, view, sword_first in ((Action.MOVE_DOWN, "front", False), (Action.MOVE_UP, "back", True)):
+            with self.subTest(view=view):
+                # 맵 끝 칸에서 바깥쪽을 눌러 움직이지 않고 방향만 바꾼다
+                edge_row = 0 if facing_action is Action.MOVE_DOWN else config.GRID_ROWS - 1
+                player = make_player(row=edge_row)
+                inp = InputState()
+                inp.press(facing_action)
+                player.update(1 / 60, inp)
+                inp.release(facing_action)
+                inp.begin_frame()
+                inp.press(Action.PARRY)
+                player.update(1 / 60, inp)
+                renderer = _RecordingRenderer()
+                player.draw(renderer)
+                paths = [call[1][0] for call in renderer.calls]
+                expected = [sprite_sheet_path(PARRY, view), weapon_sheet_path(PARRY, view)]
+                self.assertEqual(paths, expected[::-1] if sword_first else expected)
 
 
 class FieldSceneTest(unittest.TestCase):

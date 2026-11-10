@@ -2,12 +2,12 @@ import unittest
 
 from transitions import MachineError
 
-from game.player.state_machine import IDLE, STATES, WALK, PlayerStateMachine
+from game.player.state_machine import IDLE, JUMP, PARRY, STATES, WALK, PlayerStateMachine
 
 
 class PlayerStateMachineTest(unittest.TestCase):
     def test_states(self):
-        self.assertEqual(STATES, [IDLE, WALK])
+        self.assertEqual(STATES, [IDLE, WALK, JUMP, PARRY])
 
     def test_starts_idle(self):
         self.assertEqual(PlayerStateMachine().state, IDLE)
@@ -34,6 +34,26 @@ class PlayerStateMachineTest(unittest.TestCase):
         fsm = PlayerStateMachine()
         with self.assertRaises(MachineError):
             fsm.trigger("stop_walk")  # idle 에서는 stop_walk 불가
+
+    def test_jump_and_parry_from_idle_or_walk(self):
+        for start_walking in (False, True):
+            for trigger, state, end in (("jump", JUMP, "land"), ("parry", PARRY, "end_parry")):
+                with self.subTest(walking=start_walking, trigger=trigger):
+                    fsm = PlayerStateMachine()
+                    fsm.update_movement(start_walking)
+                    fsm.trigger(trigger)
+                    self.assertEqual(fsm.state, state)
+                    fsm.trigger(end)
+                    self.assertEqual(fsm.state, IDLE)
+
+    def test_no_new_action_during_jump(self):
+        fsm = PlayerStateMachine()
+        fsm.trigger("jump")
+        for trigger in ("parry", "jump", "start_walk"):
+            with self.assertRaises(MachineError):
+                fsm.trigger(trigger)
+        fsm.update_movement(True)  # 점프 중에는 idle/walk 전환을 하지 않는다
+        self.assertEqual(fsm.state, JUMP)
 
     def test_no_auto_transitions(self):
         self.assertFalse(hasattr(PlayerStateMachine(), "to_walk"))

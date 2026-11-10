@@ -4,8 +4,8 @@ import unittest
 import zlib
 
 from game import config
-from game.player.player import sprite_sheet_path
-from game.player.state_machine import IDLE, STATES, WALK
+from game.player.player import SHADOW_PATH, sprite_sheet_path, weapon_sheet_path
+from game.player.state_machine import IDLE, JUMP, PARRY, STATES, WALK
 
 VIEWS = ("front", "back", "side")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -64,6 +64,13 @@ IDLE_FIXED_TOP_ROWS = 19   # 후드·얼굴·어깨 (스프라이트 생성 시 
 IDLE_FIXED_FEET_ROWS = 4   # 부츠
 HEAD_ROWS = 17             # 후드·얼굴·턱
 LEG_ROWS = 8
+FRAMES = {
+    IDLE: config.PLAYER_IDLE_FRAMES,
+    WALK: config.PLAYER_WALK_FRAMES,
+    JUMP: config.PLAYER_JUMP_FRAMES,
+    PARRY: config.PLAYER_PARRY_FRAMES,
+}
+AIRBORNE_FRAMES = {(JUMP, 2)}  # 공중에서 발을 당긴 프레임: 발이 바닥 줄에 닿지 않는다
 
 
 def frames_of(state, view):
@@ -76,8 +83,8 @@ def frames_of(state, view):
 
 class PlayerAssetTest(unittest.TestCase):
     def test_sheets_exist_with_expected_size(self):
-        frames = {IDLE: config.PLAYER_IDLE_FRAMES, WALK: config.PLAYER_WALK_FRAMES}
-        self.assertEqual(set(frames), set(STATES))  # 상태를 추가하면 여기도 갱신
+        frames = FRAMES
+        self.assertEqual(set(frames), set(STATES))  # 상태를 추가하면 FRAMES 도 갱신
         for state in STATES:
             expected_width = config.PLAYER_SPRITE_WIDTH * frames[state]
             for view in VIEWS:
@@ -103,7 +110,8 @@ class PlayerAssetTest(unittest.TestCase):
                                 if a:
                                     opaque_rows.add(y)
                                     self.assertLessEqual(g, max(r, b) + 10, "초록 잔여 픽셀")
-                        self.assertEqual(max(opaque_rows), h - 1)
+                        if (state, index) not in AIRBORNE_FRAMES:
+                            self.assertEqual(max(opaque_rows), h - 1)
 
     def test_idle_moves_only_cape(self):
         # Idle: 후드·얼굴·몸통 윗부분과 발은 모든 프레임에서 같은 픽셀 (깜빡임 방지), 망토만 달라진다.
@@ -129,6 +137,26 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertTrue(shifts, f"{index}번 프레임 머리 모양이 다름")
                 legs = [tuple(map(tuple, f[-LEG_ROWS:])) for f in walk]
                 self.assertEqual(len(set(legs)), len(legs), "다리 자세가 같은 프레임이 있음")
+
+    def test_parry_weapon_layer_matches_body_frames(self):
+        # 검은 본체와 분리된 레이어. 본체 프레임과 같은 크기·같은 프레임 수여야 겹쳐 그릴 수 있다.
+        w, h = config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT
+        for view in VIEWS:
+            path = weapon_sheet_path(PARRY, view)
+            with self.subTest(path=path):
+                signature, width, height, color_type = read_png_header(path)
+                self.assertEqual((width, height), (w * config.PLAYER_PARRY_FRAMES, h))
+                self.assertEqual(color_type, COLOR_TYPE_RGBA)
+                pixels = read_rgba_pixels(path)
+                for i in range(config.PLAYER_PARRY_FRAMES):
+                    alphas = {row[x][3] for row in pixels for x in range(i * w, (i + 1) * w)}
+                    self.assertEqual(alphas, {0, 255}, f"{i}번 프레임 검이 비었거나 반투명 픽셀이 있음")
+
+    def test_shadow_is_translucent(self):
+        signature, width, height, color_type = read_png_header(SHADOW_PATH)
+        self.assertEqual((width, height), (config.PLAYER_SHADOW_WIDTH, config.PLAYER_SHADOW_HEIGHT))
+        alphas = {p[3] for row in read_rgba_pixels(SHADOW_PATH) for p in row}
+        self.assertTrue(any(0 < a < 255 for a in alphas))
 
 
 if __name__ == "__main__":
