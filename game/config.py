@@ -55,13 +55,13 @@ PLAYER_WALK_FRAME_DURATION = 0.1
 # ----- 플레이어 점프 / 패링 -----
 # [임시값] 2026-11-10 사용자 승인.
 # 패링은 애니메이션 없이 서 있는 그림을 쓴다 (공격 모션을 만들 때 함께 제작).
-PLAYER_JUMP_DURATION = 0.55  # 초
+PLAYER_JUMP_DURATION = 0.6  # 초
 PLAYER_JUMP_HEIGHT = 1.0  # 칸. 그림만 띄우며 논리적 칸 위치는 그대로 (2026-11-10 높게 뛰도록 0.5 -> 1.0)
 PLAYER_PARRY_DURATION = 0.4  # 초. 이 동안 이동 불가
 PLAYER_PARRY_WINDOW = 0.15  # 초. 누른 순간부터 막기 판정
-# 점프 4프레임이 끝나는 진행도: 웅크림 ~20%, 도약 ~35%, 무릎 당긴 공중 ~80%(최고점 포함), 착지 ~100%.
-# 웅크림이 끝나면 떠오르고 착지 프레임이 시작될 때 땅에 닿는다.
-PLAYER_JUMP_FRAME_ENDS = (0.2, 0.35, 0.8, 1.0)
+# 점프 5프레임이 끝나는 진행도: 웅크림 ~15%, 도약 ~30%, 무릎을 상반신까지 당김 ~68%(최고점 포함),
+# 다리 펴며 착지 준비 ~85%, 착지 ~100%. 웅크림이 끝나면 떠오르고 착지 프레임이 시작될 때 땅에 닿는다.
+PLAYER_JUMP_FRAME_ENDS = (0.15, 0.3, 0.68, 0.85, 1.0)
 PLAYER_JUMP_FRAMES = len(PLAYER_JUMP_FRAME_ENDS)
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24
