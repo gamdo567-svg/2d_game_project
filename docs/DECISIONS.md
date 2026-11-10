@@ -209,3 +209,17 @@
   - `tests/test_player_assets.py`가 모든 프레임의 발 위치·알파·초록 잔여, Idle 머리·발 고정, Walk 머리 고정과 다리 자세 중복 여부를 검사합니다.
 - 가공 방법과 남은 문제는 `assets/README.md`. 가공 스크립트는 Pillow가 필요해 저장소에 넣지 않았습니다.
 
+## D-019 점프·패링 상태와 무기 레이어
+
+- 상태: 확정 (사용자 승인 2026-11-10) / 임시값 (시간·높이, 에셋)
+- 날짜: 2026-11-10
+- 결정
+  - 키: `Action.JUMP` = `Space`, `Action.PARRY` = `F` (`pico2d_input.KEY_BINDINGS`).
+  - 상태 머신: `jump`, `parry` 추가. `FREE_STATES`(idle, walk)에서만 시작, `land`/`end_parry`로 idle 복귀. 행동 중에는 다른 전환 불가.
+  - `game/player/actions.py`: `Jump`(높이 곡선, 공중 여부), `Parry`(막기 판정 시간) — dt 기반 순수 로직. 4프레임은 행동 진행도를 4등분해 고른다.
+  - 점프는 이동 중에 누르면 진행 중인 한 칸 이동을 마친 뒤 시작(최대 1/6초 지연). 패링은 즉시 시작하고 진행 중인 한 칸만 마저 간다. 두 행동 중 새 이동 없음, 방향 고정.
+  - 점프 높이는 그림만 띄운다(`Jump.height` × 칸 표시 크기). 논리적 칸 위치는 그대로이며, 공중 여부(`is_airborne`)는 하단 공격 판정용으로 남겨 둔다.
+  - 무기 레이어: `assets/images/player/weapon/<상태>/<방향>.png`, 본체와 같은 프레임 구조. 후면은 몸 뒤, 나머지는 몸 앞에 그린다. 지금은 패링 중에만 검을 그린다.
+  - 설정값 (`game/config.py`): `PLAYER_JUMP_DURATION = 0.45`, `PLAYER_JUMP_HEIGHT = 0.5`칸, `PLAYER_PARRY_DURATION = 0.4`, `PLAYER_PARRY_WINDOW = 0.15`, 프레임 수 4.
+- 남은 것: 패링 성공 효과·점프 하단 회피 판정은 몬스터 개발 때 연결. 점프·패링 몸 그림은 Idle 재조립 임시 에셋.
+

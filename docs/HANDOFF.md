@@ -16,6 +16,22 @@
 
 ---
 
+## 2026-11-10 — 주인공 점프·패링 (Claude Code)
+
+- **브랜치**: `claude/player-jump-parry` (`claude/player-idle-walk-v3` 위에서 분기. 앞선 PR들이 아직 `main`에 병합되지 않음)
+- **한 일**
+  - `Space` 점프, `F` 패링. 상태 머신에 `jump`·`parry`, `game/player/actions.py`(`Jump`, `Parry`), 무기 레이어 그리기, 점프 그림자 (D-019)
+  - 에셋: `jump/`·`parry/`(v3 Idle 재조립), `weapon/parry/`(검), `shadow.png` — 모두 임시 에셋 (`assets/README.md`)
+  - PRE-PRD 2.1·2.2·2.7 점프·패링 규칙 확정 (사용자 승인)
+- **현재 상태**: `python -m unittest` 105개 통과, `python main.py --frames 60` 실행 성공.
+  실제 창 캡처(코드로 입력)에서 4방향 점프(그림자·높이)·패링(검 레이어, 후면은 몸 뒤, 왼쪽은 반전)·Idle 복귀 확인. **키보드로 직접 조작해 본 확인은 안 함.**
+- **다음 작업자가 알아야 할 것**
+  - 패링 성공 판정은 `player.parry.is_active`, 점프 공중 여부는 `player.jump.is_airborne`. 몬스터 공격 처리에서 이 값을 쓰면 된다.
+  - 무기 레이어는 `weapon_sheet_path(상태, 방향)`. 공격 등 다른 상태에 검을 그리려면 같은 경로에 시트를 추가하고 `Player.draw`의 조건을 넓힌다.
+- **남은 문제**: 패링 몸은 서 있는 자세 그대로(팔을 든 원본 없음). ChatGPT 패링·점프 자세를 받으면 교체 권장.
+
+---
+
 ## 2026-11-10 — Walk 문제 프레임 2장 수정 (Claude Code)
 
 - **브랜치**: `claude/player-idle-walk-v3` (같은 PR에 추가)
