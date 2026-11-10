@@ -2,7 +2,7 @@
 
 - 논리적 위치와 충돌 영역은 칸 하나 (self.col, self.row) 이다. 점프해도 칸 위치는 그대로다.
 - 그림 크기(원본 32×48, 화면 표시 64×96)는 그리기에만 쓰며 충돌 판정과 무관하다.
-- 본체와 무기는 별도 레이어다. 무기(검)는 지금은 패링 중에만 그린다.
+- 캐릭터 본체 그림만 그린다. 검 등 장비는 요청이 있을 때 별도 레이어로 추가한다.
 - 점프·패링은 서 있거나 걷는 중에만 시작한다. 점프는 진행 중인 한 칸 이동을 마친 뒤 시작하고,
   패링은 바로 시작한다(진행 중인 한 칸 이동은 마저 간다). 두 행동 중에는 새 이동을 하지 않는다.
 """
@@ -23,14 +23,7 @@ def sprite_sheet_path(state: str, view: str) -> str:
     return str(config.PLAYER_IMAGE_DIR / state / f"{view}.png")
 
 
-def weapon_sheet_path(state: str, view: str) -> str:
-    """상태·원본 방향에 해당하는 무기 레이어 시트 경로. 예: weapon/parry/front.png"""
-    return str(config.PLAYER_IMAGE_DIR / "weapon" / state / f"{view}.png")
-
-
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
-# 무기를 몸 뒤에 그리는 원본 방향 (뒷모습에서는 검이 몸에 가려진다)
-WEAPON_BEHIND_VIEWS = {"back"}
 
 
 class Player:
@@ -119,20 +112,15 @@ class Player:
                 config.PLAYER_SHADOW_WIDTH * config.RENDER_SCALE, shadow_h,
             )
 
-        layers = [sprite_sheet_path(self.state, view)]
-        if self.state == PARRY:
-            weapon = weapon_sheet_path(self.state, view)
-            layers = [weapon] + layers if view in WEAPON_BEHIND_VIEWS else layers + [weapon]
         # 그림의 발끝(아래 가운데)을 칸의 아래 가운데에 맞춘다. 점프 중에는 lift 만큼 띄운다.
-        for path in layers:
-            renderer.draw_sprite_frame(
-                path,
-                self.animation.frame_index,
-                config.PLAYER_SPRITE_WIDTH,
-                config.PLAYER_SPRITE_HEIGHT,
-                center_x,
-                bottom + lift,
-                config.PLAYER_RENDER_WIDTH,
-                config.PLAYER_RENDER_HEIGHT,
-                flip_horizontal=flip,
-            )
+        renderer.draw_sprite_frame(
+            sprite_sheet_path(self.state, view),
+            self.animation.frame_index,
+            config.PLAYER_SPRITE_WIDTH,
+            config.PLAYER_SPRITE_HEIGHT,
+            center_x,
+            bottom + lift,
+            config.PLAYER_RENDER_WIDTH,
+            config.PLAYER_RENDER_HEIGHT,
+            flip_horizontal=flip,
+        )

@@ -4,7 +4,7 @@ from pathlib import Path
 from game import config
 from game.input.input_state import Action, InputState
 from game.player.facing import Facing
-from game.player.player import SHADOW_PATH, Player, sprite_sheet_path, weapon_sheet_path
+from game.player.player import SHADOW_PATH, Player, sprite_sheet_path
 from game.player.state_machine import IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
@@ -218,25 +218,12 @@ class JumpParryTest(unittest.TestCase):
         tile = config.RENDER_TILE_SIZE
         self.assertGreater(body_args[5], 5 * tile + tile * config.PLAYER_JUMP_HEIGHT * 0.8)
 
-    def test_parry_draws_sword_layer(self):
-        for facing_action, view, sword_first in ((Action.MOVE_DOWN, "front", False), (Action.MOVE_UP, "back", True)):
-            with self.subTest(view=view):
-                # 맵 끝 칸에서 바깥쪽을 눌러 움직이지 않고 방향만 바꾼다
-                edge_row = 0 if facing_action is Action.MOVE_DOWN else config.GRID_ROWS - 1
-                player = make_player(row=edge_row)
-                inp = InputState()
-                inp.press(facing_action)
-                player.update(1 / 60, inp)
-                inp.release(facing_action)
-                inp.begin_frame()
-                inp.press(Action.PARRY)
-                player.update(1 / 60, inp)
-                renderer = _RecordingRenderer()
-                player.draw(renderer)
-                paths = [call[1][0] for call in renderer.calls]
-                expected = [sprite_sheet_path(PARRY, view), weapon_sheet_path(PARRY, view)]
-                self.assertEqual(paths, expected[::-1] if sword_first else expected)
-
+    def test_parry_draws_body_only(self):
+        # 검은 아직 그리지 않는다 (사용자 요청 전). 패링 몸 그림 하나만 그린다.
+        self.tap(Action.PARRY)
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        self.assertEqual([call[1][0] for call in renderer.calls], [sprite_sheet_path(PARRY, "front")])
 
 class FieldSceneTest(unittest.TestCase):
     def test_player_starts_at_configured_tile(self):

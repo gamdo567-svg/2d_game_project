@@ -25,7 +25,7 @@
 | `concepts/player_walk_reference_v3.png` | 사용자 제공 (주인공 Walk 참고 시트 v3, 3방향 × 4프레임, 초록 배경) | 사용자 소유 | 게임에 직접 쓰지 않는 참고 이미지 |
 | `images/player/{idle,walk}/{front,back,side}.png` | 위 v3 참고 시트 두 장에서 Claude Code가 가공 (2026-11-03) | 사용자 소유 (파생물) | **검증 전 에셋.** 아래 설명 참고 |
 | `images/player/{jump,parry}/{front,back,side}.png` | v3 Idle 시트를 Claude Code가 재조립 (2026-11-10) | 사용자 소유 (파생물) | **임시 에셋.** 아래 설명 참고 |
-| `images/player/weapon/parry/{front,back,side}.png`, `images/player/shadow.png` | Claude Code 제작 (2026-11-10) | 프로젝트 소유 | 패링용 낡은 검 레이어, 점프 그림자. **임시 에셋** |
+| `images/player/shadow.png` | Claude Code 제작 (2026-11-10) | 프로젝트 소유 | 점프 그림자. **임시 에셋** |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)
 
@@ -61,9 +61,7 @@
 - 점프 4프레임: ① Idle 1번에서 바지 2줄을 빼 웅크림 ② Idle 3번에서 바지 1줄을 늘려 도약
   ③ Idle 4번에서 발을 3줄 당김(공중, 발이 바닥 줄에 닿지 않음) ④ Idle 2번에서 1줄 웅크림(착지). 실제 높이와 그림자는 게임 코드가 처리.
 - 패링 몸 4프레임: Idle 1·1·3·2번 프레임 (망토만 조금씩 다름). **팔을 든 자세가 없어 몸은 서 있는 자세 그대로**입니다.
-- 패링 검(`weapon/parry`): 본체와 같은 32×48 프레임 4장, 손 위치에 맞춘 각도별 검(칼날·옆면·가드·손잡이·끝장식·외곽선).
-  ① 들어 올림 ② 몸 앞에 비스듬히 막기 ③ 막은 채 살짝 밀림 ④ 내리며 복귀. 후면(`back`)은 몸 뒤에 그립니다.
 - 그림자(`shadow.png`): 24×6 반투명 타원. 점프 중에만 발 위치에 그립니다.
-- 개선 방향: ChatGPT로 점프·패링 몸 자세(팔을 든 패링 자세 등)를 받으면 같은 방식으로 가공해 교체합니다. 검 레이어 구조는 그대로 씁니다.
+- 개선 방향: ChatGPT로 점프·패링 몸 자세(팔을 든 패링 자세 등)를 받으면 같은 방식으로 가공해 교체합니다.
 
 > 현재 화면의 글자는 pico2d 패키지에 포함된 기본 폰트(`ConsolaMalgun.ttf`)를 사용하며, 이 폴더에 복사하지 않습니다.

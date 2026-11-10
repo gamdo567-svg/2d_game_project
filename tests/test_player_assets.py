@@ -4,7 +4,7 @@ import unittest
 import zlib
 
 from game import config
-from game.player.player import SHADOW_PATH, sprite_sheet_path, weapon_sheet_path
+from game.player.player import SHADOW_PATH, sprite_sheet_path
 from game.player.state_machine import IDLE, JUMP, PARRY, STATES, WALK
 
 VIEWS = ("front", "back", "side")
@@ -137,20 +137,6 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertTrue(shifts, f"{index}번 프레임 머리 모양이 다름")
                 legs = [tuple(map(tuple, f[-LEG_ROWS:])) for f in walk]
                 self.assertEqual(len(set(legs)), len(legs), "다리 자세가 같은 프레임이 있음")
-
-    def test_parry_weapon_layer_matches_body_frames(self):
-        # 검은 본체와 분리된 레이어. 본체 프레임과 같은 크기·같은 프레임 수여야 겹쳐 그릴 수 있다.
-        w, h = config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT
-        for view in VIEWS:
-            path = weapon_sheet_path(PARRY, view)
-            with self.subTest(path=path):
-                signature, width, height, color_type = read_png_header(path)
-                self.assertEqual((width, height), (w * config.PLAYER_PARRY_FRAMES, h))
-                self.assertEqual(color_type, COLOR_TYPE_RGBA)
-                pixels = read_rgba_pixels(path)
-                for i in range(config.PLAYER_PARRY_FRAMES):
-                    alphas = {row[x][3] for row in pixels for x in range(i * w, (i + 1) * w)}
-                    self.assertEqual(alphas, {0, 255}, f"{i}번 프레임 검이 비었거나 반투명 픽셀이 있음")
 
     def test_shadow_is_translucent(self):
         signature, width, height, color_type = read_png_header(SHADOW_PATH)
