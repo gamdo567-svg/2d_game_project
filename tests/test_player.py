@@ -4,7 +4,7 @@ from pathlib import Path
 from game import config
 from game.input.input_state import Action, InputState
 from game.player.facing import Facing
-from game.player.player import SHADOW_PATH, Player, sprite_sheet_path
+from game.player.player import LEFT_SHEET_STATES, SHADOW_PATH, Player, sprite_sheet_path
 from game.player.state_machine import IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
@@ -217,6 +217,35 @@ class JumpParryTest(unittest.TestCase):
         self.assertEqual(body_args[0], sprite_sheet_path(JUMP, "front"))
         tile = config.RENDER_TILE_SIZE
         self.assertGreater(body_args[5], 5 * tile + tile * config.PLAYER_JUMP_HEIGHT * 0.8)
+
+    def test_jump_facing_left_uses_left_sheet(self):
+        # 점프는 오른손으로 후드를 잡아 좌우 비대칭: 왼쪽은 뒤집지 않고 전용 그림
+        self.assertIn(JUMP, LEFT_SHEET_STATES)
+        player = make_player(col=0)
+        inp = InputState()
+        inp.press(Action.MOVE_LEFT)  # 맵 끝: 움직이지 않고 왼쪽을 봄
+        player.update(1 / 60, inp)
+        inp.release(Action.MOVE_LEFT)
+        inp.begin_frame()
+        inp.press(Action.JUMP)
+        player.update(1 / 60, inp)
+        self.assertEqual(player.state, JUMP)
+        renderer = _RecordingRenderer()
+        player.draw(renderer)
+        body = renderer.calls[-1]
+        self.assertEqual(body[1][0], sprite_sheet_path(JUMP, "side_left"))
+        self.assertFalse(body[2]["flip_horizontal"])
+
+    def test_walk_facing_left_still_flips_side(self):
+        player = make_player()
+        inp = InputState()
+        inp.press(Action.MOVE_LEFT)
+        player.update(1 / 60, inp)
+        renderer = _RecordingRenderer()
+        player.draw(renderer)
+        (name, args, kwargs), = renderer.calls
+        self.assertEqual(args[0], sprite_sheet_path(WALK, "side"))
+        self.assertTrue(kwargs["flip_horizontal"])
 
     def test_parry_draws_standing_sprite(self):
         # 패링 애니메이션은 아직 없다 (공격 모션과 함께 제작). 서 있는 그림 첫 프레임만, 검 없이 그린다.

@@ -4,7 +4,7 @@ import unittest
 import zlib
 
 from game import config
-from game.player.player import SHADOW_PATH, SPRITE_FALLBACK, sprite_sheet_path
+from game.player.player import LEFT_SHEET_STATES, SHADOW_PATH, SPRITE_FALLBACK, sprite_sheet_path
 from game.player.state_machine import IDLE, JUMP, STATES, WALK
 
 VIEWS = ("front", "back", "side")
@@ -72,6 +72,11 @@ FRAMES = {
 AIRBORNE_FRAMES = {(JUMP, 2)}  # 공중에서 발을 당긴 프레임: 발이 바닥 줄에 닿지 않는다
 
 
+def views_of(state):
+    """상태가 가진 원본 방향. 좌우 비대칭 상태는 왼쪽 전용 그림(side_left)도 있다."""
+    return VIEWS + (("side_left",) if state in LEFT_SHEET_STATES else ())
+
+
 def frames_of(state, view):
     """시트를 프레임별 [y][x] 픽셀 목록으로 나눈다."""
     w = config.PLAYER_SPRITE_WIDTH
@@ -87,7 +92,7 @@ class PlayerAssetTest(unittest.TestCase):
         self.assertEqual(set(frames) | set(SPRITE_FALLBACK), set(STATES))
         for state in FRAMES:
             expected_width = config.PLAYER_SPRITE_WIDTH * frames[state]
-            for view in VIEWS:
+            for view in views_of(state):
                 path = sprite_sheet_path(state, view)
                 with self.subTest(path=path):
                     signature, width, height, color_type = read_png_header(path)
@@ -100,7 +105,7 @@ class PlayerAssetTest(unittest.TestCase):
         # 초록 배경(#00FF00) 제거 후 반투명 경계나 초록 잔여 픽셀이 남으면 안 된다.
         h = config.PLAYER_SPRITE_HEIGHT
         for state in FRAMES:
-            for view in VIEWS:
+            for view in views_of(state):
                 for index, frame in enumerate(frames_of(state, view)):
                     with self.subTest(state=state, view=view, frame=index):
                         opaque_rows = set()

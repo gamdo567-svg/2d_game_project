@@ -26,6 +26,9 @@ def sprite_sheet_path(state: str, view: str) -> str:
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
 # 전용 그림이 아직 없는 상태 -> 대신 쓸 그림 상태. 패링은 공격 모션과 함께 만들 때까지 서 있는 그림(첫 프레임).
 SPRITE_FALLBACK = {PARRY: IDLE}
+# 좌우가 비대칭인 상태: 왼쪽을 볼 때 측면을 뒤집지 않고 전용 그림(side_left)을 쓴다.
+# 점프는 오른손으로 후드를 잡으므로 뒤집으면 왼손이 되어 버린다.
+LEFT_SHEET_STATES = {JUMP}
 
 
 class Player:
@@ -116,6 +119,8 @@ class Player:
 
         # 그림의 발끝(아래 가운데)을 칸의 아래 가운데에 맞춘다. 점프 중에는 lift 만큼 띄운다.
         sprite_state = SPRITE_FALLBACK.get(self.state, self.state)
+        if self.facing == Facing.LEFT and sprite_state in LEFT_SHEET_STATES:
+            view, flip = "side_left", False
         frame_index = 0 if sprite_state != self.state else self.animation.frame_index
         renderer.draw_sprite_frame(
             sprite_sheet_path(sprite_state, view),
