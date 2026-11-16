@@ -5,8 +5,11 @@ pico2d 의 입력 이벤트를 직접 다루는 코드는 이 모듈에만 둔�
 from __future__ import annotations
 
 from pico2d import (
+    SDL_BUTTON_LEFT,
     SDL_KEYDOWN,
     SDL_KEYUP,
+    SDL_MOUSEBUTTONDOWN,
+    SDL_MOUSEBUTTONUP,
     SDL_QUIT,
     SDLK_DOWN,
     SDLK_ESCAPE,
@@ -39,6 +42,11 @@ KEY_BINDINGS: dict[int, Action] = {
     SDLK_f: Action.PARRY,
 }
 
+# 마우스 버튼 -> 행동. 마우스 배치 변경도 여기서만 한다.
+MOUSE_BINDINGS: dict[int, Action] = {
+    SDL_BUTTON_LEFT: Action.ATTACK,
+}
+
 # 지금 눌려 있는 키 코드. 한 행동에 키가 여러 개(예: W 와 ↑)일 때,
 # 둘 중 하나를 떼어도 다른 키가 눌려 있으면 행동을 유지하기 위해 쓴다.
 _held_keys: set[int] = set()
@@ -61,3 +69,11 @@ def poll_input(state: InputState) -> None:
                 _held_keys.discard(event.key)
                 if not any(KEY_BINDINGS[key] is action for key in _held_keys):
                     state.release(action)
+        elif event.type == SDL_MOUSEBUTTONDOWN:
+            action = MOUSE_BINDINGS.get(event.button)
+            if action is not None:
+                state.press(action)
+        elif event.type == SDL_MOUSEBUTTONUP:
+            action = MOUSE_BINDINGS.get(event.button)
+            if action is not None:
+                state.release(action)

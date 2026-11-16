@@ -63,6 +63,17 @@ PLAYER_PARRY_WINDOW = 0.15  # 초. 누른 순간부터 막기 판정
 # 다리 펴며 착지 준비 ~85%, 착지 ~100%. 웅크림이 끝나면 떠오르고 착지 프레임이 시작될 때 땅에 닿는다.
 PLAYER_JUMP_FRAME_ENDS = (0.15, 0.3, 0.68, 0.85, 1.0)
 PLAYER_JUMP_FRAMES = len(PLAYER_JUMP_FRAME_ENDS)
+# ----- 플레이어 공격 (검 1타) -----
+# [임시값] 2026-11-16 사용자 결정: 마우스 왼쪽 클릭, 제자리 공격, 공격 중 이동 불가. 판정·콤보는 몬스터 개발 때.
+PLAYER_ATTACK_DURATION = 0.45  # 초
+# 5프레임이 끝나는 진행도: 준비(검 치켜듦) ~25%, 내디딤 ~40%, 런지 베기 ~60%, 마무리 ~80%, 복귀 ~100%
+PLAYER_ATTACK_FRAME_ENDS = (0.25, 0.4, 0.6, 0.8, 1.0)
+PLAYER_ATTACK_FRAMES = len(PLAYER_ATTACK_FRAME_ENDS)
+# 공격 그림은 검이 몸 밖으로 나가므로 64×64 캔버스를 쓴다 (몸은 Idle 과 같은 32×48 크기).
+PLAYER_ATTACK_SPRITE_SIZE = 64
+PLAYER_ATTACK_FOOT_MARGIN = 8  # 캔버스 맨 아래 줄과 발끝 사이의 빈 줄 수 (원본 픽셀)
+# 지금은 오른쪽 측면 그림만 있다. 다른 방향도 이 그림을 쓰고 왼쪽은 좌우 반전한다 (임시).
+
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24
 PLAYER_SHADOW_HEIGHT = 6

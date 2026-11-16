@@ -1,6 +1,6 @@
-"""정해진 시간 동안 이어지는 주인공 행동: 점프, 패링 (delta time 기반 순수 로직).
+"""정해진 시간 동안 이어지는 주인공 행동: 점프, 패링, 검 공격 (delta time 기반 순수 로직).
 
-두 행동 모두 frame_count 장의 애니메이션 프레임을 행동 진행도에 맞춰 고른다 (진행도를 프레임 수로 등분).
+모든 행동이 frame_count 장의 애니메이션 프레임을 행동 진행도에 맞춰 고른다 (진행도를 프레임 수로 등분).
 LoopAnimation 과 같은 reset() / update(dt) / frame_index 를 제공해 Player 가 같은 방식으로 다룬다.
 """
 from __future__ import annotations
@@ -87,3 +87,21 @@ class Parry(TimedAction):
     def is_active(self) -> bool:
         """막기 판정 중인지 (적 공격 연결은 몬스터 개발 때)."""
         return self.elapsed < self.window
+
+
+class SwordAttack(TimedAction):
+    """검 공격 1타. frame_ends 는 각 프레임이 끝나는 진행도 (준비, 내디딤, 베기, 마무리, 복귀).
+
+    제자리 공격이라 논리적 칸 위치는 바뀌지 않는다. 공격 판정은 몬스터를 개발할 때 연결한다.
+    """
+
+    def __init__(self, duration: float, frame_ends: tuple[float, ...]) -> None:
+        super().__init__(duration, len(frame_ends))
+        if list(frame_ends) != sorted(frame_ends) or frame_ends[-1] != 1.0:
+            raise ValueError("frame_ends 는 오름차순이고 마지막 값이 1.0 이어야 합니다.")
+        self.frame_ends = frame_ends
+
+    @property
+    def frame_index(self) -> int:
+        p = self.progress
+        return next(i for i, end in enumerate(self.frame_ends) if p < end or end == 1.0)

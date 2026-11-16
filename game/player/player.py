@@ -1,20 +1,22 @@
-"""주인공: 칸 이동(상하좌우), 바라보는 방향, 상태 머신, 애니메이션, 점프·패링을 묶는다.
+"""주인공: 칸 이동(상하좌우), 바라보는 방향, 상태 머신, 애니메이션, 점프·패링·검 공격을 묶는다.
 
 - 논리적 위치와 충돌 영역은 칸 하나 (self.col, self.row) 이다. 점프해도 칸 위치는 그대로다.
 - 그림 크기(원본 32×48, 화면 표시 64×96)는 그리기에만 쓰며 충돌 판정과 무관하다.
 - 캐릭터 본체 그림만 그린다. 검 등 장비는 요청이 있을 때 별도 레이어로 추가한다.
 - 점프·패링은 서 있거나 걷는 중에만 시작한다. 점프는 진행 중인 한 칸 이동을 마친 뒤 시작하고,
-  패링은 바로 시작한다(진행 중인 한 칸 이동은 마저 간다). 두 행동 중에는 새 이동을 하지 않는다.
+  패링·공격은 바로 시작한다(진행 중인 한 칸 이동은 마저 간다). 세 행동 중에는 새 이동을 하지 않는다.
+- 공격 그림은 검이 몸 밖으로 나가므로 64×64 캔버스이고, 지금은 오른쪽 측면 그림 하나만 있다
+  (위·아래는 임시로 같은 그림, 왼쪽은 좌우 반전).
 """
 from __future__ import annotations
 
 from game import config
 from game.input.input_state import Action, InputState
-from game.player.actions import Jump, Parry
+from game.player.actions import Jump, Parry, SwordAttack
 from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import GridMover
-from game.player.state_machine import FREE_STATES, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
+from game.player.state_machine import ATTACK, FREE_STATES, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
 from game.world.grid import Grid
 
 
@@ -38,12 +40,14 @@ class Player:
         self.facing = Facing.DOWN
         self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAME_ENDS)
         self.parry = Parry(config.PLAYER_PARRY_DURATION, config.PLAYER_PARRY_WINDOW, frame_count=1)
+        self.attack = SwordAttack(config.PLAYER_ATTACK_DURATION, config.PLAYER_ATTACK_FRAME_ENDS)
         # 상태별 애니메이션. 점프·패링은 행동 진행도에 맞춰 프레임을 고른다.
-        self.animations: dict[str, LoopAnimation | Jump | Parry] = {
+        self.animations: dict[str, LoopAnimation | Jump | Parry | SwordAttack] = {
             IDLE: LoopAnimation(config.PLAYER_IDLE_FRAMES, config.PLAYER_IDLE_FRAME_DURATION),
             WALK: LoopAnimation(config.PLAYER_WALK_FRAMES, config.PLAYER_WALK_FRAME_DURATION),
             JUMP: self.jump,
             PARRY: self.parry,
+            ATTACK: self.attack,
         }
         self._jump_requested = False  # 이동 중에 누른 점프: 한 칸 이동을 마치면 시작
         self.fsm = PlayerStateMachine(on_state_changed=self._on_state_changed)
@@ -62,19 +66,22 @@ class Player:
         return self.fsm.state
 
     @property
-    def animation(self) -> LoopAnimation | Jump | Parry:
+    def animation(self) -> LoopAnimation | Jump | Parry | SwordAttack:
         return self.animations[self.state]
 
     # ----- 로직 -----
     def update(self, dt: float, input_state: InputState) -> None:
         if self.state in FREE_STATES:
-            if input_state.was_pressed(Action.PARRY):
+            if input_state.was_pressed(Action.ATTACK):
+                self._jump_requested = False
+                self.fsm.trigger("attack")
+            elif input_state.was_pressed(Action.PARRY):
                 self._jump_requested = False
                 self.fsm.trigger("parry")
             elif input_state.was_pressed(Action.JUMP):
                 self._jump_requested = True
 
-        # 점프·패링 중이거나 점프를 기다리는 중에는 새 이동을 시작하지 않고, 진행 중인 한 칸만 마저 간다.
+        # 점프·패링·공격 중이거나 점프를 기다리는 중에는 새 이동을 시작하지 않고, 진행 중인 한 칸만 마저 간다.
         free = self.state in FREE_STATES and not self._jump_requested
         dx, dy = input_state.move_direction() if free else (0, 0)
         self.mover.update(dt, dx, dy)
@@ -95,6 +102,8 @@ class Player:
             self.fsm.trigger("land")
         elif self.state == PARRY and self.parry.finished:
             self.fsm.trigger("end_parry")
+        elif self.state == ATTACK and self.attack.finished:
+            self.fsm.trigger("end_attack")
 
     def _on_state_changed(self, state: str) -> None:
         # 새 상태의 애니메이션은 첫 프레임부터 재생한다.
@@ -117,6 +126,10 @@ class Player:
                 config.PLAYER_SHADOW_WIDTH * config.RENDER_SCALE, shadow_h,
             )
 
+        if self.state == ATTACK:
+            self._draw_attack(renderer, center_x, bottom)
+            return
+
         # 그림의 발끝(아래 가운데)을 칸의 아래 가운데에 맞춘다. 점프 중에는 lift 만큼 띄운다.
         sprite_state = SPRITE_FALLBACK.get(self.state, self.state)
         if self.facing == Facing.LEFT and sprite_state in LEFT_SHEET_STATES:
@@ -132,4 +145,23 @@ class Player:
             config.PLAYER_RENDER_WIDTH,
             config.PLAYER_RENDER_HEIGHT,
             flip_horizontal=flip,
+        )
+
+    def _draw_attack(self, renderer, center_x: float, bottom: float) -> None:
+        """공격 그림(64×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.
+
+        오른쪽 측면 그림만 있으므로 왼쪽은 좌우 반전, 위·아래는 임시로 오른쪽 그림을 쓴다.
+        """
+        size = config.PLAYER_ATTACK_SPRITE_SIZE
+        scale = config.RENDER_SCALE
+        renderer.draw_sprite_frame(
+            sprite_sheet_path(ATTACK, "side"),
+            self.attack.frame_index,
+            size,
+            size,
+            center_x,
+            bottom - config.PLAYER_ATTACK_FOOT_MARGIN * scale,
+            size * scale,
+            size * scale,
+            flip_horizontal=self.facing == Facing.LEFT,
         )

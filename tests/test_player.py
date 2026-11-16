@@ -5,7 +5,7 @@ from game import config
 from game.input.input_state import Action, InputState
 from game.player.facing import Facing
 from game.player.player import LEFT_SHEET_STATES, SHADOW_PATH, Player, sprite_sheet_path
-from game.player.state_machine import IDLE, JUMP, PARRY, WALK
+from game.player.state_machine import ATTACK, IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
 
@@ -255,6 +255,69 @@ class JumpParryTest(unittest.TestCase):
         self.player.draw(renderer)
         (name, args, _), = renderer.calls
         self.assertEqual((args[0], args[1]), (sprite_sheet_path(IDLE, "front"), 0))
+
+class PlayerAttackTest(unittest.TestCase):
+    def setUp(self):
+        self.player = make_player()
+        self.input = InputState()
+
+    def step(self, dt=1 / 60):
+        self.player.update(dt, self.input)
+        self.input.begin_frame()
+
+    def run_for(self, seconds, dt=1 / 60):
+        for _ in range(round(seconds / dt)):
+            self.step(dt)
+
+    def click(self):
+        self.input.press(Action.ATTACK)
+        self.step()
+        self.input.release(Action.ATTACK)
+
+    def test_attack_starts_immediately_in_place_then_idle(self):
+        self.click()
+        self.assertEqual(self.player.state, ATTACK)
+        self.run_for(config.PLAYER_ATTACK_DURATION * 0.9)
+        self.assertEqual(self.player.state, ATTACK)
+        self.assertEqual((self.player.col, self.player.row), (5, 5))
+        self.run_for(config.PLAYER_ATTACK_DURATION * 0.1 + 2 / 60)
+        self.assertEqual(self.player.state, IDLE)
+
+    def test_no_movement_during_attack(self):
+        self.click()
+        self.input.press(Action.MOVE_RIGHT)
+        self.run_for(config.PLAYER_ATTACK_DURATION * 0.9)
+        self.assertEqual((self.player.col, self.player.row), (5, 5))
+        self.assertEqual(self.player.state, ATTACK)
+
+    def test_attack_frames_follow_frame_ends(self):
+        self.click()
+        seen = []
+        for _ in range(round(config.PLAYER_ATTACK_DURATION * 60)):
+            seen.append(self.player.attack.frame_index)
+            self.step()
+        self.assertEqual(sorted(set(seen)), list(range(config.PLAYER_ATTACK_FRAMES)))
+        self.assertEqual(seen, sorted(seen))
+
+    def test_attack_draws_64_canvas_feet_on_tile(self):
+        self.input.press(Action.MOVE_LEFT)  # 왼쪽 보기 (화면 끝이 아니므로 한 칸 이동 시작)
+        self.step()
+        self.input.release(Action.MOVE_LEFT)
+        self.run_for(1.0)
+        self.click()
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        (name, args, kwargs), = renderer.calls
+        size, scale = config.PLAYER_ATTACK_SPRITE_SIZE, config.RENDER_SCALE
+        self.assertEqual(args[0], sprite_sheet_path(ATTACK, "side"))
+        self.assertEqual(args[2:4], (size, size))
+        self.assertEqual(args[6:8], (size * scale, size * scale))
+        tile = config.RENDER_TILE_SIZE
+        col, row = self.player.col, self.player.row
+        self.assertAlmostEqual(args[4], col * tile + tile / 2)
+        self.assertAlmostEqual(args[5], row * tile - config.PLAYER_ATTACK_FOOT_MARGIN * scale)
+        self.assertTrue(kwargs["flip_horizontal"])
+
 
 class FieldSceneTest(unittest.TestCase):
     def test_player_starts_at_configured_tile(self):

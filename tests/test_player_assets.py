@@ -5,7 +5,7 @@ import zlib
 
 from game import config
 from game.player.player import LEFT_SHEET_STATES, SHADOW_PATH, SPRITE_FALLBACK, sprite_sheet_path
-from game.player.state_machine import IDLE, JUMP, STATES, WALK
+from game.player.state_machine import ATTACK, IDLE, JUMP, STATES, WALK
 
 VIEWS = ("front", "back", "side")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -88,8 +88,8 @@ def frames_of(state, view):
 class PlayerAssetTest(unittest.TestCase):
     def test_sheets_exist_with_expected_size(self):
         frames = FRAMES
-        # 상태를 추가하면 FRAMES 도 갱신 (전용 그림이 없는 상태는 SPRITE_FALLBACK)
-        self.assertEqual(set(frames) | set(SPRITE_FALLBACK), set(STATES))
+        # 상태를 추가하면 FRAMES 도 갱신 (전용 그림이 없는 상태는 SPRITE_FALLBACK, 공격은 따로 검사)
+        self.assertEqual(set(frames) | set(SPRITE_FALLBACK) | {ATTACK}, set(STATES))
         for state in FRAMES:
             expected_width = config.PLAYER_SPRITE_WIDTH * frames[state]
             for view in views_of(state):
@@ -142,6 +142,36 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertTrue(shifts, f"{index}번 프레임 머리 모양이 다름")
                 legs = [tuple(map(tuple, f[-LEG_ROWS:])) for f in walk]
                 self.assertEqual(len(set(legs)), len(legs), "다리 자세가 같은 프레임이 있음")
+
+    def test_attack_sheet(self):
+        # 공격: 64×64 캔버스 5프레임, 오른쪽 측면만. 투명/불투명만 있고, 발끝 줄이 모든 프레임에서 같다.
+        size = config.PLAYER_ATTACK_SPRITE_SIZE
+        path = sprite_sheet_path(ATTACK, "side")
+        signature, width, height, color_type = read_png_header(path)
+        self.assertEqual((width, height), (size * config.PLAYER_ATTACK_FRAMES, size))
+        self.assertEqual(color_type, COLOR_TYPE_RGBA)
+        pixels = read_rgba_pixels(path)
+        foot_row = size - 1 - config.PLAYER_ATTACK_FOOT_MARGIN
+        for index in range(config.PLAYER_ATTACK_FRAMES):
+            frame = [row[index * size:(index + 1) * size] for row in pixels]
+            with self.subTest(frame=index):
+                self.assertTrue(all(p[3] in (0, 255) for row in frame for p in row))
+                # 발 줄에는 그림이 있고, 그 아래로는 칼끝만 몇 줄 내려갈 수 있다
+                self.assertTrue(any(p[3] for p in frame[foot_row]))
+                rows_below = [row for row in frame[foot_row + 1:] if any(p[3] for p in row)]
+                self.assertLessEqual(len(rows_below), 3)
+
+    def test_attack_idle_frame_matches_idle(self):
+        # 마지막(복귀) 프레임은 Idle 측면 첫 프레임과 같은 몸 (검만 더해짐): 공격이 끝날 때 몸이 튀지 않는다.
+        size = config.PLAYER_ATTACK_SPRITE_SIZE
+        attack = read_rgba_pixels(sprite_sheet_path(ATTACK, "side"))
+        last = [row[(config.PLAYER_ATTACK_FRAMES - 1) * size:] for row in attack]
+        idle = frames_of(IDLE, "side")[0]
+        ox = (size - config.PLAYER_SPRITE_WIDTH) // 2
+        oy = size - config.PLAYER_ATTACK_FOOT_MARGIN - config.PLAYER_SPRITE_HEIGHT
+        head_same = all(last[oy + y][ox + x] == idle[y][x]
+                        for y in range(HEAD_ROWS + 2) for x in range(config.PLAYER_SPRITE_WIDTH))
+        self.assertTrue(head_same)
 
     def test_shadow_is_translucent(self):
         signature, width, height, color_type = read_png_header(SHADOW_PATH)
