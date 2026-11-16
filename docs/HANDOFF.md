@@ -16,6 +16,20 @@
 
 ---
 
+## 2026-11-16 — 검 공격 1타 (Claude Code)
+
+- **브랜치**: `claude/player-sword-attack` (`claude/player-jump-parry` 위에서 시작. 점프·패링 PR이 먼저 병합되어야 함)
+- **한 일**: PixelLab MCP로 공격 그림 생성 → 원본과 느낌이 달라 게임 Idle 후드를 붙이고 팔레트·망토·다리를 보정(v4).
+  마우스 왼쪽 클릭 공격, `sword_attack` 상태, 64×64 공격 시트 그리기 (D-021).
+- **현재 상태**: 테스트 114개 통과, 스모크 실행 성공. 사용자가 실제 창에서 확인하고 괜찮다고 함.
+- **다음 작업자가 알아야 할 것**:
+  - `assets/concepts/pixellab/`: `kit/`(PixelLab 기준 그림·가이드), `attack1_side_right_B/`(PixelLab 원본 프레임),
+    `build_attack1_side_right.py`(v4 제작 스크립트, 이 폴더에서 실행). PixelLab 체험판은 `transfer_outfit` 등 pro 기능을 못 씀.
+  - PixelLab 단독 생성은 후드·체형이 원본과 달라짐. 움직임만 가져오고 머리는 게임 픽셀을 쓰는 방식이 사용자 반응이 좋았음.
+- **남은 문제 / 다음 할 일**: 사용자 요청 — 3단 콤보(1·2·3타 모두 다른 동작, 3타 찌르기), 3타 후 약 1초 쿨타임. 2타 동작·콤보 입력 시간은 미정.
+
+---
+
 ## 2026-11-11 — 점프: 오른쪽 보기 손 위치 수정 (Claude Code)
 
 - **브랜치**: `claude/player-jump-parry` (같은 PR에 추가)

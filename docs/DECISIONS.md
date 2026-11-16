@@ -234,3 +234,18 @@
   해당 상태 목록은 `game/player/player.py`의 `LEFT_SHEET_STATES` (현재 `jump`: 오른손으로 후드를 잡음).
 - 테스트: `tests/test_player_assets.py`가 `LEFT_SHEET_STATES` 상태의 `side_left` 시트 크기·픽셀도 검사한다.
 
+## D-021 검 공격 1타: 입력, 상태, 64×64 그림
+
+- 상태: 확정 (사용자 결정 2026-11-16) / 임시값 (시간, 에셋)
+- 날짜: 2026-11-16
+- 결정
+  - 입력: `Action.ATTACK` = 마우스 왼쪽 버튼 (`pico2d_input.MOUSE_BINDINGS`). 마우스 이벤트도 `pico2d_input`에서만 다룬다.
+  - 상태 머신: `sword_attack` 추가. `FREE_STATES`에서만 시작(`attack`), 끝나면 `end_attack`으로 idle. 공격 중 다른 전환 불가.
+  - 패링처럼 즉시 시작하고 진행 중인 한 칸만 마저 간다. 공격 중 새 이동 없음, 방향 고정. 제자리 공격이라 칸 위치는 그대로.
+  - `game/player/actions.py`의 `SwordAttack`: dt 기반, 프레임별 끝 진행도(`PLAYER_ATTACK_FRAME_ENDS = (0.25, 0.4, 0.6, 0.8, 1.0)`), `PLAYER_ATTACK_DURATION = 0.45`초.
+  - 그림: 검이 몸 밖으로 나가므로 **64×64 캔버스** (`PLAYER_ATTACK_SPRITE_SIZE`). 몸 크기는 Idle과 같고, 발끝이 캔버스 아래에서 8줄 위
+    (`PLAYER_ATTACK_FOOT_MARGIN`)에 있어 그릴 때 그만큼 내려 칸 아래 가운데에 맞춘다. 마지막(복귀) 프레임은 Idle 측면 + 검.
+  - 방향: 오른쪽 측면 그림만 있다. 왼쪽은 좌우 반전, 위·아래는 임시로 같은 그림.
+  - 에셋 제작: PixelLab `animate_image_pixminimax` 결과(움직임)에 게임 Idle 후드 픽셀을 붙이고, 원본 팔레트로 맞추고, 검은 망토를 갈색으로,
+    다리를 1px씩 굵게 (`assets/concepts/pixellab/build_attack1_side_right.py`). PixelLab 단독 결과는 후드·체형이 원본과 달라 쓰지 않았다.
+- 남은 것: 2·3타와 콤보, 3타 후 쿨타임, 공격 판정은 다음 작업.
