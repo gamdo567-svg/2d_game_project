@@ -26,6 +26,9 @@
 | `images/player/{idle,walk}/{front,back,side}.png` | 위 v3 참고 시트 두 장에서 Claude Code가 가공 (2026-11-03) | 사용자 소유 (파생물) | **검증 전 에셋.** 아래 설명 참고 |
 | `images/player/jump/{front,back,side,side_left}.png` | v3 Idle 시트에 Claude Code가 팔·다리를 다시 그림 (2026-11-10) | 사용자 소유 (파생물) | **임시 에셋.** 아래 설명 참고 |
 | `images/player/shadow.png` | Claude Code 제작 (2026-11-10) | 프로젝트 소유 | 점프 그림자. **임시 에셋** |
+| `concepts/pixellab/kit/*` | Claude Code가 게임 스프라이트로 만든 PixelLab 기준 그림과 사용 가이드 (2026-11-11) | 사용자 소유 (파생물) | 게임에 직접 쓰지 않음 |
+| `concepts/pixellab/attack1_side_right_B/*` | PixelLab(pixellab.ai) `animate_image_pixminimax` 생성 (2026-11-16) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 공격 1타 움직임 원본. 게임에 직접 쓰지 않음 |
+| `images/player/sword_attack/side.png` | 위 PixelLab 프레임에 Claude Code가 게임 Idle 후드를 붙이고 보정 (2026-11-16) | 사용자 소유 (파생물) + PixelLab 이용약관 | 64×64 × 5프레임. **임시 에셋** (오른쪽만). D-021 |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)
 

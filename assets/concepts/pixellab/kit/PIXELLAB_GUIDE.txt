@@ -1,0 +1,87 @@
+==================================================================
+ PixelLab으로 주인공 공격 애니메이션 만들기
+==================================================================
+
+[0] 준비한 파일 (이 폴더)
+  ref_side_right_sword_64.png   오른쪽을 보는 주인공 + 오른손에 낡은 검  ← 제일 먼저 이걸로
+  ref_side_left_sword_64.png    왼쪽을 보는 주인공 (검은 몸 너머 오른손, 칼끝만 보임)
+  ref_front_sword_64.png        정면 + 오른손(화면 왼쪽)에 검
+  ref_back_sword_64.png         후면 + 오른손(화면 오른쪽)에 검
+  ref_*_nosword_64.png          검 없는 기준 (참고용)
+  design_concept_sheet.png      공식 컨셉 시트 (디자인 설명용)
+  ※ 모두 64x64, 투명 배경. 게임에 실제로 들어간 스프라이트(32x48)를 그대로 넣었습니다.
+    → PixelLab 결과도 64x64로 받으면 줄이지 않고 그대로 게임에 쓸 수 있습니다.
+
+------------------------------------------------------------------
+[1] 어디서 작업하나
+------------------------------------------------------------------
+  - https://pixellab.ai 가입 → 웹 편집기(Create / Characters) 사용
+    (Aseprite를 쓰신다면 PixelLab Aseprite 플러그인도 같은 기능)
+  - 캔버스 크기: 64 x 64  (중요: 우리 게임 크기)
+
+------------------------------------------------------------------
+[2] 만드는 방법 (오른쪽 측면 1타부터)
+------------------------------------------------------------------
+  1. 캔버스 64x64로 새 프로젝트
+  2. ref_side_right_sword_64.png 를 불러와 "참고 이미지(reference)"로 지정
+  3. 아래 둘 중 하나로 애니메이션 생성
+
+  방법 A) Animation with text (쉬움)
+     - 설명/동작 칸에 아래 [3] 프롬프트 입력
+     - 프레임 수: 5~6장 (고를 수 있으면)
+     - 여러 번 생성해 보고 칼이 하나만 나오는 결과 고르기
+
+  방법 B) Animate with skeleton (PixelLab 문서가 캐릭터에 추천하는 방식, 가장 안정적)
+     - 참고 이미지를 지정하면 뼈대(관절)가 자동으로 잡힘 → 몸에 맞게 조정
+     - 프레임마다 관절을 끌어 자세를 잡기:
+       1) 준비: 상체를 뒤로 젖히고 오른팔을 들어 검을 머리 뒤로, 무릎 굽힘
+       2) 휘두르기 시작: 앞발을 크게 내디딤, 팔이 머리 위
+       3) 베기: 깊은 런지(앞무릎 굽힘, 뒷다리 쭉), 허리를 앞으로 숙이고 팔을 앞 아래로 뻗음
+       4) 마무리: 팔이 가장 아래, 상체가 더 앞으로
+       5) 복귀: 무게중심 뒤로, 팔을 내림
+     - 생성
+
+  4. 칼이 두 개 나오거나 깨진 프레임은 다시 생성하거나, Inpaint(부분 수정)로 그 부분만 지우고 다시 생성
+  5. 내보내기: 투명 배경 PNG (스프라이트 시트 또는 프레임 낱장)
+  6. 저장 위치: 저장소의 assets/concepts/pixellab/ 폴더
+     파일 이름 예: attack1_side_right.png
+
+------------------------------------------------------------------
+[3] 프롬프트 (영어로 입력)
+------------------------------------------------------------------
+  [캐릭터 설명]
+  small chibi hooded wanderer, worn brown hood pulled down hiding the eyes, only the chin visible,
+  tattered brown shoulder cape, dark leather outfit, gloves, brown boots,
+  holding exactly one old rusty sword in the right hand, left hand hidden inside the cape
+
+  [동작 - 1타: 사선 내려베기]
+  dynamic sword slash: wind up by leaning back and raising the sword behind the head,
+  then step forward into a deep lunge and slash diagonally downward,
+  waist bending forward, cape flowing back strongly, then recover.
+  only one sword, no second weapon, no effects
+
+  [동작 - 2타: 반대로 가로베기]  (1타가 끝난 뒤 같은 방법으로)
+  fast horizontal sword slash swinging back the other way at chest height,
+  body twisting, back foot sliding, cape whipping to the other side. only one sword, no effects
+
+  [동작 - 3타: 뛰어올라 내려찍기]
+  small jump forward raising the sword high above the head with both arms stretched up,
+  then a powerful overhead strike downward, landing in a very deep crouch, then recover.
+  only one sword, no effects
+
+------------------------------------------------------------------
+[4] 순서 추천
+------------------------------------------------------------------
+  1) 오른쪽 1타  → 받아서 저에게 보여 주기 (방향이 맞는지 먼저 확인)
+  2) 왼쪽 1타   (ref_side_left_sword_64.png, 같은 프롬프트)
+     ※ 오른손 검이라 오른쪽 그림을 뒤집어 쓰면 안 됩니다
+  3) 정면·후면 1타
+  4) 2타, 3타
+
+------------------------------------------------------------------
+[5] 받은 뒤 제가 할 일
+------------------------------------------------------------------
+  - 64x64 그대로 정리 (발 위치 맞추기, 남은 배경 점 지우기, 색이 v3와 크게 다르면 맞추기)
+  - 베기 잔상(원하시면)을 칼끝 경로대로 별도 레이어로
+  - 게임 연결: 공격 상태, J 키, 3단 콤보, 공격 판정 시간
+  ※ 검 분리(무기 교체)는 나중에 필요할 때 처리합니다. 지금은 PixelLab 그림을 최대한 살립니다.
