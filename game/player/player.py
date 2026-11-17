@@ -74,8 +74,10 @@ def parry_spark_point(col: int, row: int, facing: Facing) -> tuple[float, float]
     dx, dy = facing.value
     forward, up = config.PARRY_SPARK_OFFSET
     if dy:
-        # 위·아래를 볼 때는 칼이 몸 앞 가슴 높이에서 막는다: 칼날 쪽(화면 오른쪽)으로 조금
-        return col + 0.5 + config.PARRY_SPARK_FRONT_SIDE, row + up
+        # 위·아래를 볼 때는 칼이 몸 앞 가슴 높이에서 막는다: 칼날 쪽으로 조금.
+        # 정면은 칼이 화면 오른쪽, 후면은 화면 왼쪽 위로 기운다 (2026-11-18 후면 패링 그림)
+        side = config.PARRY_SPARK_FRONT_SIDE if dy < 0 else -config.PARRY_SPARK_FRONT_SIDE
+        return col + 0.5 + side, row + up
     return col + 0.5 + dx * forward, row + up
 
 
