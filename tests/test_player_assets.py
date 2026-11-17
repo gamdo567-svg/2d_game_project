@@ -224,9 +224,9 @@ class PlayerAssetTest(unittest.TestCase):
         self.assertEqual(config.PLAYER_ATTACK_SWORD_BACK, (None, None, None))
 
     def test_front_big_swing_frame_starts_at_hit_time(self):
-        # 정면 1·2타는 크게 휘두르는 그림(1타 6번째, 2타 5번째)이 판정이 나는 순간에 시작한다 (측면과 같은 박자)
+        # 정면은 크게 휘두르거나 찌르는 그림(1타 6번째, 2타 5번째, 3타 6번째)이 판정이 나는 순간에 시작한다 (측면과 같은 박자)
         from game.player.actions import frame_for_progress
-        for index, swing in ((0, 5), (1, 4)):
+        for index, swing in ((0, 5), (1, 4), (2, 5)):
             hit_progress = config.PLAYER_ATTACK_HIT_FRAMES[index] / config.PLAYER_ATTACK_FRAMES
             ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[index]
             with self.subTest(hit=index + 1):

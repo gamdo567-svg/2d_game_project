@@ -47,10 +47,11 @@ OVERRIDES = {
     # 정면 2타 = v9 (시작·끝 자세 지정, 2026-11-17 사용자 확정)
     ('front2', 4): (25, 46, -132, False), ('front2', 5): (44, 29, 62, False),
     ('front2', 6): (47, 28, 140, True), ('front2', 7): (49, 29, 142, True), ('front2', 8): (47, 29, 139, True),
-    ('front3', 1): (32, 43, -126, False), ('front3', 2): (31, 39, 180, False),
-    ('front3', 3): (35, 40, -90, False), ('front3', 4): (34, 40, -90, False),
-    ('front3', 5): (34, 45, -90, False), ('front3', 6): (33, 47, -90, False),
-    ('front3', 7): (34, 49, -90, False), ('front3', 8): (33, 50, -90, False),
+    # 정면 3타 = 찌르기 끝 자세 지정 (2026-11-17 사용자 확정). 칼이 보는 사람 쪽으로 기울어 자동으로 못 찾음
+    ('front3', 1): (25, 45, -129, False), ('front3', 2): (24, 41, -52, False),
+    ('front3', 3): (24, 40, -55, False), ('front3', 4): (25, 40, -59, False),
+    ('front3', 5): (26, 40, -61, False), ('front3', 6): (34, 39, -90, False),
+    ('front3', 7): (34, 39, -90, False), ('front3', 8): (34, 39, -90, False),
     # 후면은 두 손이 몸 앞(보는 사람 반대쪽)이라 칼이 몸에 가려진다: 머리 위로 든 때만 몸 위에 그린다
     ('back1', 1): (45, 43, 0, True), ('back1', 2): (44, 38, 54, True),
     ('back1', 3): (42, 28, 134, False), ('back1', 4): (36, 25, 60, False),
@@ -85,6 +86,8 @@ FRAME_SOURCE = {
     ('attack1', 3): ('attack1_side_v3_sheet_68.png', 0, 3),
     ('attack1', 4): ('attack1_side_v3_sheet_68.png', 0, 4),
 }
+# 잔상을 그리지 않는 공격: 정면 3타 찌르기는 원근으로 크게 그린 원본 칼날이 칼 아래로 삐져나와 보여서
+NO_SMEAR = {'front3'}
 BODY_MIN = 15  # 몸에서 떨어진 이보다 작은 조각은 찌꺼기로 보고 지운다
 SMEAR_MIN = 25  # 이보다 작은 파란 조각은 잔상이 아니라 칼 조각으로 보고 지운다
 
@@ -180,6 +183,17 @@ def analyse(frame):
         else:
             smear.extend(comp)
     return best, set(smear), set(blue)
+
+
+def white_to_blue(frame):
+    """거의 흰 픽셀을 파랑으로 바꿔 칼로 처리되게 한다."""
+    img = frame.copy()
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            if px[x, y][3] and min(px[x, y][:3]) > 240:
+                px[x, y] = (40, 90, 230, 255)
+    return img
 
 
 def fill_body(frame, blue):
@@ -424,6 +438,9 @@ def build_layers(name, frames):
     for (n, c), (sheet, row, col) in FRAME_SOURCE.items():
         if n == name:
             frames[c - 1] = cells(sheet, row)[col]
+    if name in NO_SMEAR:
+        # 원본 칼날의 흰 하이라이트 줄(파랑으로 잡히지 않음)도 칼과 함께 지운다. 주인공 그림에는 흰색이 없다.
+        frames = [white_to_blue(f) for f in frames]
     raw_frames = frames
     frames = [frames[i - 1] for i in picks]
     infos = [analyse(f) for f in frames]
@@ -452,6 +469,8 @@ def build_layers(name, frames):
         # 작은 조각과 가는 줄(원본 칼의 가장자리)은 지우고, 넓은 덩어리만 잔상으로
         smear = {p for comp in components(smear)
                  if len(comp) >= SMEAR_MIN and axis(comp)[3] > 1.6 for p in comp}
+        if name in NO_SMEAR:
+            smear = set()
         if behind:
             # 칼이 몸 뒤: 칼이 지나가는 자리의 몸 쪽 검은 테두리(원본 칼 외곽선)를 지워 칼이 보이게 한다.
             blade = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
