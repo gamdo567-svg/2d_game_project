@@ -120,6 +120,35 @@ class Golem:
                 self._move_from[1] + (self.row - self._move_from[1]) * t)
 
     @property
+    def recover_progress(self) -> float:
+        """공격이 터진 뒤 자세 되돌림 진행도 (0~1). 되돌림 중이 아니면 0."""
+        if self.state != RECOVER:
+            return 0.0
+        return 1.0 - max(0.0, self.state_left) / config.GOLEM_RECOVER_TIME
+
+    @property
+    def stomp_frame(self) -> int | None:
+        """③ 발 구르기 동작 그림 번호 (예고·자세 되돌림 중에만). 다른 때는 None (서 있는 그림)."""
+        if self.pattern != STOMP:
+            return None
+        anim = config.GOLEM_STOMP_ANIM
+        if self.state == WINDUP:
+            frames, ends, p = anim["windup_frames"], anim["windup_ends"], self.windup_progress
+        elif self.state == RECOVER:
+            frames, ends, p = anim["recover_frames"], anim["recover_ends"], self.recover_progress
+        else:
+            return None
+        return frames[next(i for i, end in enumerate(ends) if p < end or end == 1.0)]
+
+    @property
+    def stomp_squash(self) -> float:
+        """착지 순간 눌림 정도 (0 = 없음). 그림을 옆으로 넓히고 위아래로 줄이는 비율."""
+        anim = config.GOLEM_STOMP_ANIM
+        if self.pattern == STOMP and self.state == RECOVER and self.recover_progress < anim["squash_until"]:
+            return anim["squash"]
+        return 0.0
+
+    @property
     def windup_progress(self) -> float:
         if self.state != WINDUP or self.pattern is None:
             return 0.0
@@ -350,7 +379,8 @@ class Golem:
     def draw(self, renderer, grid: Grid) -> None:
         """그림(방향별 서 있는 그림)을 그리고, 못 읽으면 부위별 임시 도형을 그린다. 그 위에 조준선·막대·글자.
 
-        공격 애니메이션은 아직 없어 공격 중에도 서 있는 그림을 쓰고, 예고 칸·조준선 같은 효과만 보여 준다.
+        ③ 발 구르기만 동작 그림이 있다 (무릎 들기 → 쾅 → 반동). 나머지 공격은 아직 서 있는 그림을 쓰고,
+        예고 칸·조준선 같은 효과만 보여 준다.
         """
         if not self.alive:
             return
@@ -384,14 +414,37 @@ class Golem:
             renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
 
     def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
-        """방향별 그림을 발 밑이 2×2칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False."""
+        """방향별 그림을 발 밑이 2×2칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.
+
+        ③ 발 구르기 예고·자세 되돌림 중에는 발 구르기 동작 그림을 쓰고, 그 그림을 못 읽으면 서 있는 그림을 쓴다.
+        """
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
+        frame = self.stomp_frame
+        if frame is not None and self._draw_stomp(renderer, frame, cx, bottom):
+            return True
         return bool(renderer.draw_sprite_frame(
             self.sprite_path(), 0, size, size,
             cx, bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s, size * s, size * s,
         ))
+
+    def stomp_sprite_path(self) -> str:
+        return str(config.GOLEM_IMAGE_DIR / f"stomp_{self.view}.png")
+
+    def _draw_stomp(self, renderer, frame: int, cx: float, bottom: float) -> bool:
+        """발 구르기 그림 한 장을 발 밑 가운데(foot)가 2×2칸 바닥 가운데에 오게 그린다. 착지 순간은 눌러 그린다."""
+        anim, s = config.GOLEM_STOMP_ANIM, config.RENDER_SCALE
+        w, h = anim["frame_size"]
+        fx, fy = anim["foot"]
+        k = self.stomp_squash
+        dw, dh = round(w * s * (1 + k)), round(h * s * (1 - k))
+        below = (h - fy) * s * (1 - k)  # 그림 아래쪽 투명 줄 (발 밑 아래)
+        left_of_foot = fx * s * (1 + k)
+        # draw_sprite_frame 은 그림 아래 가운데 기준: 발 밑 가운데가 cx 에 오도록 가운데를 옮긴다
+        center_x = cx - left_of_foot + dw / 2
+        return bool(renderer.draw_sprite_frame(self.stomp_sprite_path(), frame, w, h,
+                                               center_x, bottom - below, dw, dh))
 
     def _draw_shapes(self, renderer, cx: float, bottom: float) -> float:
         """그림이 없을 때의 임시 도형 (다리·몸통·팔·코어). 코어 높이(조준선 출발점)를 돌려준다."""
