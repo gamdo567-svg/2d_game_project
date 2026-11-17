@@ -10,6 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
+| T-033 | 골렘 걷기 4방향 동작 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | PixelLab skeleton-v3 걷기 8장, 걸은 거리로 그림 고르기(한 주기 2칸, 미끄러짐 없음) (D-034) |
 | T-032 | 골렘 발 구르기 4방향 동작 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | PixelLab 핵심 자세 2장(높이 듦·착지) + 3구간, 발 위치 정렬, 예고 동안 들기·멈춤·떨어짐, 터진 뒤 눌림·반동 (D-033). ①·②·④·걷기 그림 남음 |
 | T-031 | 골렘 발 구르기 바닥 이펙트 + 화면 흔들림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | `claude/pixellab-player-anims` 위에서 작업. ③ 터질 때 거미줄 금·솟았다 가라앉는 바닥 판·튀는 돌(2.5초) + 카메라 흔들림 (D-032). 다른 패턴 이펙트 남음 |
 | T-030 | 평타 가로 판정, 정면 1·2·3타 PixelLab 그림 | 검토 중 | Claude Code | `claude/pixellab-player-anims` | 1·2타 앞 1칸 × 가로 3칸, 3타 앞 2칸 × 1칸. 정면 1·2타 교체(2타 v9), 정면 3타 두 손 찌르기 교체, 정면 휘두르는·찌르는 순간 판정 시점에 맞춤, 후면 그림 보류 (D-031) |

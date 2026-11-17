@@ -16,6 +16,20 @@
 
 ---
 
+## 2026-11-17 — 골렘 걷기 4방향 동작 그림 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (아직 푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: PixelLab skeleton-v3 `walking-8-frames`(보폭 0.85·팔 0.6)로 골렘 걷기 4방향을 만들어 넣었다 (D-034).
+  한 칸 옮겨 가는 동안 걸은 거리로 그림을 골라 발이 미끄러지지 않음. 동작 그림 그리기를 `_draw_anim` 으로 묶음.
+- **현재 상태**: 테스트 223개 통과. 실제 pico2d 창 캡처로 측면·정면 걷기가 그려지는 것 확인
+  (`assets/concepts/pixellab/golem_walk/ingame_capture_contact.png`). 직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: PixelLab 애니메이션 그룹 16d3588d(걷기 skeleton). 다시 만들면 `skeleton_4dir.png`(8장 × 4줄,
+  south·east·north·west)를 바꾸고 `python assets/concepts/pixellab/golem_walk/build_golem_walk.py` → `aligned/walk_*.png` 를
+  `assets/images/golem/` 로 복사. 그 폴더의 다른 시험 파일(v3_*, template_*, step_*)은 쓰지 않기로 한 시안이라 커밋하지 않았다.
+- **남은 문제 / 다음 할 일**: ①·②·④ 동작 그림. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-17 — 골렘 발 구르기 4방향 동작 그림 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (아직 푸시 안 함, 사용자 요청으로 보류)
