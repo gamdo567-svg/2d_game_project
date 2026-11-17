@@ -224,6 +224,22 @@ GOLEM_STOMP = {"windup": 0.55, "damage": 30, "size": 8}  # ③ 한 발 내려찍
 #   일직선으로 관통하지 않는다 (2026-11-17 사용자 결정). 패링 불가, 회피 무적으로 피함
 GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
 
+# ----- 이펙트 (그리기 전용, 판정과 무관) -----
+# 스프라이트 시트: frame_size × frame_size 원본 프레임을 columns 개씩 줄지어 놓은 그림 (왼쪽 위부터 오른쪽으로).
+# 프레임 가운데가 이펙트가 터지는 지점이고, RENDER_SCALE 로 nearest 확대해 그린다.
+EFFECT_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "effects"
+# 화면 흔들림: 카메라에 더하는 화면 픽셀 오프셋. amplitude(픽셀)에서 duration(초) 동안 0 으로 줄고 frequency(번/초)로 떨림
+# ③ 발 구르기 (2026-11-17 사용자 요청): 바닥이 거미줄로 갈라지고 둘레 바닥 판이 솟았다 가라앉으며 돌이 튐, 화면 흔들림.
+#   생성 스크립트: assets/concepts/vfx/stomp/build_golem_stomp.py (288×288, 30프레임, 12fps = 2.5초)
+GOLEM_STOMP_EFFECT = {
+    "path": EFFECT_IMAGE_DIR / "golem_stomp.png",
+    "frame_size": 288,
+    "columns": 6,
+    "frames": 30,
+    "fps": 12,
+    "shake": {"amplitude": 8, "duration": 0.45, "frequency": 18},
+}
+
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24
 PLAYER_SHADOW_HEIGHT = 6

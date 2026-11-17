@@ -22,6 +22,7 @@ from game import config
 from game.combat.enemy_attack import EnemyAttack
 from game.combat.posture import PostureGauge
 from game.combat.training_dummy import DamagePopup
+from game.effects.effect import SpriteEffect
 from game.world.grid import Grid
 
 SLAM, KICK, STOMP, LASER = "slam", "kick", "stomp", "laser"
@@ -74,6 +75,7 @@ class Golem:
         self.is_wall = is_wall
         self.rng = rng or random.Random()
         self.attacks: list[EnemyAttack] = []  # 이번 프레임에 터진 공격 (장면이 주인공에게 전달)
+        self.effects: list[SpriteEffect] = []  # 이번 프레임에 시작한 이펙트 (장면이 받아서 재생)
         self.popups: list[DamagePopup] = []
         self._respawn()
 
@@ -156,6 +158,7 @@ class Golem:
     def update(self, dt: float, player_tile: Tile, can_place: Callable[[int, int], bool]) -> None:
         """can_place(col, row): 골렘의 왼쪽 아래 칸을 그 자리에 둘 수 있는지 (2×2 모두 비어 있는지)."""
         self.attacks = []
+        self.effects = []
         self.flash_left = max(0.0, self.flash_left - dt)
         self.laser_cooldown_left = max(0.0, self.laser_cooldown_left - dt)
         self.beam_left = max(0.0, self.beam_left - dt)
@@ -312,6 +315,9 @@ class Golem:
             self.beam_left = spec["beam_time"]
             self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
         self.attacks.append(EnemyAttack(tiles, spec["damage"], direction=self.facing, **PATTERN_RULES[self.pattern]))
+        if self.pattern == STOMP:
+            # 발 구르기: 몸 가운데(2×2 바닥 가운데)에서 바닥이 갈라지는 이펙트 + 화면 흔들림
+            self.effects.append(SpriteEffect(config.GOLEM_STOMP_EFFECT, *self.center))
         self.state = RECOVER
         self.state_left = config.GOLEM_RECOVER_TIME
         self.target_tiles = frozenset()

@@ -17,6 +17,7 @@ from game.input.input_state import InputState
 from game.combat.enemy_attack import PARRIED
 from game.combat.strike import attack_tiles
 from game.combat.training_dummy import TrainingDummy
+from game.effects.effect import ScreenShake, SpriteEffect
 from game.enemies.golem import Golem
 from game.physics.collision import can_enter
 from game.player.player import Player
@@ -36,6 +37,8 @@ class FieldScene:
         self.golems = [Golem(col, row, self.tile_map.is_wall) for col, row in self.tile_map.golems]
         self.player = Player(grid, *start, can_enter=self.can_enter)
         self.camera = Camera(config.SCREEN_WIDTH, config.SCREEN_HEIGHT, grid.width_px, grid.height_px)
+        self.effects: list[SpriteEffect] = []  # 재생 중인 이펙트 (그리기 전용)
+        self.shake = ScreenShake()
         self._follow_player()
 
     # ----- 로직 -----
@@ -76,15 +79,31 @@ class FieldScene:
             for attack in golem.attacks:
                 if self.player.receive_attack(attack) == PARRIED:
                     golem.on_parried()
+            self._start_effects(golem.effects)
+        self._update_effects(dt)
         self._follow_player()
+
+    def _start_effects(self, effects: list[SpriteEffect]) -> None:
+        for effect in effects:
+            self.effects.append(effect)
+            if effect.shake:
+                self.shake.start(**effect.shake)
+
+    def _update_effects(self, dt: float) -> None:
+        for effect in self.effects:
+            effect.update(dt)
+        self.effects = [e for e in self.effects if not e.finished]
+        self.shake.update(dt)
 
     def _follow_player(self) -> None:
         # 보간 중인 그림 위치(칸 중심)를 따라가 스크롤이 칸 단위로 끊기지 않게 한다.
         vcol, vrow = self.player.mover.visual_position
         tile = self.grid.tile_size
         self.camera.follow((vcol + 0.5) * tile, (vrow + 0.5) * tile)
-        self.grid.origin_x = -self.camera.left
-        self.grid.origin_y = -self.camera.bottom
+        # 화면 흔들림은 카메라 위치에 더한다: 바닥·이펙트·인물이 모두 같이 흔들린다 (글자·체력 막대는 화면에 고정)
+        shake_x, shake_y = self.shake.offset
+        self.grid.origin_x = -self.camera.left + shake_x
+        self.grid.origin_y = -self.camera.bottom + shake_y
 
     # ----- 그리기 -----
     def draw(self, renderer) -> None:
@@ -97,6 +116,8 @@ class FieldScene:
 
         for golem in self.golems:
             golem.draw_warning(renderer, grid)  # 공격 예고 칸·레이저는 바닥에
+        for effect in self.effects:  # 바닥 이펙트 (금·솟은 바닥 판·돌): 인물보다 먼저
+            self._draw_effect(renderer, effect)
         # 위쪽 행(멀리 있는 것)부터 그려서 아래쪽 행이 앞에 보이게 한다
         actors = [(dummy.row, dummy.draw) for dummy in self.dummies]
         actors += [(golem.visual_position[1], golem.draw) for golem in self.golems]
@@ -104,6 +125,18 @@ class FieldScene:
         for _, draw in sorted(actors, key=lambda a: -a[0]):
             draw(renderer, grid)
 
+        self._draw_hud(renderer)
+
+    def _draw_effect(self, renderer, effect: SpriteEffect) -> None:
+        """이펙트 프레임 가운데를 터진 점(칸 좌표)의 픽셀 위치에 맞춰 그린다."""
+        spec, grid = effect.spec, self.grid
+        x = grid.origin_x + effect.x * grid.tile_size
+        y = grid.origin_y + effect.y * grid.tile_size
+        size = spec["frame_size"]
+        renderer.draw_sheet_frame(str(spec["path"]), effect.frame_index, spec["columns"], size, size,
+                                  x, y, size * config.RENDER_SCALE, size * config.RENDER_SCALE)
+
+    def _draw_hud(self, renderer) -> None:
         top = config.SCREEN_HEIGHT  # 글자는 카메라와 무관하게 화면에 고정
         renderer.draw_text(16, top - 24, "WASD / 방향키: 이동    클릭: 공격(연타 3단 콤보)    Space: 점프    F: 패링    Q: 회피    ESC: 종료", config.COLOR_TEXT_DIM)
         player = self.player

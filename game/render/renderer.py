@@ -122,6 +122,33 @@ class Renderer:
         )
         return True
 
+    def draw_sheet_frame(
+        self,
+        path: str,
+        frame_index: int,
+        columns: int,
+        frame_width: int,
+        frame_height: int,
+        center_x: float,
+        center_y: float,
+        draw_width: int,
+        draw_height: int,
+    ) -> bool:
+        """여러 줄 스프라이트 시트(왼쪽 위부터 columns 개씩)에서 frame_index 번째 프레임을 그린다.
+
+        (center_x, center_y) 는 프레임 가운데의 픽셀 좌표. 확대는 nearest, 정수 픽셀에 맞춘다. 그림을 못 읽으면 False.
+        """
+        image = self._image(path)
+        if image is None:
+            return False
+        col, row = frame_index % columns, frame_index // columns
+        left = col * frame_width
+        bottom = image.h - (row + 1) * frame_height  # pico2d 는 그림 아래쪽부터 센다
+        x = round(center_x - draw_width / 2) + draw_width / 2
+        y = round(center_y - draw_height / 2) + draw_height / 2
+        image.clip_composite_draw(left, bottom, frame_width, frame_height, 0, "", x, y, draw_width, draw_height)
+        return True
+
     def draw_image_rotated(
         self,
         path: str,
