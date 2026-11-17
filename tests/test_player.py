@@ -175,19 +175,35 @@ class JumpParryTest(unittest.TestCase):
         self.run_for(config.PLAYER_JUMP_DURATION * 0.2 + STEP)
         self.assertGreater(self.player.col, 5)  # 착지 후 다시 걷는다
 
-    def test_jump_pressed_while_walking_waits_for_tile(self):
+    def test_jump_while_walking_starts_now_and_finishes_tile_in_air(self):
         self.input.press(Action.MOVE_RIGHT)
         self.player.update(STEP / 2, self.input)  # 한 칸 이동 도중
         self.assertTrue(self.player.mover.is_moving)
         self.input.begin_frame()
         self.input.press(Action.JUMP)
-        self.player.update(STEP / 4, self.input)
-        self.assertEqual(self.player.state, WALK)  # 아직 이동 중: 점프 대기
+        self.player.update(1 / 60, self.input)
+        self.assertEqual(self.player.state, JUMP)  # 바로 점프 (2026-11-17 사용자 결정)
         self.input.begin_frame()
-        self.player.update(STEP / 2, self.input)
-        self.assertEqual(self.player.state, JUMP)
-        self.assertEqual(self.player.col, 6)  # 다음 칸으로는 가지 않고 도착 칸에서 점프
+        self.player.update(STEP, self.input)
+        self.assertEqual(self.player.col, 6)  # 걷던 한 칸은 공중에서 마저 가고, 다음 칸으로는 가지 않음
         self.assertFalse(self.player.mover.is_moving)
+
+    def test_input_buffer_runs_action_pressed_just_before_free(self):
+        # 공격이 끝나기 직전(아직 공격 중)에 누른 점프를 기억했다가 공격이 끝나자마자 실행
+        self.tap(Action.ATTACK)
+        self.assertEqual(self.player.state, ATTACK)
+        end = self.player.combo.current.duration
+        self.run_for(end - config.PLAYER_INPUT_BUFFER_TIME / 2)
+        self.tap(Action.JUMP)
+        self.assertEqual(self.player.state, ATTACK)
+        self.run_for(config.PLAYER_INPUT_BUFFER_TIME)
+        self.assertEqual(self.player.state, JUMP)
+
+    def test_input_buffer_expires(self):
+        self.tap(Action.ATTACK)
+        self.tap(Action.JUMP)  # 공격 초반에 누른 점프는 기억 시간이 지나 사라짐
+        self.run_for(self.player.combo.current.duration + 0.1)
+        self.assertNotEqual(self.player.state, JUMP)
 
     def test_parry_starts_immediately_and_blocks_movement(self):
         self.input.press(Action.MOVE_UP)

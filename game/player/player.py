@@ -3,8 +3,9 @@
 - 논리적 위치와 충돌 영역은 칸 하나 (self.col, self.row) 이다. 점프해도 칸 위치는 그대로다.
 - 그림 크기(원본 32×48, 화면 표시 64×96)는 그리기에만 쓰며 충돌 판정과 무관하다.
 - 캐릭터 본체 그림과 장비를 따로 그린다. 지금은 공격 중에만 검 그림 한 장을 손 위치·각도에 맞춰 겹쳐 그린다.
-- 점프·패링은 서 있거나 걷는 중에만 시작한다. 점프는 진행 중인 한 칸 이동을 마친 뒤 시작하고,
-  패링·공격은 바로 시작한다(진행 중인 한 칸 이동은 마저 간다). 세 행동 중에는 새 이동을 하지 않는다.
+- 점프·패링·공격·회피는 서 있거나 걷는 중에만 시작하고, 누르면 바로 시작한다 (진행 중인 한 칸 이동은 마저 간다,
+  점프는 공중에서). 행동 중에는 새 이동을 하지 않는다.
+- 입력 기억: 행동을 지금 할 수 없을 때 누른 키를 PLAYER_INPUT_BUFFER_TIME 동안 기억했다가 할 수 있게 되면 실행한다.
 - 공격은 3단 콤보(SwordCombo). 공격 중 클릭하면 다음 타가 이어지고, 3타 뒤에는 잠시 공격만 할 수 없다.
 - 공격 그림은 검이 몸 밖으로 나가므로 96×64 캔버스이고, 지금은 타별 오른쪽 측면 그림만 있다
   (위·아래는 임시로 같은 그림, 왼쪽은 좌우 반전).
@@ -55,6 +56,8 @@ def weapon_sheet_path(weapon: str) -> str:
 
 
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
+# 입력을 기억해 두는 행동 (PLAYER_INPUT_BUFFER_TIME)
+BUFFERED_ACTIONS = (Action.ATTACK, Action.PARRY, Action.DODGE, Action.JUMP)
 # 전용 그림이 아직 없는 상태 -> 대신 쓸 그림 상태. 패링은 공격 모션과 함께 만들 때까지 서 있는 그림(첫 프레임).
 SPRITE_FALLBACK = {PARRY: IDLE, DODGE: WALK, HURT: IDLE}
 # 대신 쓰는 그림을 자기 애니메이션 프레임으로 재생하는 상태 (나머지는 첫 프레임에 멈춤)
@@ -101,7 +104,7 @@ class Player:
             DODGE: self.dodge,
             HURT: self.hurt,
         }
-        self._jump_requested = False  # 이동 중에 누른 점프: 한 칸 이동을 마치면 시작
+        self._buffer: dict[Action, float] = {}  # 입력 기억: 행동 → 남은 시간
         self.fsm = PlayerStateMachine(on_state_changed=self._on_state_changed)
 
     # ----- 상태 조회 -----
@@ -135,35 +138,40 @@ class Player:
         self.perfect_text_left = max(0.0, self.perfect_text_left - dt)
         self._since_dodge += dt
         self.posture.update(dt)
+        # 입력 기억: 이번 프레임에 누른 행동을 PLAYER_INPUT_BUFFER_TIME 동안 기억한다
+        for action in BUFFERED_ACTIONS:
+            if input_state.was_pressed(action):
+                self._buffer[action] = config.PLAYER_INPUT_BUFFER_TIME
         if self.state in FREE_STATES:
-            if input_state.was_pressed(Action.ATTACK) and self.combo.can_start:
-                self._jump_requested = False
+            if self._buffered(Action.ATTACK) and self.combo.can_start:
+                self._consume(Action.ATTACK)
                 self.combo.start()
                 self.fsm.trigger("attack")
-            elif input_state.was_pressed(Action.PARRY):
-                self._jump_requested = False
+            elif self._buffered(Action.PARRY):
+                self._consume(Action.PARRY)
                 self.combo.cancel_window()
                 self.fsm.trigger("parry")
-            elif input_state.was_pressed(Action.DODGE) and self.dodge_cooldown_left <= 0.0:
+            elif self._buffered(Action.DODGE) and self.dodge_cooldown_left <= 0.0:
+                self._consume(Action.DODGE)
                 self._start_dodge(input_state)
-            elif input_state.was_pressed(Action.JUMP):
-                self._jump_requested = True
+            elif self._buffered(Action.JUMP):
+                # 걷던 중이면 그 한 칸은 공중에서 마저 간다 (2026-11-17 사용자 결정: 바로 점프)
+                self._consume(Action.JUMP)
                 self.combo.cancel_window()
-        elif self.state == ATTACK and input_state.was_pressed(Action.ATTACK):
+                self.fsm.trigger("jump")
+        elif self.state == ATTACK and self._buffered(Action.ATTACK):
+            self._consume(Action.ATTACK)
             self.combo.request_next()
-        elif (self.state == PARRY and self.parry_succeeded and input_state.was_pressed(Action.ATTACK)
-              and self.combo.can_start):
+        elif self.state == PARRY and self.parry_succeeded and self._buffered(Action.ATTACK) and self.combo.can_start:
             # 우선권: 패링에 성공하면 패링 동작이 끝나기 전에 바로 공격
+            self._consume(Action.ATTACK)
             self.combo.start()
             self.fsm.trigger("attack")
 
-        # 점프·패링·공격 중이거나 점프를 기다리는 중에는 새 이동을 시작하지 않고, 진행 중인 한 칸만 마저 간다.
-        free = self.state in FREE_STATES and not self._jump_requested
+        # 점프·패링·공격·회피·경직 중에는 새 이동을 시작하지 않고, 진행 중인 한 칸만 마저 간다.
+        free = self.state in FREE_STATES
         dx, dy = input_state.move_direction() if free else (0, 0)
         self.mover.update(dt, dx, dy)
-        if self._jump_requested and not self.mover.is_moving:
-            self._jump_requested = False
-            self.fsm.trigger("jump")
 
         if self.state in FREE_STATES:
             # 이동 중에는 실제로 움직이는 방향을, 멈춰 있으면 누른 방향을 바라본다.
@@ -186,6 +194,13 @@ class Player:
             self.fsm.trigger("end_dodge")
             self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
         self._emit_strike()
+        self._buffer = {a: t - dt for a, t in self._buffer.items() if t - dt > 0.0}
+
+    def _buffered(self, action: Action) -> bool:
+        return action in self._buffer
+
+    def _consume(self, action: Action) -> None:
+        self._buffer.pop(action, None)
 
     def receive_attack(self, attack: EnemyAttack) -> str:
         """적의 공격이 터졌다. 결과: MISSED(범위 밖) / AVOIDED(점프·회피 무적) / PARRIED / HIT.
@@ -208,7 +223,6 @@ class Player:
         if self.hp <= 0:
             self.hp = self.max_hp  # 사망은 기획 미정: 지금은 그 자리에서 다시 채운다
         self.hit_flash_left = config.PLAYER_HIT_FLASH_TIME
-        self._jump_requested = False
         self.combo.cancel_window()
         self.fsm.trigger("hurt")
         return HIT
@@ -230,7 +244,6 @@ class Player:
         start_tile = (self.col, self.row)
         if self.mover.dash(dx, dy, config.PLAYER_DODGE_DISTANCE, config.PLAYER_DODGE_DURATION) == 0:
             return
-        self._jump_requested = False
         self.combo.cancel_window()
         self.facing = facing_for_direction(dx, dy, self.facing)
         self._dodge_start_tile = start_tile
