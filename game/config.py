@@ -72,9 +72,13 @@ PLAYER_JUMP_FRAMES = len(PLAYER_JUMP_FRAME_ENDS)
 # [임시값] 2026-11-17 사용자 결정: Q, 누르고 있는 방향(없으면 바라보는 방향)으로 3칸을 0.25초에, 회피 중 내내 무적,
 # 끝난 뒤 1초 동안 다시 쓸 수 없음. 도중에 벽·허수아비가 있으면 그 앞에서 멈춘다. 그림은 걷기 그림.
 # (처음 5칸·0.25초 → 3칸·0.5초 → 느려서 3칸·0.25초. 모두 같은 날 사용자 요청)
-PLAYER_DODGE_DISTANCE = 3  # 칸
+PLAYER_DODGE_DISTANCE = 2  # 칸 (2026-11-17 사용자 요청으로 3 → 2)
 PLAYER_DODGE_DURATION = 0.25  # 초
 PLAYER_DODGE_COOLDOWN = 8.0  # 초 (회피가 끝난 뒤부터). 2026-11-17 사용자 요청으로 1 → 8
+# 퍼펙트 회피 (2026-11-17 사용자 결정): 노란색 공격(패링 불가·회피 가능)이 터지기 이 시간 안에 그 범위 안에서 회피를 시작했으면
+# 성공 → 회피 대기 시간을 없앤다. 타이밍은 넉넉하게.
+PLAYER_PERFECT_DODGE_WINDOW = 0.4  # 초
+PLAYER_PERFECT_TEXT_TIME = 0.6  # 초. 머리 위 "PERFECT" 표시
 
 # ----- 플레이어 공격 (검 3단 콤보) -----
 # [임시값] 2026-11-16 사용자 결정: 마우스 왼쪽 클릭, 제자리 공격, 공격 중 이동 불가,
@@ -176,8 +180,9 @@ GOLEM_HIT_FLASH_TIME = 0.1
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
 GOLEM_KICK = {"windup": 0.6, "damage": 15, "width": 3, "depth": 5}  # 2026-11-17 사용자 요청으로 예고 0.3 → 0.6초  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
 GOLEM_STOMP = {"windup": 0.55, "damage": 30, "size": 6}  # ③ 한 발 내려찍기: 중심 6×6, 점프로만 피함
-# ④ 코어 레이저: 4초 조준(조준선이 발사 순간까지 주인공을 따라옴, 2026-11-17 사용자 결정) 후 벽까지 일직선. 회피 무적으로만 피함
-GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3}
+# ④ 코어 레이저: 4초 조준(조준점이 발사 순간까지 주인공을 따라옴) 후 조준점에서 4×4 폭발 (벽 칸은 제외).
+#   일직선으로 관통하지 않는다 (2026-11-17 사용자 결정). 패링 불가, 회피 무적으로 피함
+GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
 
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24

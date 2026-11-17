@@ -71,9 +71,13 @@ class GolemAreaTest(unittest.TestCase):
     def test_stomp_area_six_by_six(self):
         self.assertEqual(self.golem.stomp_area(), {(c, r) for c in range(4, 10) for r in range(2, 8)})
 
-    def test_laser_line_until_wall(self):
-        self.golem.aim = (2.5, 5.0)  # 몸 가운데 (7, 5) 에서 왼쪽으로
-        self.assertEqual(self.golem.laser_tiles(), {(c, 5) for c in range(1, 6)})
+    def test_laser_explodes_four_by_four_at_aim(self):
+        self.golem.aim = (3.0, 5.0)  # 조준점을 가운데로 한 4×4
+        self.assertEqual(self.golem.laser_tiles(), {(c, r) for c in range(1, 5) for r in range(3, 7)})
+
+    def test_laser_excludes_wall_tiles(self):
+        self.golem.aim = (1.0, 5.0)  # 왼쪽 벽(0열)에 걸침 → 벽 칸 빼고 터짐
+        self.assertEqual(self.golem.laser_tiles(), {(c, r) for c in range(1, 3) for r in range(3, 7)})
 
 
 class WarningColorTest(unittest.TestCase):
@@ -303,6 +307,30 @@ class GolemVsPlayerTest(unittest.TestCase):
         self.tap(Action.DODGE)  # 발사 직전 회피: 무적
         self.run_for(0.1)
         self.assertEqual(self.player.hp, hp)
+
+    def dodge_before_release(self, pattern, seconds_before):
+        self.player.facing = Facing.LEFT
+        self.player.dodge_cooldown_left = 0.0
+        self.start_pattern(pattern)
+        self.run_until_release(seconds_before)
+        self.tap(Action.DODGE)
+        self.run_for(seconds_before + 0.4)
+
+    def test_perfect_dodge_resets_cooldown(self):
+        self.dodge_before_release(KICK, 0.2)  # 노란색 공격이 터지기 0.2초 전, 범위 안에서 회피
+        self.assertEqual(self.player.hp, config.PLAYER_MAX_HP)
+        self.assertEqual(self.player.dodge_cooldown_left, 0.0)  # 대기 시간 없음
+        self.assertGreater(self.player.perfect_text_left, 0.0)
+        self.tap(Action.DODGE)  # 바로 다시 회피 가능
+        self.assertEqual(self.player.state, "dodge")
+
+    def test_early_dodge_is_not_perfect(self):
+        self.dodge_before_release(KICK, config.PLAYER_PERFECT_DODGE_WINDOW + 0.1)
+        self.assertGreater(self.player.dodge_cooldown_left, 0.0)
+
+    def test_dodging_red_attack_is_not_perfect(self):
+        self.dodge_before_release(SLAM, 0.2)  # 빨간(패링 가능) 공격: 피해도 퍼펙트 아님
+        self.assertGreater(self.player.dodge_cooldown_left, 0.0)
 
     def test_receive_attack_results(self):
         from game.combat.enemy_attack import EnemyAttack

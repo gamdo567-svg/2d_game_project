@@ -85,6 +85,11 @@ class Player:
         self.posture = PostureGauge()
         self.hit_flash_left = 0.0
         self.parry_succeeded = False  # 이번 패링에서 공격을 막았는지 (우선권)
+        # 퍼펙트 회피: 회피를 시작한 칸과 그 뒤 지난 시간, 이번 회피가 퍼펙트였는지, 머리 위 표시 시간
+        self._dodge_start_tile: tuple[int, int] | None = None
+        self._since_dodge = float("inf")
+        self._perfect_this_dodge = False
+        self.perfect_text_left = 0.0
         self.dodge_cooldown_left = 0.0  # 회피를 다시 쓸 수 있을 때까지 남은 시간
         # 상태별 애니메이션. 점프·패링·회피는 행동 진행도에 맞춰 프레임을 고른다.
         self.animations: dict[str, LoopAnimation | Jump | Parry | SwordCombo | Dodge] = {
@@ -127,6 +132,8 @@ class Player:
         self.combo.tick(dt)
         self.dodge_cooldown_left = max(0.0, self.dodge_cooldown_left - dt)
         self.hit_flash_left = max(0.0, self.hit_flash_left - dt)
+        self.perfect_text_left = max(0.0, self.perfect_text_left - dt)
+        self._since_dodge += dt
         self.posture.update(dt)
         if self.state in FREE_STATES:
             if input_state.was_pressed(Action.ATTACK) and self.combo.can_start:
@@ -177,11 +184,16 @@ class Player:
             self.fsm.trigger("end_hurt")
         elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
             self.fsm.trigger("end_dodge")
-            self.dodge_cooldown_left = config.PLAYER_DODGE_COOLDOWN
+            self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
         self._emit_strike()
 
     def receive_attack(self, attack: EnemyAttack) -> str:
-        """적의 공격이 터졌다. 결과: MISSED(범위 밖) / AVOIDED(점프·회피 무적) / PARRIED / HIT."""
+        """적의 공격이 터졌다. 결과: MISSED(범위 밖) / AVOIDED(점프·회피 무적) / PARRIED / HIT.
+
+        퍼펙트 회피: 노란색 공격(패링 불가·회피 가능)이 터지기 PLAYER_PERFECT_DODGE_WINDOW 초 안에
+        그 범위 안에서 회피를 시작했으면 회피 대기 시간을 없앤다 (회피 한 번에 한 번).
+        """
+        self._check_perfect_dodge(attack)
         if (self.col, self.row) not in attack.tiles:
             return MISSED
         if attack.jumpable and self.state == JUMP and self.jump.is_airborne:
@@ -201,16 +213,29 @@ class Player:
         self.fsm.trigger("hurt")
         return HIT
 
+    def _check_perfect_dodge(self, attack: EnemyAttack) -> None:
+        yellow = not attack.parryable and attack.dodgeable
+        if (yellow and self._dodge_start_tile in attack.tiles
+                and self._since_dodge <= config.PLAYER_PERFECT_DODGE_WINDOW):
+            self._since_dodge = float("inf")
+            self._perfect_this_dodge = True
+            self.dodge_cooldown_left = 0.0
+            self.perfect_text_left = config.PLAYER_PERFECT_TEXT_TIME
+
     def _start_dodge(self, input_state: InputState) -> None:
         """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음)."""
         dx, dy = input_state.move_direction()
         if dx == 0 and dy == 0:
             dx, dy = self.facing.value
+        start_tile = (self.col, self.row)
         if self.mover.dash(dx, dy, config.PLAYER_DODGE_DISTANCE, config.PLAYER_DODGE_DURATION) == 0:
             return
         self._jump_requested = False
         self.combo.cancel_window()
         self.facing = facing_for_direction(dx, dy, self.facing)
+        self._dodge_start_tile = start_tile
+        self._since_dodge = 0.0
+        self._perfect_this_dodge = False
         self.fsm.trigger("dodge")
 
     def _emit_strike(self) -> None:
@@ -232,6 +257,12 @@ class Player:
 
     # ----- 그리기 -----
     def draw(self, renderer) -> None:
+        if self.perfect_text_left > 0.0:
+            vcol, vrow = self.mover.visual_position
+            left, bottom, right, _ = self.grid.tile_to_pixel_rect(vcol, vrow)
+            rise = (1.0 - self.perfect_text_left / config.PLAYER_PERFECT_TEXT_TIME) * self.grid.tile_size * 0.4
+            renderer.draw_text((left + right) / 2 - 34, bottom + config.PLAYER_RENDER_HEIGHT + 12 + rise, "PERFECT",
+                               config.COLOR_POSTURE)
         if self.hit_flash_left > 0.0 and int(self.hit_flash_left / 0.05) % 2 == 0:
             return  # 맞은 직후 깜빡임: 0.05초마다 그렸다 안 그렸다
         view, flip = sprite_view(self.facing)

@@ -5,7 +5,7 @@
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 3×5, 패링 불가·회피 무적 가능  ③ 중심 6×6, 점프로만 피함
-    ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 그 방향으로 벽까지 일직선, 회피 무적으로 피함
+    ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge).
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
 게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 임시 도형으로만 한다.
@@ -165,6 +165,7 @@ class Golem:
         self.state_left -= dt
         if self.state == WINDUP and self.pattern == LASER:
             self._follow_aim(dt, player_tile)
+            self.target_tiles = self.laser_tiles()  # 터질 범위가 조준점을 따라다니며 예고된다
         if self.state_left > 0.0:
             return
         if self.state == WINDUP:
@@ -237,8 +238,8 @@ class Golem:
         elif pattern == STOMP:
             self.target_tiles = self.stomp_area()
         else:
-            self.target_tiles = frozenset()
             self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
+            self.target_tiles = self.laser_tiles()
 
     def front_area(self, width: int, depth: int, player_tile: Tile) -> frozenset[Tile]:
         """바라보는 쪽 앞의 (가로 width × 앞으로 depth) 칸. 몸보다 넓은 줄은 주인공이 있는 쪽으로 늘린다."""
@@ -283,32 +284,18 @@ class Golem:
         self._face(player_tile)
 
     def laser_tiles(self) -> frozenset[Tile]:
-        """코어에서 조준점 방향으로 벽(또는 맵 밖)까지 일직선 (폭 1칸)."""
-        cx, cy = self.center
-        ax, ay = self.aim
-        d = math.hypot(ax - cx, ay - cy)
-        if d < 1e-6:
-            return frozenset()
-        ux, uy = (ax - cx) / d, (ay - cy) / d
-        own = self.tiles
-        tiles = []
-        k = 0.0
-        while k < 200:
-            k += 0.2
-            tile = (math.floor(cx + ux * k), math.floor(cy + uy * k))
-            if tile in own:
-                continue
-            if self.is_wall(*tile):
-                break
-            if tile not in tiles:
-                tiles.append(tile)
-        return frozenset(tiles)
+        """조준점을 가운데로 한 size × size 폭발 칸 (벽 칸은 제외). 관통하는 일직선이 아니다."""
+        n = config.GOLEM_LASER["size"]
+        left = math.floor(self.aim[0] - n / 2)
+        bottom = math.floor(self.aim[1] - n / 2)
+        return frozenset((c, r) for c in range(left, left + n) for r in range(bottom, bottom + n)
+                         if not self.is_wall(c, r))
 
     def _release(self) -> None:
         spec = PATTERNS[self.pattern]
         tiles = self.target_tiles
         if self.pattern == LASER:
-            tiles = self.beam_tiles = self.laser_tiles()
+            tiles = self.beam_tiles = self.laser_tiles()  # 폭발 칸 (잠깐 보여 줌)
             self.beam_left = spec["beam_time"]
             self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
         self.attacks.append(EnemyAttack(tiles, spec["damage"], direction=self.facing, **PATTERN_RULES[self.pattern]))

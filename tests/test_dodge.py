@@ -86,19 +86,19 @@ class DodgeTest(unittest.TestCase):
         self.assertEqual((self.player.col, self.player.row), (2, 1))  # 아래로 2칸 뒤 벽
         self.assertEqual(self.player.facing, Facing.DOWN)
 
-    def test_stops_before_wall_and_dummy(self):
+    def test_stops_before_wall(self):
         self.face(Facing.UP)
         self.tap(Action.DODGE)
-        self.assertEqual((self.player.col, self.player.row), (2, 4))  # 위쪽 벽 앞
-        self.run_for(config.PLAYER_DODGE_DURATION + config.PLAYER_DODGE_COOLDOWN + 0.1)  # 대기 시간이 지나야 다시 회피
-        # 아래로 내려가 (2,1) 에서 오른쪽: 허수아비 (4,1) 앞 (3,1) 에서 멈춤
+        self.assertEqual((self.player.col, self.player.row), (2, 4))  # 위쪽 벽 앞 (1칸만)
+
+    def test_stops_before_dummy(self):
         self.face(Facing.DOWN)
         self.tap(Action.DODGE)
-        self.assertEqual((self.player.col, self.player.row), (2, 1))
-        self.run_for(config.PLAYER_DODGE_DURATION + config.PLAYER_DODGE_COOLDOWN + 0.1)  # 대기 시간이 지나야 다시 회피
+        self.assertEqual((self.player.col, self.player.row), (2, 1))  # 아래로 2칸
+        self.run_for(config.PLAYER_DODGE_DURATION + config.PLAYER_DODGE_COOLDOWN + 0.1)
         self.face(Facing.RIGHT)
         self.tap(Action.DODGE)
-        self.assertEqual((self.player.col, self.player.row), (3, 1))
+        self.assertEqual((self.player.col, self.player.row), (3, 1))  # 허수아비 (4,1) 앞
 
     def test_blocked_dodge_does_nothing(self):
         self.face(Facing.LEFT)
