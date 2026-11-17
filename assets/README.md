@@ -41,6 +41,7 @@
 | `concepts/vfx/stomp/*` | Claude Code 제작 (2026-11-17): 위 시트의 생성 스크립트, 게임 배율 미리보기 | 프로젝트 소유 | 게임에 직접 쓰지 않음 |
 | `images/player/jump/{front,back,side}.png`, `images/player/sword_attack/side_{1,2,3}.png`, `side_*_hand.png`, `front_{1,2,3}.png`, `front_{1,2,3}_hand.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성 (`concepts/pixellab/player_import/remake_raw/`, 2026-11-17)한 것을 Claude Code가 변환 (`export_to_game.py`) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 점프 48×56 × 10 (정면 jump_v7, 측면 jump_v19, 후면 jump_v14, 왼쪽은 측면 반전), 측면 공격·정면 1·2·3타 96×64 × 8 (칼 없음, 칼은 `weapons/`). 위의 점프·측면 공격 그림을 대체 (걷기는 예전 v3 그림 유지). D-029 |
 | `maps/test_room.txt` | Claude Code 제작 (2026-11-17) | 프로젝트 소유 | 글자 맵 (D-023). 시험용 방, 허수아비 `D` 2개 (D-024), 골렘 `G` 1개 (D-026) |
+| `images/player/weapons/old_sword_front_3.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성한 정면 3타 그림의 칼을 Claude Code가 떼어 칼 색으로 바꿈 (`export_to_game.py`, 2026-11-17) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 96×64 × 8, 찌르는 6~8번째만 그림. 정면 3타 찌르기용 칼 그림. D-031 |
 | `images/player/weapons/old_sword.png` | Claude Code 제작 (`concepts/weapons/build_old_sword.py`, 2026-11-17). 컨셉 시트의 낡은 검 기준 | 프로젝트 소유 | 56×10, 칼끝 오른쪽, 손이 한가운데. D-022 |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)

@@ -6,7 +6,7 @@ from game.input.input_state import Action, InputState
 from game.player.facing import Facing
 from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, Player, attack_hand_sheet_path, attack_sheet_path,
                                attack_view,
-                               sprite_sheet_path, weapon_sheet_path)
+                               sprite_sheet_path, weapon_sheet_path, weapon_view_art_path)
 from game.player.state_machine import ATTACK, DODGE, IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
@@ -520,6 +520,38 @@ class PlayerAttackTest(unittest.TestCase):
         self.assertEqual(args[0], attack_hand_sheet_path(1))
         self.assertEqual(args[1:], bargs[1:])
         self.assertEqual(kwargs, bkw)
+
+    def _draw_front_thrust(self):
+        # 아래를 보고 3타 찌르는 순간까지 공격한 뒤 그린다
+        self._draw_attack_frame(action=Action.MOVE_DOWN)
+        for _ in range(round(3.0 / self.DT)):
+            combo = self.player.combo
+            if combo.index == 2 and combo.current is not None and combo.current.progress >= 0.55:
+                break
+            self.click()
+        else:
+            self.fail("3타 찌르는 순간에 닿지 못함")
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        return renderer.calls
+
+    def test_front_thrust_draws_weapon_view_art(self):
+        # 정면 3타 찌르는 순간은 무기의 찌르기용 칼 그림을 몸 위에 겹친다 (옆모습 칼을 돌리지 않음)
+        calls = self._draw_front_thrust()
+        art = weapon_view_art_path(config.PLAYER_WEAPON, "front", 3)
+        paths = [call[1][0] for call in calls if call[0] == "draw_sprite_frame"]
+        self.assertEqual(paths.index(art), paths.index(attack_sheet_path(3, "front")) + 1)
+        self.assertNotIn("draw_image_rotated", [call[0] for call in calls])
+
+    def test_front_thrust_without_view_art_uses_rotated_sword(self):
+        # 찌르기용 칼 그림이 없는 무기는 옆모습 칼을 짧게 돌려 그린다 (칼 바꿔 끼우기)
+        original = config.PLAYER_WEAPON
+        config.PLAYER_WEAPON = "no_view_art_sword"
+        try:
+            calls = self._draw_front_thrust()
+        finally:
+            config.PLAYER_WEAPON = original
+        self.assertIn("draw_image_rotated", [call[0] for call in calls])
 
     def test_attack_facing_down_uses_front_sheets(self):
         # 아래를 보면 정면 몸·칼 앞 레이어 시트와 정면 칼 위치표를 쓴다. 반전 없음.

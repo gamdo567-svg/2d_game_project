@@ -59,24 +59,38 @@ VIEW_ATTACKS = {
 }
 
 
+# 정면 3타 찌르기는 칼끝이 발 아래 13픽셀까지 내려와 6픽셀 올려 담는다 (2026-11-17)
+RAISE = {'front3': 6}
+
+
 def export_attacks(view='side'):
     """view 방향의 공격 시트를 내보내고 칼 위치표 {타 번호: [(손 x, 손 y, 각도, 몸 뒤), ...]} 를 돌려준다."""
     tables = {}
     for hit, name, path, row in VIEW_ATTACKS[view]:
         frames = b.cells(path, row)
         cx, foot, _ = ref_anchor(frames[0])
-        dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot
+        # RAISE: 발끝 아래로 길게 내민 칼이 잘리지 않게 그림을 위로 올린다 (게임은 PLAYER_ATTACK_FRAME_SHIFTS_FRONT 로 되돌림)
+        dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot - RAISE.get(name, 0)
         layers, _, _ = b.build_layers(name, frames[1:])
         body = Image.new('RGBA', (ATTACK_W * len(layers), ATTACK_H), (0, 0, 0, 0))
         hand = Image.new('RGBA', body.size, (0, 0, 0, 0))
+        art = Image.new('RGBA', body.size, (0, 0, 0, 0))
+        art_frames = []
         table = []
         for i, layer in enumerate(layers):
             body.alpha_composite(layer['body'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
             hand.alpha_composite(layer['hand'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
+            if layer.get('art') is not None:
+                art.alpha_composite(layer['art'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
+                art_frames.append(i)
             hx, hy, angle, behind = layer['sword']
             table.append((round(hx + dx), round(hy + dy), round(angle), behind))
         body.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}.png'))
         hand.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}_hand.png'))
+        if art_frames:
+            # 찌르기용 칼 그림 (무기마다 하나, 공격 시트와 같은 칸): weapons/<무기>_<방향>_<타>.png
+            art.save(os.path.join(OUT, 'weapons', f'old_sword_{view}_{hit}.png'))
+            print(f'# 찌르기용 칼 그림 {view} {hit}타 프레임 {tuple(art_frames)}')
         tables[hit] = table
     return tables
 

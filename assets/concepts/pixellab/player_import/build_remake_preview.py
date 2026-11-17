@@ -48,10 +48,10 @@ OVERRIDES = {
     ('front2', 4): (25, 46, -132, False), ('front2', 5): (44, 29, 62, False),
     ('front2', 6): (47, 28, 140, True), ('front2', 7): (49, 29, 142, True), ('front2', 8): (47, 29, 139, True),
     # 정면 3타 = 찌르기 끝 자세 지정 (2026-11-17 사용자 확정). 칼이 보는 사람 쪽으로 기울어 자동으로 못 찾음
-    ('front3', 1): (25, 45, -129, False), ('front3', 2): (24, 41, -52, False),
-    ('front3', 3): (24, 40, -55, False), ('front3', 4): (25, 40, -59, False),
-    ('front3', 5): (26, 40, -61, False), ('front3', 6): (34, 39, -90, False),
-    ('front3', 7): (34, 39, -90, False), ('front3', 8): (34, 39, -90, False),
+    ('front3', 1): (25, 41, -129, False), ('front3', 2): (24, 37, -52, False),
+    ('front3', 3): (24, 36, -55, False), ('front3', 4): (25, 36, -59, False),
+    ('front3', 5): (26, 36, -61, False), ('front3', 6): (34, 35, -90, False),
+    ('front3', 7): (34, 35, -90, False), ('front3', 8): (34, 35, -90, False),
     # 후면은 두 손이 몸 앞(보는 사람 반대쪽)이라 칼이 몸에 가려진다: 머리 위로 든 때만 몸 위에 그린다
     ('back1', 1): (45, 43, 0, True), ('back1', 2): (44, 38, 54, True),
     ('back1', 3): (42, 28, 134, False), ('back1', 4): (36, 25, 60, False),
@@ -183,6 +183,49 @@ def analyse(frame):
         else:
             smear.extend(comp)
     return best, set(smear), set(blue)
+
+
+# PixelLab 이 그린 칼을 그대로 떼어 '찌르기용 칼 그림'(무기 레이어)으로 쓰는 프레임 (2026-11-17 사용자 결정: 정면 3타 찌르는 순간).
+# 보는 사람 쪽으로 튀어나오는 칼은 옆모습 칼 한 장을 돌려서는 그릴 수 없어서, 칼마다 이 그림을 따로 둔다.
+KEEP_BLADE = {('front3', 6), ('front3', 7), ('front3', 8)}
+# 게임 칼(old_sword.png)의 칼날 색, 어두운 것부터
+STEEL = [(113, 83, 89, 255), (178, 154, 149, 255), (219, 204, 197, 255), (233, 220, 210, 255)]
+
+
+def is_blade(c):
+    """PixelLab 칼 픽셀: 파랑 또는 칼날의 흰 하이라이트."""
+    return c[3] > 0 and (is_blue(c) or min(c[:3]) > 240)
+
+
+def split_blade(frame):
+    """(칼을 뺀 몸, 게임 칼 색으로 바꾼 칼만) 로 나눈다. 둘을 겹치면 원래 그림과 같다."""
+    body, blade = frame.copy(), Image.new('RGBA', frame.size, (0, 0, 0, 0))
+    src, bpx, apx = frame.load(), body.load(), blade.load()
+    for y in range(frame.height):
+        for x in range(frame.width):
+            c = src[x, y]
+            if is_blade(c):
+                bpx[x, y] = (0, 0, 0, 0)
+                light = sum(c[:3]) / 3
+                level = 0 if light < 90 else 1 if light < 150 else 2 if light < 210 else 3
+                apx[x, y] = STEEL[level]
+    # 칼날을 둘러싼 검은 테두리도 칼 쪽으로 옮긴다 (다른 칼로 바꿨을 때 몸에 칼 테두리가 남지 않게)
+    edge = [(x, y) for y in range(frame.height) for x in range(frame.width)
+            if bpx[x, y][3] and max(bpx[x, y][:3]) < 45
+            and any(0 <= x + dx < frame.width and 0 <= y + dy < frame.height and is_blade(src[x + dx, y + dy])
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+    for x, y in edge:
+        apx[x, y] = bpx[x, y]
+        bpx[x, y] = (0, 0, 0, 0)
+    return body, blade
+
+
+def steel_blade(frame):
+    """파란 칼과 흰 하이라이트를 밝기에 따라 게임 칼 색으로 바꾼다 (미리보기용: 몸 + 칼을 한 장으로)."""
+    body, blade = split_blade(frame)
+    body.alpha_composite(blade)
+    img = body
+    return img
 
 
 def white_to_blue(frame):
@@ -438,6 +481,7 @@ def build_layers(name, frames):
     for (n, c), (sheet, row, col) in FRAME_SOURCE.items():
         if n == name:
             frames[c - 1] = cells(sheet, row)[col]
+    originals = list(frames)
     if name in NO_SMEAR:
         # 원본 칼날의 흰 하이라이트 줄(파랑으로 잡히지 않음)도 칼과 함께 지운다. 주인공 그림에는 흰색이 없다.
         frames = [white_to_blue(f) for f in frames]
@@ -493,7 +537,12 @@ def build_layers(name, frames):
                     # 아주 어두운 픽셀은 원본 칼 테두리일 수 있어 칼 위에 다시 그리지 않는다
                     if c[3] and max(c[:3]) >= 45 and math.dist((x, y), (hx, hy)) <= HAND_RADIUS:
                         hand.putpixel((x, y), c)
-        layers.append({'body': sheet, 'hand': hand, 'sword': (hx, hy, angle, bool(behind))})
+        art = None
+        if (name, col) in KEEP_BLADE:
+            # PixelLab 이 그린 칼을 떼어 무기 레이어(art)로, 나머지는 몸으로. 칼이 덮던 다리 자리는 칼이 그대로 덮는다.
+            sheet, art = split_blade(originals[col - 1])
+            hand = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
+        layers.append({'body': sheet, 'hand': hand, 'sword': (hx, hy, angle, bool(behind)), 'art': art})
     return layers, swords, infos
 
 

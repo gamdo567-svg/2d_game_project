@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+import os
+
 from game import config
 from game.input.input_state import Action, InputState
 from game.combat.enemy_attack import AVOIDED, HIT, MISSED, PARRIED, EnemyAttack
@@ -60,6 +62,11 @@ def attack_view(facing: Facing, hit_index: int = 0) -> str:
 def weapon_sheet_path(weapon: str) -> str:
     """무기 그림 경로 (칼 한 장). 예: weapons/old_sword.png"""
     return str(config.PLAYER_IMAGE_DIR / "weapons" / f"{weapon}.png")
+
+
+def weapon_view_art_path(weapon: str, view: str, hit_number: int) -> str:
+    """무기의 찌르기용 칼 그림 시트 경로 (공격 시트와 같은 칸). 예: weapons/old_sword_front_3.png"""
+    return str(config.PLAYER_IMAGE_DIR / "weapons" / f"{weapon}_{view}_{hit_number}.png")
 
 
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
@@ -366,7 +373,7 @@ class Player:
         """지금 타의 공격 그림(96×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.
 
         아래를 보면 정면, 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
-        후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 3타는 예전 5프레임 그림이다.
+        후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 3타 찌르는 순간은 무기의 찌르기용 칼 그림을 쓴다.
         """
         width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
         scale = config.RENDER_SCALE
@@ -392,10 +399,17 @@ class Player:
                 canvas_x, canvas_bottom, width * scale, height * scale, flip_horizontal=flip,
             )
 
+        # 찌르기용 칼 그림이 있는 프레임이면 옆모습 칼을 돌리는 대신 그 그림을 몸 위에 겹친다 (없는 무기는 옆모습 칼)
+        art_path = weapon_view_art_path(config.PLAYER_WEAPON, view, self.combo.hit_number)
+        use_art = (frame in config.PLAYER_WEAPON_VIEW_ART.get((view, self.combo.hit_number), ())
+                   and os.path.exists(art_path))
         # 두 손 잡기: 몸(두 팔, 칼 뒤의 왼손) → 칼 → 오른손 레이어 (오른손이 칼을 감싸 쥔 모습)
         if not behind:
             draw_layer(attack_sheet_path(self.combo.hit_number, view))
-        self._draw_sword(renderer, canvas_x, canvas_bottom, hand_x, hand_y, angle, flip, length)
+        if use_art:
+            draw_layer(art_path)
+        else:
+            self._draw_sword(renderer, canvas_x, canvas_bottom, hand_x, hand_y, angle, flip, length)
         if behind:
             draw_layer(attack_sheet_path(self.combo.hit_number, view))
         draw_layer(attack_hand_sheet_path(self.combo.hit_number, view))
