@@ -7,9 +7,9 @@
   다음 칸 이동을 바로 시작한다 (끊김 없는 연속 이동).
 - 대각선 이동은 없다 (2026-11-03 사용자 결정).
 - 들어갈 수 있는 칸인지는 can_enter(col, row) 로 묻는다 (기본: 격자 안이면 됨). 벽 충돌은 이것으로 막는다.
-- 걷는 중 방향 바꾸기 (2026-11-17 사용자 결정, 조작감): 반대 방향은 그 자리에서 바로 되돌아가고,
-  옆 방향은 한 칸의 절반을 가기 전이면 그 자리에서 바로 꺾는다 (절반을 넘었으면 칸을 마친 뒤 꺾음).
-  그림은 지금 보이는 위치에서 이어지고, 걸리는 시간은 남은 거리에 맞춘다.
+- 걷는 중 방향 바꾸기 (2026-11-17 사용자 결정, 조작감): 반대 방향은 그 자리에서 바로 되돌아간다
+  (같은 직선 위라 사선이 생기지 않음). 옆 방향은 지금 칸을 마친 뒤 꺾는다 — 칸 사이에서 바로 꺾으면
+  사선으로 움직여 상하좌우 이동 규칙에 어긋난다 (사용자 지적으로 제거).
 """
 from __future__ import annotations
 
@@ -111,17 +111,11 @@ class GridMover:
         return self.grid.in_bounds(col, row) and self.can_enter(col, row)
 
     def _redirect(self, dx: int, dy: int) -> None:
-        """걷는 중 방향 바꾸기: 반대 방향은 떠나온 칸으로 바로 되돌아가고, 옆 방향은 절반을 가기 전이면 바로 꺾는다."""
-        if dx != 0 and dy != 0:
+        """걷는 중 방향 바꾸기: 반대 방향이면 떠나온 칸으로 바로 되돌아간다. 옆 방향은 칸을 마친 뒤 (사선 방지)."""
+        if (dx, dy) != (-self._dir[0], -self._dir[1]):
             return
-        if (dx, dy) == (-self._dir[0], -self._dir[1]):
-            target = self._origin
-            new_origin = (self.col, self.row)
-        elif self._progress < 0.5:
-            target = (self._origin[0] + dx, self._origin[1] + dy)
-            new_origin = self._origin
-        else:
-            return  # 절반을 넘었으면 지금 칸을 마친 뒤 꺾는다
+        target = self._origin
+        new_origin = (self.col, self.row)
         if not self._enterable(*target):
             return
         vx, vy = self.visual_position

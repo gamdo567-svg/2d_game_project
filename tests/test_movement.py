@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
 
 class TurnWhileWalkingTest(unittest.TestCase):
-    """걷는 중 방향 바꾸기 (조작감): 반대는 바로, 옆은 절반 전이면 바로."""
+    """걷는 중 방향 바꾸기 (조작감): 반대는 바로, 옆은 칸을 마친 뒤 (사선 금지)."""
 
     SPEED = 4.0
 
@@ -121,20 +121,20 @@ class TurnWhileWalkingTest(unittest.TestCase):
         self.assertFalse(self.mover.is_moving)
         self.assertEqual(self.mover.visual_position, (5, 5))
 
-    def test_side_turn_before_half_turns_immediately(self):
-        self.mover.update(1e-6, 0, 1)
-        self.assertEqual(self.mover.move_direction, (0, 1))
-        self.assertEqual((self.mover.col, self.mover.row), (5, 6))  # 떠나온 칸의 위 칸으로 바로 꺾음
-
-    def test_side_turn_after_half_waits_for_tile(self):
-        self.mover.update(0.25 / 2, 1, 0)  # 3/4 지점
-        self.mover.update(1e-6, 0, 1)
-        self.assertEqual(self.mover.move_direction, (1, 0))  # 아직 오른쪽
-        self.mover.update(0.25 / 4 + 0.01, 0, 1)
-        self.assertEqual((self.mover.col, self.mover.row), (6, 6))  # 칸을 마친 뒤 위로
+    def test_side_turn_waits_for_tile_no_diagonal(self):
+        # 옆 방향은 칸 사이에서 바로 꺾지 않는다 (사선 이동 방지). 칸을 마친 뒤 꺾는다
+        for _ in range(10):
+            self.mover.update(0.01, 0, 1)
+            x, y = self.mover.visual_position
+            self.assertTrue(x == round(x) or y == round(y))  # 언제나 가로줄 또는 세로줄 위
+        self.mover.update(0.25, 0, 1)
+        self.assertEqual(self.mover.col, 6)
+        self.assertGreater(self.mover.row, 5)
 
     def test_blocked_turn_keeps_going(self):
-        mover = GridMover(Grid(10, 10, 32), 5, 5, speed=self.SPEED, can_enter=lambda c, r: r != 6)
+        blocked = set()
+        mover = GridMover(Grid(10, 10, 32), 5, 5, speed=self.SPEED, can_enter=lambda c, r: (c, r) not in blocked)
         mover.update(0.25 / 4, 1, 0)
-        mover.update(1e-6, 0, 1)  # 위가 막혀 있으면 꺾지 않음
+        blocked.add((5, 5))  # 떠나온 칸에 무언가 들어옴
+        mover.update(1e-6, -1, 0)  # 되돌아갈 칸이 막혀 있으면 그대로 감
         self.assertEqual(mover.move_direction, (1, 0))
