@@ -5,7 +5,8 @@ import zlib
 
 from game import config
 from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, SPRITE_FALLBACK, attack_hand_sheet_path,
-                               attack_sheet_path, sprite_sheet_path, weapon_sheet_path)
+                               attack_sheet_path, sprite_sheet_path, weapon_sheet_path,
+                               weapon_view_art_path)
 from game.player.state_machine import ATTACK, IDLE, JUMP, STATES, WALK
 
 VIEWS = ("front", "back", "side")
@@ -220,7 +221,7 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertEqual((width, height), (w * count, h))
                 for hand_x, hand_y, angle, behind, *rest in frames:
                     self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
-                    self.assertTrue(all(0 <= length <= 1.0 for length in rest))  # 0 = 칼이 몸 그림에 들어 있음
+                    self.assertTrue(all(0 < length <= 1.0 for length in rest))
         self.assertEqual(config.PLAYER_ATTACK_SWORD_BACK, (None, None, None))
 
     def test_front_big_swing_frame_starts_at_hit_time(self):
@@ -241,6 +242,19 @@ class PlayerAssetTest(unittest.TestCase):
             self.assertEqual(len(ends), config.PLAYER_ATTACK_FRAMES)
             self.assertEqual(len(shifts), config.PLAYER_ATTACK_FRAMES)
             self.assertEqual(shifts[-1], (0, 0))  # 마지막 프레임은 제자리
+
+    def test_weapon_view_art_sheets(self):
+        # 찌르기용 칼 그림: 공격 시트와 같은 칸 수·크기이고, 쓰는 프레임에만 그림이 있다
+        from PIL import Image
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        for (view, hit), frames in config.PLAYER_WEAPON_VIEW_ART.items():
+            path = weapon_view_art_path(config.PLAYER_WEAPON, view, hit)
+            sheet = Image.open(path).convert("RGBA")
+            count = Image.open(attack_sheet_path(hit, view)).size[0] // w
+            self.assertEqual(sheet.size, (w * count, h))
+            for i in range(count):
+                has_art = sheet.crop((i * w, 0, i * w + w, h)).getbbox() is not None
+                self.assertEqual(has_art, i in frames, (view, hit, i))
 
     def test_weapon_is_one_image_with_hand_at_center(self):
         # 칼 그림은 한 장: 칼끝이 오른쪽, 한가운데(손)에 주먹이 있고, 투명/불투명만 쓴다.

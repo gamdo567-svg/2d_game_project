@@ -74,14 +74,23 @@ def export_attacks(view='side'):
         layers, _, _ = b.build_layers(name, frames[1:])
         body = Image.new('RGBA', (ATTACK_W * len(layers), ATTACK_H), (0, 0, 0, 0))
         hand = Image.new('RGBA', body.size, (0, 0, 0, 0))
+        art = Image.new('RGBA', body.size, (0, 0, 0, 0))
+        art_frames = []
         table = []
         for i, layer in enumerate(layers):
             body.alpha_composite(layer['body'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
             hand.alpha_composite(layer['hand'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
+            if layer.get('art') is not None:
+                art.alpha_composite(layer['art'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
+                art_frames.append(i)
             hx, hy, angle, behind = layer['sword']
             table.append((round(hx + dx), round(hy + dy), round(angle), behind))
         body.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}.png'))
         hand.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}_hand.png'))
+        if art_frames:
+            # 찌르기용 칼 그림 (무기마다 하나, 공격 시트와 같은 칸): weapons/<무기>_<방향>_<타>.png
+            art.save(os.path.join(OUT, 'weapons', f'old_sword_{view}_{hit}.png'))
+            print(f'# 찌르기용 칼 그림 {view} {hit}타 프레임 {tuple(art_frames)}')
         tables[hit] = table
     return tables
 
