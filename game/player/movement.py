@@ -28,6 +28,7 @@ class GridMover:
         self.row = row
         self.speed = speed  # 칸/초
         self.can_enter = can_enter or grid.in_bounds
+        self._step_duration = 1.0 / speed  # 지금 진행 중인 이동에 걸리는 시간 (회피는 따로 정함)
 
         self._from_col = col  # 이동 출발 칸
         self._from_row = row
@@ -55,22 +56,42 @@ class GridMover:
 
     def update(self, dt: float, dx: int, dy: int) -> None:
         """dt 초만큼 이동을 진행한다. (dx, dy) 는 지금 누르고 있는 방향 (직선 한 방향)."""
-        step_duration = 1.0 / self.speed
         remaining = dt
         while True:
             if not self.is_moving:
                 if not self._try_start(dx, dy):
                     return
-            step_time = step_duration * (1.0 - self._progress)
+            step_time = self._step_duration * (1.0 - self._progress)
             if remaining < step_time:
-                self._progress += remaining / step_duration
+                self._progress += remaining / self._step_duration
                 return
             # 이번 칸 도착. 남은 시간은 다음 칸 이동에 넘긴다.
             remaining -= step_time
             self._progress = 1.0
             self._from_col, self._from_row = self.col, self.row
+            self._step_duration = 1.0 / self.speed
             if remaining <= 0.0:
                 return
+
+    def dash(self, dx: int, dy: int, max_tiles: int, duration: float) -> int:
+        """(dx, dy) 방향으로 최대 max_tiles 칸을 duration 초에 한 번에 미끄러지듯 이동한다 (회피).
+
+        들어갈 수 없는 칸을 만나면 그 앞까지만 간다. 간 칸 수를 돌려준다 (0 이면 움직이지 않음).
+        한 칸 이동 중이었다면 지금 그려지는 위치에서 바로 출발한다 (그림이 튀지 않게).
+        """
+        if (dx == 0) == (dy == 0):
+            raise ValueError("회피는 상하좌우 한 방향이어야 합니다.")
+        tiles = 0
+        while tiles < max_tiles and self.grid.in_bounds(self.col + dx * (tiles + 1), self.row + dy * (tiles + 1))                 and self.can_enter(self.col + dx * (tiles + 1), self.row + dy * (tiles + 1)):
+            tiles += 1
+        if tiles == 0:
+            return 0
+        self._from_col, self._from_row = self.visual_position
+        self.col += dx * tiles
+        self.row += dy * tiles
+        self._progress = 0.0
+        self._step_duration = duration
+        return tiles
 
     def _try_start(self, dx: int, dy: int) -> bool:
         """(dx, dy) 방향으로 한 칸 이동을 시작한다. 못 움직이면 False."""

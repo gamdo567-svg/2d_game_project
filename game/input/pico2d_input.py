@@ -20,6 +20,7 @@ from pico2d import (
     SDLK_a,
     SDLK_d,
     SDLK_f,
+    SDLK_q,
     SDLK_s,
     SDLK_w,
     get_events,
@@ -40,6 +41,7 @@ KEY_BINDINGS: dict[int, Action] = {
     SDLK_d: Action.MOVE_RIGHT,
     SDLK_SPACE: Action.JUMP,
     SDLK_f: Action.PARRY,
+    SDLK_q: Action.DODGE,
 }
 
 # 마우스 버튼 -> 행동. 마우스 배치 변경도 여기서만 한다.

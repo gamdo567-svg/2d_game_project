@@ -2,12 +2,12 @@ import unittest
 
 from transitions import MachineError
 
-from game.player.state_machine import ATTACK, IDLE, JUMP, PARRY, STATES, WALK, PlayerStateMachine
+from game.player.state_machine import ATTACK, DODGE, IDLE, JUMP, PARRY, STATES, WALK, PlayerStateMachine
 
 
 class PlayerStateMachineTest(unittest.TestCase):
     def test_states(self):
-        self.assertEqual(STATES, [IDLE, WALK, JUMP, PARRY, ATTACK])
+        self.assertEqual(STATES, [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE])
 
     def test_starts_idle(self):
         self.assertEqual(PlayerStateMachine().state, IDLE)

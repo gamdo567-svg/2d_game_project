@@ -12,7 +12,7 @@ from enum import Enum, auto
 class Action(Enum):
     """게임에서 사용하는 입력 행동.
 
-    회피 등은 해당 기능을 개발할 때 추가한다.
+    새 행동은 해당 기능을 개발할 때 추가한다.
     """
 
     QUIT = auto()  # 게임 종료 (현재 ESC)
@@ -23,6 +23,7 @@ class Action(Enum):
     JUMP = auto()
     PARRY = auto()
     ATTACK = auto()  # 검 공격 (현재 마우스 왼쪽 클릭)
+    DODGE = auto()  # 회피 (현재 Q)
 
 
 # 이동 행동 -> 칸 좌표 방향 (dx, dy). dy 는 위쪽이 +1.

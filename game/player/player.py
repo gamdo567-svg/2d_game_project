@@ -14,11 +14,11 @@ from __future__ import annotations
 from game import config
 from game.input.input_state import Action, InputState
 from game.combat.strike import Strike
-from game.player.actions import Jump, Parry, SwordCombo
+from game.player.actions import Dodge, Jump, Parry, SwordCombo
 from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
-from game.player.state_machine import ATTACK, FREE_STATES, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
+from game.player.state_machine import ATTACK, DODGE, FREE_STATES, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
 from game.world.grid import Grid
 
 
@@ -54,7 +54,9 @@ def weapon_sheet_path(weapon: str) -> str:
 
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
 # 전용 그림이 아직 없는 상태 -> 대신 쓸 그림 상태. 패링은 공격 모션과 함께 만들 때까지 서 있는 그림(첫 프레임).
-SPRITE_FALLBACK = {PARRY: IDLE}
+SPRITE_FALLBACK = {PARRY: IDLE, DODGE: WALK}
+# 대신 쓰는 그림을 자기 애니메이션 프레임으로 재생하는 상태 (나머지는 첫 프레임에 멈춤)
+ANIMATED_FALLBACK = {DODGE}
 # 좌우가 비대칭인 상태: 왼쪽을 볼 때 측면을 뒤집지 않고 전용 그림(side_left)을 쓴다.
 # 점프는 오른손으로 후드를 잡으므로 뒤집으면 왼손이 되어 버린다.
 LEFT_SHEET_STATES = {JUMP}
@@ -74,13 +76,16 @@ class Player:
             config.PLAYER_ATTACK_DURATIONS, config.PLAYER_ATTACK_FRAME_ENDS,
             config.PLAYER_ATTACK_COMBO_WINDOW, config.PLAYER_ATTACK_COOLDOWN,
         )
-        # 상태별 애니메이션. 점프·패링은 행동 진행도에 맞춰 프레임을 고른다.
-        self.animations: dict[str, LoopAnimation | Jump | Parry | SwordCombo] = {
+        self.dodge = Dodge(config.PLAYER_DODGE_DURATION, config.PLAYER_WALK_FRAMES)
+        self.dodge_cooldown_left = 0.0  # 회피를 다시 쓸 수 있을 때까지 남은 시간
+        # 상태별 애니메이션. 점프·패링·회피는 행동 진행도에 맞춰 프레임을 고른다.
+        self.animations: dict[str, LoopAnimation | Jump | Parry | SwordCombo | Dodge] = {
             IDLE: LoopAnimation(config.PLAYER_IDLE_FRAMES, config.PLAYER_IDLE_FRAME_DURATION),
             WALK: LoopAnimation(config.PLAYER_WALK_FRAMES, config.PLAYER_WALK_FRAME_DURATION),
             JUMP: self.jump,
             PARRY: self.parry,
             ATTACK: self.combo,
+            DODGE: self.dodge,
         }
         self._jump_requested = False  # 이동 중에 누른 점프: 한 칸 이동을 마치면 시작
         self.fsm = PlayerStateMachine(on_state_changed=self._on_state_changed)
@@ -95,17 +100,23 @@ class Player:
         return self.mover.row
 
     @property
+    def is_invincible(self) -> bool:
+        """무적: 회피 중 내내 (몬스터를 만들면 피해 판정에서 확인한다)."""
+        return self.state == DODGE
+
+    @property
     def state(self) -> str:
         return self.fsm.state
 
     @property
-    def animation(self) -> LoopAnimation | Jump | Parry | SwordCombo:
+    def animation(self) -> LoopAnimation | Jump | Parry | SwordCombo | Dodge:
         return self.animations[self.state]
 
     # ----- 로직 -----
     def update(self, dt: float, input_state: InputState) -> None:
         self.strikes: list[Strike] = []  # 이번 프레임에 낸 공격 (장면이 판정한다)
         self.combo.tick(dt)
+        self.dodge_cooldown_left = max(0.0, self.dodge_cooldown_left - dt)
         if self.state in FREE_STATES:
             if input_state.was_pressed(Action.ATTACK) and self.combo.can_start:
                 self._jump_requested = False
@@ -115,6 +126,8 @@ class Player:
                 self._jump_requested = False
                 self.combo.cancel_window()
                 self.fsm.trigger("parry")
+            elif input_state.was_pressed(Action.DODGE) and self.dodge_cooldown_left <= 0.0:
+                self._start_dodge(input_state)
             elif input_state.was_pressed(Action.JUMP):
                 self._jump_requested = True
                 self.combo.cancel_window()
@@ -144,7 +157,22 @@ class Player:
             self.fsm.trigger("end_parry")
         elif self.state == ATTACK and self.combo.finished:
             self.fsm.trigger("end_attack")
+        elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
+            self.fsm.trigger("end_dodge")
+            self.dodge_cooldown_left = config.PLAYER_DODGE_COOLDOWN
         self._emit_strike()
+
+    def _start_dodge(self, input_state: InputState) -> None:
+        """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음)."""
+        dx, dy = input_state.move_direction()
+        if dx == 0 and dy == 0:
+            dx, dy = self.facing.value
+        if self.mover.dash(dx, dy, config.PLAYER_DODGE_DISTANCE, config.PLAYER_DODGE_DURATION) == 0:
+            return
+        self._jump_requested = False
+        self.combo.cancel_window()
+        self.facing = facing_for_direction(dx, dy, self.facing)
+        self.fsm.trigger("dodge")
 
     def _emit_strike(self) -> None:
         """지금 타가 판정 프레임에 들어섰으면 공격을 한 번 낸다 (한 타에 한 번)."""
@@ -186,7 +214,8 @@ class Player:
         sprite_state = SPRITE_FALLBACK.get(self.state, self.state)
         if self.facing == Facing.LEFT and sprite_state in LEFT_SHEET_STATES:
             view, flip = "side_left", False
-        frame_index = 0 if sprite_state != self.state else self.animation.frame_index
+        animated = sprite_state == self.state or self.state in ANIMATED_FALLBACK
+        frame_index = self.animation.frame_index if animated else 0
         renderer.draw_sprite_frame(
             sprite_sheet_path(sprite_state, view),
             frame_index,

@@ -74,7 +74,7 @@ class FieldScene:
             draw(renderer, grid)
 
         top = config.SCREEN_HEIGHT  # 글자는 카메라와 무관하게 화면에 고정
-        renderer.draw_text(16, top - 24, "WASD / 방향키: 이동    클릭: 공격(연타 3단 콤보)    Space: 점프    F: 패링    ESC: 종료", config.COLOR_TEXT_DIM)
+        renderer.draw_text(16, top - 24, "WASD / 방향키: 이동    클릭: 공격(연타 3단 콤보)    Space: 점프    F: 패링    Q: 회피    ESC: 종료", config.COLOR_TEXT_DIM)
         player = self.player
         info = f"칸 ({player.col}, {player.row}) | 상태 {player.state} | 방향 {player.facing.name}"
         renderer.draw_text(16, top - 50, info, config.COLOR_TEXT_DIM)
