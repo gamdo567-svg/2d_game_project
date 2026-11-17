@@ -66,7 +66,9 @@ RAISE = {'front3': 6}
 # 패링 (2026-11-17 사용자 요청: 측면 먼저): 방향 → (이름, 시트, 행). 공격과 같은 칸(96×64)·칼 분리.
 VIEW_PARRY = {'side': ('parry_side', 'parry_side_sheet_68.png', 0),
               # 정면은 측면을 기준으로 다시 그린 C안 (2026-11-18, build_parry_front.py 가 시트를 만든다)
-              'front': ('parry_front', 'parry_front_sheet_68.png', 0)}
+              'front': ('parry_front', 'parry_front_sheet_68.png', 0),
+              # 후면은 핵심 자세를 ChatGPT 로 그림 (2026-11-18, build_parry_back.py 가 시트를 만든다)
+              'back': ('parry_back', 'parry_back_sheet_68.png', 0)}
 
 
 def export_parry():
