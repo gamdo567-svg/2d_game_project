@@ -21,7 +21,8 @@
 - **브랜치**: `claude/player-parry` (`claude/golem-stomp-vfx` 위에서 시작, 그 브랜치가 아직 푸시 전이라 푸시 보류)
 - **한 일**: PixelLab 패링 측면 5장(칼 분리)과 노란 불꽃 이펙트, 패링 성공 시 재생 (D-037).
 - **현재 상태**: 테스트 전체 통과. 그리기는 PIL 캡처로 확인, 실제 창 확인 못 함.
-- **다음 작업**: 정면·후면 패링 그림 (막기 자세 state 는 4방향 이미 있음: `remake_raw/parry_guard_<방향>.png`).
+- **이어서 (2026-11-18)**: 정면 패링을 측면 기준으로 다시 그려 넣음 (`Parry Ready` → `Parry Guard`, 몸 색을 게임 색으로 맞춤).
+- **다음 작업**: 후면 패링 그림 (PixelLab 이 고개를 돌려 두 번 실패. 막기·당김 자세 state 는 4방향 있음: `remake_raw/parry_guard_<방향>.png`, `parry_ready_<방향>.png`).
 
 ---
 
