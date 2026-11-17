@@ -4,9 +4,9 @@
     가까우면(GOLEM_NEAR) ① 두 손 내려찍기·② 앞차기·③ 한 발 내려찍기 중 하나, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감,
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
-    ① 앞 3×3, 패링 가능  ② 앞 3×5, 패링 불가·회피 무적 가능  ③ 중심 6×6, 점프로만 피함
+    ① 앞 3×3, 패링 가능  ② 앞 5×5, 패링 불가·회피 무적 가능  ③ 중심 7×7, 점프로만 피함
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
-- 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge).
+- 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
 게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 임시 도형으로만 한다.
 """
@@ -46,6 +46,18 @@ def warning_kind(pattern: str) -> str:
 Tile = tuple[int, int]
 
 
+def _spread(low: int, high: int, total: int, toward: int) -> tuple[int, int]:
+    """[low, high] 를 total 칸으로 넓힐 때 양쪽에 붙일 칸 수. 똑같이 나누고, 남는 1칸은 toward(주인공) 쪽에."""
+    extra = total - (high - low + 1)
+    before = after = extra // 2
+    if extra % 2:
+        if toward < low:
+            before += 1
+        else:
+            after += 1
+    return before, after
+
+
 def _lerp_color(a, b, t):
     return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
@@ -64,7 +76,7 @@ class Golem:
     def _respawn(self) -> None:
         self.col, self.row = self.spawn
         self.hp = config.GOLEM_MAX_HP
-        self.posture = PostureGauge()
+        self.posture = PostureGauge(decays=False)  # 몬스터형: 패링 게이지가 저절로 줄지 않음
         self.state = REST
         self.state_left = config.GOLEM_REST_TIME
         self.pattern: str | None = None
@@ -236,27 +248,23 @@ class Golem:
             spec = PATTERNS[pattern]
             self.target_tiles = self.front_area(spec["width"], spec["depth"], player_tile)
         elif pattern == STOMP:
-            self.target_tiles = self.stomp_area()
+            self.target_tiles = self.stomp_area(player_tile)
         else:
             self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
             self.target_tiles = self.laser_tiles()
 
     def front_area(self, width: int, depth: int, player_tile: Tile) -> frozenset[Tile]:
-        """바라보는 쪽 앞의 (가로 width × 앞으로 depth) 칸. 몸보다 넓은 줄은 주인공이 있는 쪽으로 늘린다."""
+        """바라보는 쪽 앞의 (가로 width × 앞으로 depth) 칸. 몸(2칸)보다 넓은 줄은 양옆으로 똑같이 늘리고,
+        남는 한 줄은 주인공이 있는 쪽으로 늘린다 (예: 가로 3 = 몸 2 + 주인공 쪽 1, 가로 5 = 양옆 1 + 주인공 쪽 1)."""
         fx, fy = self.facing
         if fx != 0:
-            lanes = list(range(self.row, self.row + self.size))
-            toward = player_tile[1]
+            first, toward = self.row, player_tile[1]
         else:
-            lanes = list(range(self.col, self.col + self.size))
-            toward = player_tile[0]
-        while len(lanes) < width:
-            if toward < lanes[0] or (toward <= lanes[-1] and len(lanes) % 2 == 0):
-                lanes.insert(0, lanes[0] - 1)
-            else:
-                lanes.append(lanes[-1] + 1)
+            first, toward = self.col, player_tile[0]
+        before, after = _spread(first, first + self.size - 1, width, toward)
+        lanes = range(first - before, first + self.size + after)
         tiles = set()
-        for lane in lanes[:width]:
+        for lane in lanes:
             for k in range(depth):  # 줄마다 벽을 만나면 그 너머는 맞지 않는다
                 if fx > 0:
                     tile = (self.col + self.size + k, lane)
@@ -271,12 +279,13 @@ class Golem:
                 tiles.add(tile)
         return frozenset(tiles)
 
-    def stomp_area(self) -> frozenset[Tile]:
-        """몸을 가운데에 둔 정사각형 (GOLEM_STOMP size × size)."""
+    def stomp_area(self, player_tile: Tile) -> frozenset[Tile]:
+        """몸을 가운데에 둔 정사각형 (GOLEM_STOMP size × size). 홀수라 남는 한 줄은 주인공 쪽으로 붙인다. 벽 칸 제외."""
         n = config.GOLEM_STOMP["size"]
-        m = (n - self.size) // 2
-        return frozenset((c, r) for c in range(self.col - m, self.col - m + n)
-                         for r in range(self.row - m, self.row - m + n) if not self.is_wall(c, r))
+        left, right = _spread(self.col, self.col + self.size - 1, n, player_tile[0])
+        down, up = _spread(self.row, self.row + self.size - 1, n, player_tile[1])
+        return frozenset((c, r) for c in range(self.col - left, self.col + self.size + right)
+                         for r in range(self.row - down, self.row + self.size + up) if not self.is_wall(c, r))
 
     def _follow_aim(self, dt: float, player_tile: Tile) -> None:
         """레이저 조준점이 발사 순간까지 주인공을 그대로 따라온다 (걸어서는 못 피하고 회피 무적으로 피한다)."""
