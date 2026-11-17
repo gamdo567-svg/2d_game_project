@@ -61,13 +61,19 @@ PLAYER_WALK_FRAME_DURATION = 0.1
 # ----- 플레이어 점프 / 패링 -----
 # [임시값] 2026-11-10 사용자 승인.
 # 패링은 애니메이션 없이 서 있는 그림을 쓴다 (공격 모션을 만들 때 함께 제작).
-PLAYER_JUMP_DURATION = 0.6  # 초
+PLAYER_JUMP_DURATION = 0.7  # 초 (2026-11-17 착지 두 장을 넣으며 0.6 → 0.7, 공중 시간은 거의 그대로)
 PLAYER_JUMP_HEIGHT = 1.0  # 칸. 그림만 띄우며 논리적 칸 위치는 그대로 (2026-11-10 높게 뛰도록 0.5 -> 1.0)
 PLAYER_PARRY_DURATION = 0.4  # 초. 이 동안 이동 불가
 PLAYER_PARRY_WINDOW = 0.15  # 초. 누른 순간부터 막기 판정
-# 점프 5프레임이 끝나는 진행도: 웅크림 ~15%, 도약 ~30%, 무릎을 상반신까지 당김 ~68%(최고점 포함),
-# 다리 펴며 착지 준비 ~85%, 착지 ~100%. 웅크림이 끝나면 떠오르고 착지 프레임이 시작될 때 땅에 닿는다.
-PLAYER_JUMP_FRAME_ENDS = (0.15, 0.3, 0.68, 0.85, 1.0)
+# 점프 그림: 2026-11-17 PixelLab 으로 다시 그림 (사용자 결정: 정면 v7, 측면 v19, 후면 v14, 후드를 잡지 않음).
+# 10프레임이 끝나는 진행도: 웅크림 → 깊게 웅크림 → 도약 → 공중 ×4 → 다리 폄 → 착지(깊게 웅크림) → 일어섬.
+# 처음 PLAYER_JUMP_TAKEOFF_FRAMES 장이 끝나면 떠오르고, 마지막 PLAYER_JUMP_LANDING_FRAMES 장이 시작될 때 땅에 닿는다.
+PLAYER_JUMP_FRAME_ENDS = (0.07, 0.15, 0.26, 0.37, 0.47, 0.57, 0.66, 0.76, 0.88, 1.0)
+PLAYER_JUMP_TAKEOFF_FRAMES = 2
+PLAYER_JUMP_LANDING_FRAMES = 2
+# 점프 그림은 펄럭이는 망토가 잘리지 않게 가로 48, 공중에서 머리가 잘리지 않게 세로 56
+PLAYER_JUMP_SPRITE_WIDTH = 48
+PLAYER_JUMP_SPRITE_HEIGHT = 56  # 공중에서 머리가 잘리지 않게 위로 8줄 여유 (발 아래 기준으로 그림)
 PLAYER_JUMP_FRAMES = len(PLAYER_JUMP_FRAME_ENDS)
 # ----- 입력 기억 (조작감) -----
 # 공격·점프·패링·회피를 지금 할 수 없는 순간(공격이 끝나기 직전, 경직, 착지 직전 등)에 눌러도

@@ -236,9 +236,9 @@ class JumpParryTest(unittest.TestCase):
         tile = config.RENDER_TILE_SIZE
         self.assertGreater(body_args[5], 5 * tile + tile * config.PLAYER_JUMP_HEIGHT * 0.8)
 
-    def test_jump_facing_left_uses_left_sheet(self):
-        # 점프는 오른손으로 후드를 잡아 좌우 비대칭: 왼쪽은 뒤집지 않고 전용 그림
-        self.assertIn(JUMP, LEFT_SHEET_STATES)
+    def test_jump_facing_left_flips_side_sheet(self):
+        # 2026-11-17 점프 그림은 후드를 잡지 않아 좌우 대칭: 왼쪽은 측면 그림을 뒤집는다
+        self.assertNotIn(JUMP, LEFT_SHEET_STATES)
         player = make_player(col=0)
         inp = InputState()
         inp.press(Action.MOVE_LEFT)  # 맵 끝: 움직이지 않고 왼쪽을 봄
@@ -251,8 +251,8 @@ class JumpParryTest(unittest.TestCase):
         renderer = _RecordingRenderer()
         player.draw(renderer)
         body = renderer.calls[-1]
-        self.assertEqual(body[1][0], sprite_sheet_path(JUMP, "side_left"))
-        self.assertFalse(body[2]["flip_horizontal"])
+        self.assertEqual(body[1][0], sprite_sheet_path(JUMP, "side"))
+        self.assertTrue(body[2]["flip_horizontal"])
 
     def test_walk_facing_left_still_flips_side(self):
         player = make_player()

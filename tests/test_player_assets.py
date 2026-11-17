@@ -68,8 +68,9 @@ FRAMES = {
     WALK: config.PLAYER_WALK_FRAMES,
     JUMP: config.PLAYER_JUMP_FRAMES,
 }
-# 공중 프레임(도약·최고점·다리 펴기): 발이 바닥 줄에 닿지 않아도 된다 (2026-11-17 PixelLab 점프)
-AIRBORNE_FRAMES = {(JUMP, 1), (JUMP, 2), (JUMP, 3)}
+# 공중 프레임(도약 ~ 내려옴): 발이 바닥 줄에 닿지 않아도 된다 (2026-11-17 PixelLab 점프)
+AIRBORNE_FRAMES = {(JUMP, i) for i in range(config.PLAYER_JUMP_TAKEOFF_FRAMES,
+                                             config.PLAYER_JUMP_FRAMES - config.PLAYER_JUMP_LANDING_FRAMES)}
 HEAD_ROWS = 17             # 후드·얼굴·턱
 LEG_ROWS = 8
 
@@ -79,9 +80,17 @@ def views_of(state):
     return VIEWS + (("side_left",) if state in LEFT_SHEET_STATES else ())
 
 
+def frame_width(state):
+    return config.PLAYER_JUMP_SPRITE_WIDTH if state == JUMP else config.PLAYER_SPRITE_WIDTH
+
+
+def frame_height(state):
+    return config.PLAYER_JUMP_SPRITE_HEIGHT if state == JUMP else config.PLAYER_SPRITE_HEIGHT
+
+
 def frames_of(state, view):
     """시트를 프레임별 [y][x] 픽셀 목록으로 나눈다."""
-    w = config.PLAYER_SPRITE_WIDTH
+    w = frame_width(state)
     pixels = read_rgba_pixels(sprite_sheet_path(state, view))
     count = len(pixels[0]) // w
     return [[row[i * w:(i + 1) * w] for row in pixels] for i in range(count)]
@@ -93,20 +102,20 @@ class PlayerAssetTest(unittest.TestCase):
         # 상태를 추가하면 FRAMES 도 갱신 (전용 그림이 없는 상태는 SPRITE_FALLBACK, 공격은 따로 검사)
         self.assertEqual(set(frames) | set(SPRITE_FALLBACK) | {ATTACK}, set(STATES))
         for state in FRAMES:
-            expected_width = config.PLAYER_SPRITE_WIDTH * frames[state]
+            expected_width = frame_width(state) * frames[state]
             for view in views_of(state):
                 path = sprite_sheet_path(state, view)
                 with self.subTest(path=path):
                     signature, width, height, color_type = read_png_header(path)
                     self.assertEqual(signature, PNG_SIGNATURE)
-                    self.assertEqual((width, height), (expected_width, config.PLAYER_SPRITE_HEIGHT))
+                    self.assertEqual((width, height), (expected_width, frame_height(state)))
                     self.assertEqual(color_type, COLOR_TYPE_RGBA)  # 투명 배경
 
     def test_frames_are_clean_and_aligned(self):
         # 발이 맨 아래 줄에 닿아야 idle <-> walk 전환과 프레임 전환 때 위아래로 튀지 않는다.
         # 초록 배경(#00FF00) 제거 후 반투명 경계나 초록 잔여 픽셀이 남으면 안 된다.
-        h = config.PLAYER_SPRITE_HEIGHT
         for state in FRAMES:
+            h = frame_height(state)
             for view in views_of(state):
                 for index, frame in enumerate(frames_of(state, view)):
                     with self.subTest(state=state, view=view, frame=index):

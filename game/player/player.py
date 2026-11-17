@@ -63,8 +63,8 @@ SPRITE_FALLBACK = {PARRY: IDLE, DODGE: WALK, HURT: IDLE}
 # 대신 쓰는 그림을 자기 애니메이션 프레임으로 재생하는 상태 (나머지는 첫 프레임에 멈춤)
 ANIMATED_FALLBACK = {DODGE}
 # 좌우가 비대칭인 상태: 왼쪽을 볼 때 측면을 뒤집지 않고 전용 그림(side_left)을 쓴다.
-# 점프는 오른손으로 후드를 잡으므로 뒤집으면 왼손이 되어 버린다.
-LEFT_SHEET_STATES = {JUMP}
+# (예전 점프는 오른손으로 후드를 잡아 썼으나, 2026-11-17 점프 그림은 후드를 잡지 않아 지금은 없음)
+LEFT_SHEET_STATES: set[str] = set()
 
 
 class Player:
@@ -75,7 +75,8 @@ class Player:
         self._last_strike: tuple[int, int] | None = None
         self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED, can_enter=can_enter)
         self.facing = Facing.DOWN
-        self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAME_ENDS)
+        self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAME_ENDS,
+                         config.PLAYER_JUMP_LANDING_FRAMES, config.PLAYER_JUMP_TAKEOFF_FRAMES)
         self.parry = Parry(config.PLAYER_PARRY_DURATION, config.PLAYER_PARRY_WINDOW, frame_count=1)
         self.combo = SwordCombo(
             config.PLAYER_ATTACK_DURATIONS, config.PLAYER_ATTACK_FRAME_ENDS,
@@ -303,15 +304,19 @@ class Player:
             view, flip = "side_left", False
         animated = sprite_state == self.state or self.state in ANIMATED_FALLBACK
         frame_index = self.animation.frame_index if animated else 0
+        if sprite_state == JUMP:
+            width, height = config.PLAYER_JUMP_SPRITE_WIDTH, config.PLAYER_JUMP_SPRITE_HEIGHT
+        else:
+            width, height = config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT
         renderer.draw_sprite_frame(
             sprite_sheet_path(sprite_state, view),
             frame_index,
-            config.PLAYER_SPRITE_WIDTH,
-            config.PLAYER_SPRITE_HEIGHT,
+            width,
+            height,
             center_x,
             bottom + lift,
-            config.PLAYER_RENDER_WIDTH,
-            config.PLAYER_RENDER_HEIGHT,
+            width * config.RENDER_SCALE,
+            height * config.RENDER_SCALE,
             flip_horizontal=flip,
         )
 

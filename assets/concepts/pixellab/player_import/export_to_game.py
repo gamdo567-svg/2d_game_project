@@ -4,7 +4,7 @@
   칼 위치표(손 x, 손 y, 각도, 몸 뒤)는 config.PLAYER_ATTACK_SWORD 에 붙여 넣을 값으로 출력한다.
 - 걷기: 게임은 예전 걷기 그림을 쓴다 (2026-11-17 사용자 결정). export_walk() 는 PixelLab 걷기 템플릿을 시험할 때만 쓰며
   main() 에서 부르지 않는다.
-- 점프 4방향: PixelLab 8프레임 중 방향마다 5장(웅크림, 도약, 최고점, 다리 펴기, 착지)을 골라 32×48 로 자른다.
+- 점프 3방향(정면·측면·후면): PixelLab 점프에서 재생 순서대로 10장을 48×56 으로 자른다. 왼쪽은 게임이 측면을 뒤집는다.
   높이는 게임 코드가 띄우므로, 그림 안에서 떠오른 만큼은 머리 높이를 기준 자세에 맞춰 줄인다.
 Pillow 필요 (게임 실행에는 필요 없음).
 사용: 저장소 루트에서 `python assets/concepts/pixellab/player_import/export_to_game.py`
@@ -25,13 +25,21 @@ SPRITE_W, SPRITE_H = 32, 48
 ATTACK_W, ATTACK_H = 96, 64
 ATTACK_FOOT_ROW = ATTACK_H - 8 - 1  # config.PLAYER_ATTACK_FOOT_MARGIN = 8
 
-# 점프: 방향별로 쓸 PixelLab 프레임 (1~8): 웅크림, 도약, 최고점, 다리 펴기, 착지
-JUMP_PICK = {
-    'front': (0, [1, 2, 4, 5, 6]),      # (시트 행, 프레임) south
-    'side': (1, [1, 2, 4, 6, 7]),       # east
-    'back': (2, [2, 3, 5, 7, 8]),       # north
-    'side_left': (3, [1, 2, 4, 7, 8]),  # west (왼손·오른손이 다르므로 뒤집지 않은 왼쪽 전용 그림)
+# 점프: 방향별 PixelLab 원본과 쓰는 순서 (2026-11-17 사용자 결정, 여러 번 다시 그린 끝에 확정).
+# 정면 = jump_v7 정면, 측면 = jump_v19 (측면 전체를 한 번에 그림), 후면 = jump_v14 후면.
+# 왼쪽은 측면을 좌우 반전한다 (후드를 잡지 않아 좌우 대칭). 그림 픽셀은 고치지 않는다.
+# 재생 순서 10장: 웅크림, 깊게 웅크림, 도약, 공중 ×4, 다리 폄, 착지(깊게 웅크림), 일어섬.
+# 정면·후면은 착지 그림이 없어 도약 전 웅크림 그림(2 → 1)을 거꾸로 쓴다.
+# 측면은 정면과 같은 순간에 뜨고 내리도록 프레임을 골랐다 (3번 = 땅 위 펴기는 건너뜀, 7번을 한 번 더).
+JUMP_SOURCES = {
+    'front': ('jump_v7_sheet_68.png', 0, [1, 2, 3, 4, 5, 6, 7, 8, 2, 1]),
+    'side': ('jump_v19_side_full_sheet_68.png', 0, [1, 2, 4, 5, 6, 7, 7, 8, 10, 11]),
+    'back': ('jump_v14_side_back_sheet_68.png', 1, [1, 2, 3, 4, 5, 6, 7, 8, 2, 1]),
 }
+# 높이 기준: 공중 프레임은 이 방향의 머리를 기준 자세 높이까지 내린 만큼 모든 방향을 똑같이 내린다
+# (떠오르는 높이는 게임 코드가 그린다). 측면은 다리를 덜 접어 낮아 보여서, 공중에서는 몸 중심을 정면에 맞춘다.
+JUMP_HEIGHT_REF = 'front'
+JUMP_LEVEL_TO_REF = {'side'}
 WALK_ROWS = {'front': 0, 'side': 1, 'back': 2}  # south, east, north (왼쪽은 측면을 뒤집는다)
 
 
@@ -100,20 +108,95 @@ def export_walk():
         out.save(os.path.join(OUT, 'walk', f'{view}.png'))
 
 
-def export_jump():
-    sheet = Image.open(os.path.join(b.RAW, 'jump_sheet_68.png')).convert('RGBA')
-    for view, (row, picks) in JUMP_PICK.items():
-        cells = [sheet.crop((c * CELL, row * CELL, (c + 1) * CELL, (row + 1) * CELL)) for c in range(9)]
-        cx, foot, top = ref_anchor(cells[0])
-        left, bottom = cx - SPRITE_W // 2, foot + 1
-        out = Image.new('RGBA', (SPRITE_W * len(picks), SPRITE_H), (0, 0, 0, 0))
+JUMP_W = 48  # 점프 그림은 펄럭이는 망토가 잘리지 않게 가로 48 (config.PLAYER_JUMP_SPRITE_WIDTH)
+JUMP_H = 56  # 공중에서 머리가 잘리지 않게 세로 56 (config.PLAYER_JUMP_SPRITE_HEIGHT)
+
+
+def feet_center(frame):
+    """발(맨 아래 8줄의 어두운 픽셀)의 가로 가운데. 망토 끝(밝은 갈색)은 빼고 다리·부츠만 본다."""
+    x0, y0, x1, y1 = frame.getchannel('A').getbbox()
+    xs = [x for y in range(max(y0, y1 - 8), y1) for x in range(x0, x1)
+          if frame.getpixel((x, y))[3] and max(frame.getpixel((x, y))[:3]) < 80]
+    return round(sum(xs) / len(xs)) if xs else (x0 + x1) // 2
+
+
+GLOVE = (0x5c, 0x37, 0x36, 255)  # 서 있는 그림의 장갑(어두운 가죽) 색
+GLOVE_LIGHT = (0x62, 0x3d, 0x3b, 255)
+
+
+def is_skin(c):
+    return c[3] and c[0] >= 140 and c[0] > c[1] > c[2]
+
+
+def glove_hands(frame):
+    """맨손(피부색)을 장갑 색으로. 얼굴(가장 위에 있는 피부 덩어리)은 그대로 둔다.
+
+    PixelLab 점프가 장갑 낀 손을 맨손으로 그려서 (2026-11-17 사용자 지적).
+    """
+    frame = frame.copy()
+    px = frame.load()
+    skin = [(x, y) for y in range(frame.height) for x in range(frame.width) if is_skin(px[x, y])]
+    comps = b.components(skin)
+    if not comps:
+        return frame
+    face = min(comps, key=lambda comp: min(y for _, y in comp))
+    for comp in comps:
+        if comp is face:
+            continue
+        for p in comp:
+            px[p] = GLOVE_LIGHT if px[p][0] >= 180 else GLOVE
+    return frame
+
+
+def _cells(sheet_name, row):
+    sheet = Image.open(os.path.join(b.RAW, sheet_name)).convert('RGBA')
+    return [sheet.crop((c * CELL, row * CELL, (c + 1) * CELL, (row + 1) * CELL)) for c in range(sheet.width // CELL)]
+
+
+def _bbox(frame):
+    return frame.getchannel('A').getbbox()
+
+
+def jump_frames():
+    """방향별 점프 그림 (48×56). {view: [Image, ...]}
+
+    서 있는 기준 그림(0번)의 발 아래 가운데에 맞춰 모든 프레임을 같은 자리에서 자른다 (그림 속 위치 그대로).
+    공중 프레임의 위아래 위치는 JUMP_HEIGHT_REF 방향 기준으로 모든 방향을 똑같이 옮기고,
+    JUMP_LEVEL_TO_REF 방향은 몸 중심 높이를 기준 방향에 맞춘다.
+    """
+    ref_sheet, ref_row, ref_picks = JUMP_SOURCES[JUMP_HEIGHT_REF]
+    ref_cells = _cells(ref_sheet, ref_row)
+    _, ref_top, _, _ = _bbox(ref_cells[0])
+    ref_foot = _bbox(ref_cells[0])[3] - 1
+    lifts, centers = [], []
+    for c in ref_picks:
+        _, y0, _, y1 = _bbox(ref_cells[c])
+        airborne = y1 - 1 < ref_foot
+        lifts.append(max(0, ref_top - y0) if airborne else 0)
+        centers.append(((y0 + y1) / 2, airborne))
+    result = {}
+    for view, (sheet_name, row, picks) in JUMP_SOURCES.items():
+        cells = _cells(sheet_name, row)
+        cx, foot, _ = ref_anchor(cells[0])
+        left, bottom = cx - JUMP_W // 2, foot + 1
+        result[view] = []
         for i, c in enumerate(picks):
             f = cells[c]
-            _, y0, _, y1 = f.getchannel('A').getbbox()
-            # 땅에서 뜬 그림은 머리를 기준 자세 높이까지만 (떠오르는 높이는 게임 코드가 그린다)
-            lift = max(0, top - y0) if y1 - 1 < foot else 0
-            out.alpha_composite(f.crop((left, bottom - SPRITE_H - lift, left + SPRITE_W, bottom - lift)),
-                                (i * SPRITE_W, 0))
+            _, y0, _, y1 = _bbox(f)
+            shift = lifts[i]  # 아래로 (+)
+            ref_center, ref_air = centers[i]
+            if view in JUMP_LEVEL_TO_REF and (ref_air or y1 - 1 < foot):
+                shift -= round((y0 + y1) / 2 - ref_center)  # 몸 중심을 기준 방향에 맞춤 (위로 -)
+            top_row = bottom - JUMP_H - shift
+            result[view].append(f.crop((left, top_row, left + JUMP_W, top_row + JUMP_H)))
+    return result
+
+
+def export_jump():
+    for view, frames in jump_frames().items():
+        out = Image.new('RGBA', (JUMP_W * len(frames), JUMP_H), (0, 0, 0, 0))
+        for i, f in enumerate(frames):
+            out.alpha_composite(f, (i * JUMP_W, 0))
         out.save(os.path.join(OUT, 'jump', f'{view}.png'))
 
 

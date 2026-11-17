@@ -18,6 +18,27 @@ class JumpTest(unittest.TestCase):
         self.assertTrue(self.jump.finished)
         self.assertEqual(self.jump.height, 0.0)
 
+    def test_landing_frames_touch_ground_earlier(self):
+        # 마지막 두 장(착지·일어섬)이 땅 위 프레임이면 끝에서 두 번째 장이 시작될 때 땅에 닿는다
+        jump = Jump(duration=1.0, max_height=1.0, frame_ends=(0.2, 0.4, 0.6, 0.8, 1.0), landing_frames=2)
+        jump.update(0.59)
+        self.assertGreater(jump.height, 0.0)
+        jump.update(0.02)
+        self.assertEqual(jump.height, 0.0)
+        self.assertEqual(jump.frame_index, 3)  # 착지 프레임
+        with self.assertRaises(ValueError):
+            Jump(duration=1.0, max_height=1.0, frame_ends=(0.5, 0.8, 1.0), landing_frames=2)
+
+    def test_takeoff_frames_stay_on_ground(self):
+        # 처음 두 장(살짝·깊게 웅크림)은 땅 위, 세 번째 장부터 떠오른다
+        jump = Jump(duration=1.0, max_height=1.0, frame_ends=(0.2, 0.4, 0.6, 0.8, 1.0), takeoff_frames=2)
+        jump.update(0.39)
+        self.assertEqual(jump.height, 0.0)
+        jump.update(0.02)
+        self.assertGreater(jump.height, 0.0)
+        with self.assertRaises(ValueError):
+            Jump(duration=1.0, max_height=1.0, frame_ends=(0.3, 0.6, 1.0), takeoff_frames=2, landing_frames=1)
+
     def test_frames_follow_progress(self):
         frames = []
         for _ in range(40):
