@@ -16,6 +16,19 @@
 
 ---
 
+## 2026-11-17 — 골렘 그림 적용 (Claude Code)
+
+- **브랜치**: `claude/golem-sprite` (`claude/golem` 위에서 시작)
+- **한 일**: PixelLab 골렘 그림(`golem_simple` 상하좌우 4장)을 `assets/images/golem/` 으로 옮겨 적용. 바라보는 방향 그림을 2배로,
+  발 밑을 2×2칸 바닥 가운데에 맞춤. 맞으면 깜빡임, 막대는 머리 위. 그림을 못 읽으면 임시 도형 (D-028).
+- **현재 상태**: 테스트 198개 통과, 스모크 실행 성공, 실제 창 캡처로 네 방향·예고·조준선·겹침·STUN 확인
+  (`assets/concepts/golem_sprite_ingame.png`). 직접 조작 확인은 안 함.
+- **다음 작업자가 알아야 할 것**: 새 방향 그림으로 바꾸면 `config.GOLEM_SPRITE_FOOT_MARGIN` 을 그림의 발 아래 투명 줄 수에 맞춰야 한다
+  (`tests/test_golem.py` 의 GolemSpriteTest 가 확인).
+- **남은 문제 / 다음 할 일**: 골렘 공격 애니메이션(사용자 제작 예정), 사람형 몬스터, 사망, 브랜치 정리.
+
+---
+
 ## 2026-11-17 — 골렘 조정·퍼펙트 회피·조작감 (Claude Code)
 
 - **브랜치**: `claude/golem` (같은 브랜치에 이어서)
