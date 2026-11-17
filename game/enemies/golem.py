@@ -1,16 +1,17 @@
 """골렘: 첫 일반 몬스터 (몬스터형: 패링당하거나 맞아도 경직 없음). 2026-11-17 사용자 결정, 수치는 임시값.
 
-- 2×2칸을 차지한다. 주인공이 멀면 천천히 다가오고, 거리에 따라 패턴을 고른다.
+- 3×3칸을 차지한다 (2026-11-17 사용자 요청으로 2×2 → 3×3). 주인공이 멀면 천천히 다가오고, 거리에 따라 패턴을 고른다.
     가까우면(GOLEM_NEAR) ① 두 손 내려찍기·② 앞차기·③ 한 발 내려찍기 중 하나, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감,
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 5, 패링 불가·회피 무적 가능  ③ 중심 8×8, 점프로만 피함
-    범위는 몸(2×2)을 기준으로 늘린다. 홀수 너비(①·② 3)는 남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
+    범위는 몸(3×3)을 기준으로 늘린다. ①·② 가로 3 은 몸 너비와 같아 대칭이고, 몸과 홀짝이 다른 너비(③ 8)는
+    남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
 게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 한다: 바라보는 방향(상하좌우)의
-그림(assets/images/golem, 원본 96×96 을 2배)을 발 밑이 2×2칸 바닥 가운데에 오게 그리고, 그림을 못 읽으면 부위별 임시 도형.
+그림(assets/images/golem, 원본 96×96 을 2배)을 발 밑이 몸(3×3칸) 바닥 가운데에 오게 그리고, 그림을 못 읽으면 부위별 임시 도형.
 """
 from __future__ import annotations
 
@@ -194,7 +195,7 @@ class Golem:
 
     # ----- 로직 -----
     def update(self, dt: float, player_tile: Tile, can_place: Callable[[int, int], bool]) -> None:
-        """can_place(col, row): 골렘의 왼쪽 아래 칸을 그 자리에 둘 수 있는지 (2×2 모두 비어 있는지)."""
+        """can_place(col, row): 골렘의 왼쪽 아래 칸을 그 자리에 둘 수 있는지 (3×3 모두 비어 있는지)."""
         self.attacks = []
         self.effects = []
         self.flash_left = max(0.0, self.flash_left - dt)
@@ -356,7 +357,7 @@ class Golem:
             self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
         self.attacks.append(EnemyAttack(tiles, spec["damage"], direction=self.facing, **PATTERN_RULES[self.pattern]))
         if self.pattern == STOMP:
-            # 발 구르기: 몸 가운데(2×2 바닥 가운데)에서 바닥이 갈라지는 이펙트 + 화면 흔들림
+            # 발 구르기: 몸 가운데(3×3 의 가운데)에서 바닥이 갈라지는 이펙트 + 화면 흔들림
             self.effects.append(SpriteEffect(config.GOLEM_STOMP_EFFECT, *self.center))
         self.state = RECOVER
         self.state_left = config.GOLEM_RECOVER_TIME
@@ -425,7 +426,7 @@ class Golem:
             renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
 
     def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
-        """방향별 그림을 발 밑이 2×2칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.
+        """방향별 그림을 발 밑이 몸(3×3칸) 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.
 
         ③ 발 구르기 예고·자세 되돌림 중에는 발 구르기 동작 그림, 한 칸 걸어가는 중에는 걷기 그림을 쓰고,
         그 그림을 못 읽으면 서 있는 그림을 쓴다.
@@ -454,7 +455,7 @@ class Golem:
 
     def _draw_anim(self, renderer, path: str, anim: dict, frame: int, cx: float, bottom: float,
                    k: float = 0.0) -> bool:
-        """동작 그림 한 장을 발 밑 가운데(foot)가 2×2칸 바닥 가운데에 오게 그린다. k 만큼 눌러 그린다 (착지 순간)."""
+        """동작 그림 한 장을 발 밑 가운데(foot)가 몸(3×3칸) 바닥 가운데에 오게 그린다. k 만큼 눌러 그린다 (착지 순간)."""
         s = config.RENDER_SCALE
         w, h = anim["frame_size"]
         fx, fy = anim["foot"]

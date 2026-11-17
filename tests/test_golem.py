@@ -63,32 +63,30 @@ class GolemAreaTest(unittest.TestCase):
     def setUp(self):
         self.golem = Golem(6, 4, open_room())
 
-    def test_occupies_two_by_two(self):
-        self.assertEqual(self.golem.tiles, {(6, 4), (7, 4), (6, 5), (7, 5)})
+    def test_occupies_three_by_three(self):
+        # 몸 3×3 (2026-11-17 사용자 요청, 2×2 는 홀수 너비 범위가 대칭이 안 맞음)
+        self.assertEqual(self.golem.tiles, {(c, r) for c in (6, 7, 8) for r in (4, 5, 6)})
         self.assertEqual(self.golem.distance_to((5, 4)), 1)
         self.assertEqual(self.golem.distance_to((2, 5)), 4)
 
     def test_front_area_toward_player(self):
         self.golem.facing = (-1, 0)
-        area = self.golem.front_area(3, 3, (5, 3))  # 주인공이 아래쪽 줄에 있으면 아래로 넓힘
-        self.assertEqual(area, {(c, r) for c in (3, 4, 5) for r in (3, 4, 5)})
-        area = self.golem.front_area(3, 3, (5, 4))  # 몸과 같은 줄이어도 남는 줄은 아래로 (위로 올라가 보이지 않게)
-        self.assertEqual(area, {(c, r) for c in (3, 4, 5) for r in (3, 4, 5)})
-        area = self.golem.front_area(3, 3, (5, 7))  # 주인공이 위쪽에 있을 때만 위로
-        self.assertEqual(area, {(c, r) for c in (3, 4, 5) for r in (4, 5, 6)})
+        # 가로 3 = 몸 너비와 같아 주인공 위치와 상관없이 대칭 (남는 줄 없음)
+        for player in ((5, 3), (5, 5), (5, 8)):
+            self.assertEqual(self.golem.front_area(3, 3, player), {(c, r) for c in (3, 4, 5) for r in (4, 5, 6)})
         self.golem.facing = (0, 1)
-        area = self.golem.front_area(3, 5, (8, 7))
-        self.assertEqual(area, {(c, r) for c in (6, 7, 8) for r in (6, 7, 8)})  # 위쪽 벽(9)에서 멈춤
-        # 가로 4 (앞차기): 몸 양옆 1줄씩, 대칭
+        area = self.golem.front_area(3, 5, (8, 8))
+        self.assertEqual(area, {(c, r) for c in (6, 7, 8) for r in (7, 8)})  # 위쪽 벽(9)에서 멈춤
+        # 가로 4: 남는 한 줄은 아래, 주인공이 몸보다 위에 있을 때만 위
         self.golem.facing = (-1, 0)
-        area = self.golem.front_area(4, 5, (2, 8))
-        self.assertEqual(area, {(c, r) for c in range(1, 6) for r in range(3, 7)})
+        self.assertEqual(self.golem.front_area(4, 5, (2, 5)), {(c, r) for c in range(1, 6) for r in range(3, 7)})
+        self.assertEqual(self.golem.front_area(4, 5, (2, 8)), {(c, r) for c in range(1, 6) for r in range(4, 8)})
 
     def test_stomp_area_eight_by_eight(self):
-        # 8×8: 몸 (6~7, 4~5) 둘레로 3칸씩, 주인공 위치와 상관없이 대칭 (아래쪽 0행·위쪽 9행은 벽이라 제외)
-        area = {(c, r) for c in range(3, 11) for r in range(1, 9)}
-        self.assertEqual(self.golem.stomp_area((1, 1)), area)
-        self.assertEqual(self.golem.stomp_area((12, 8)), area)
+        # 8×8: 몸 (6~8, 4~6) 이 3칸이라 둘레가 한쪽 2칸·다른 쪽 3칸. 남는 한 줄은 아래(왼쪽), 주인공이 위(오른쪽)이면 그쪽
+        # (아래쪽 0행·위쪽 9행은 벽이라 제외)
+        self.assertEqual(self.golem.stomp_area((1, 1)), {(c, r) for c in range(3, 11) for r in range(1, 9)})
+        self.assertEqual(self.golem.stomp_area((12, 8)), {(c, r) for c in range(4, 12) for r in range(2, 9)})
 
     def test_laser_explodes_four_by_four_at_aim(self):
         self.golem.aim = (3.0, 5.0)  # 조준점을 가운데로 한 4×4
@@ -400,7 +398,7 @@ class GolemSpriteTest(unittest.TestCase):
             self.assertTrue(self.golem.sprite_path().endswith(f"golem\{view}.png")
                             or self.golem.sprite_path().endswith(f"golem/{view}.png"))
 
-    def test_sprite_feet_on_bottom_center_of_two_by_two(self):
+    def test_sprite_feet_on_bottom_center_of_body(self):
         self.golem.facing = (0, -1)
         rec = self.Rec(True)
         self.golem.draw(rec, self.grid)
@@ -410,7 +408,7 @@ class GolemSpriteTest(unittest.TestCase):
         self.assertEqual(args[2:4], (size, size))
         self.assertEqual(args[6:8], (size * scale, size * scale))
         left, bottom, _, _ = self.grid.tile_to_pixel_rect(6, 4)
-        self.assertAlmostEqual(args[4], left + tile)  # 2×2칸 가로 가운데
+        self.assertAlmostEqual(args[4], left + tile * config.GOLEM_SIZE / 2)  # 몸(3×3) 가로 가운데
         self.assertAlmostEqual(args[5], bottom - config.GOLEM_SPRITE_FOOT_MARGIN["south"] * scale)  # 발 밑 = 칸 바닥
         shapes = [c for c in rec.calls if c[0] == "fill_rect"]
         self.assertEqual(len(shapes), 4)  # 임시 도형 없이 체력·게이지 막대만
