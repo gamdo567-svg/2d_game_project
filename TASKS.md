@@ -10,6 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
+| T-037 | 패링 모션(측면) + 패링 성공 노란 불꽃 이펙트 | 검토 중 | Claude Code | `claude/player-parry` | `claude/golem-stomp-vfx` 위에서 작업. PixelLab 5장, 칼 분리, 성공 시 불꽃 (D-037). 정면·후면 패링 그림 남음 |
 | T-036 | 골렘 두 손 내려찍기 4방향 동작 그림 + 충격 이펙트 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | PixelLab 핵심 자세로 들기·착지·일어섬, 충격 이펙트(금·돌 파편·먼지)·약한 흔들림 (D-036). 후면 일어섬 팔 문제 남음 |
 | T-035 | 골렘 몸 3×3 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 판정·이동 2×2 → 3×3, ①·② 대칭. 공격 범위 기준은 발 칸(바로 앞부터). ③ 7×7·이펙트 7×7 (D-035) |
 | T-033 | 골렘 걷기 4방향 동작 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | PixelLab skeleton-v3 걷기 8장, 걸은 거리로 그림 고르기(한 주기 2칸, 미끄러짐 없음) (D-034) |
