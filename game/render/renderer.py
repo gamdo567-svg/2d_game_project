@@ -102,8 +102,8 @@ class Renderer:
         draw_width: int,
         draw_height: int,
         flip_horizontal: bool = False,
-    ) -> None:
-        """가로로 이어 붙인 스프라이트 시트에서 frame_index 번째 프레임을 그린다.
+    ) -> bool:
+        """가로로 이어 붙인 스프라이트 시트에서 frame_index 번째 프레임을 그린다. 그림을 못 읽으면 False.
 
         (center_x, bottom) 은 그림의 아래 가운데 (발끝) 픽셀 좌표다.
         원본 프레임(frame_width × frame_height)을 draw_width × draw_height 로 확대해 그린다.
@@ -111,7 +111,7 @@ class Renderer:
         """
         image = self._image(path)
         if image is None:
-            return
+            return False
         # pico2d 는 그림 중심 좌표를 받는다. 왼쪽 아래 모서리를 정수 픽셀에 맞춘 뒤 중심을 계산한다.
         x = round(center_x - draw_width / 2) + draw_width / 2
         y = round(bottom) + draw_height / 2
@@ -120,6 +120,7 @@ class Renderer:
         image.clip_composite_draw(
             left, 0, frame_width, frame_height, 0, flip, x, y, draw_width, draw_height
         )
+        return True
 
     def draw_image_rotated(
         self,

@@ -180,6 +180,13 @@ GOLEM_LASER_CHANCE = 0.5  # 멀 때 ④ 를 쓸 확률 (쓸 수 있을 때만, �
 GOLEM_LASER_COOLDOWN = 8.0  # 초. ④ 를 쓰고 나서 다시 쓸 수 있을 때까지 (레이저만 쏘며 제자리에 있지 않게)
 GOLEM_RESPAWN_TIME = 3.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남
 GOLEM_HIT_FLASH_TIME = 0.1
+# 골렘 그림 (2026-11-17, PixelLab 생성 그림 assets/images/golem/<south|north|east|west>.png, 원본 96×96, 투명 배경).
+# 판정·충돌은 2×2칸 그대로이고 그림은 RENDER_SCALE 로 nearest 확대해 칸보다 크게(위·양옆으로 넘쳐) 그린다.
+# 발 밑(가장 아래 불투명 줄)을 2×2칸 바닥 가운데에 맞추기 위해, 방향별로 그림 아래 투명 줄 수를 적어 둔다.
+GOLEM_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "golem"
+GOLEM_SPRITE_SIZE = 96  # 원본 픽셀
+GOLEM_SPRITE_FOOT_MARGIN = {"south": 7, "north": 6, "east": 5, "west": 5}  # 발 밑 아래 투명 줄 수 (원본 픽셀)
+GOLEM_SPRITE_HEAD_ROW = 5  # 그림 위쪽 투명 줄 수 (머리 꼭대기, 체력 막대를 그 위에 둔다)
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
 # 2026-11-17 사용자 요청: 예고가 길어 걸어서 쉽게 빠져나가서 ① 0.8 → 0.35, ② 0.6 → 0.3, ③ 1.2 → 0.55초
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능

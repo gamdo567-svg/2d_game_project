@@ -9,7 +9,8 @@
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
-게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 임시 도형으로만 한다.
+게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 한다: 바라보는 방향(상하좌우)의
+그림(assets/images/golem, 원본 96×96 을 2배)을 발 밑이 2×2칸 바닥 가운데에 오게 그리고, 그림을 못 읽으면 부위별 임시 도형.
 """
 from __future__ import annotations
 
@@ -332,15 +333,63 @@ class Golem:
         faint, strong = config.COLOR_WARN[warning_kind(self.pattern)]
         return _lerp_color(faint, strong, self.windup_progress)
 
+    @property
+    def view(self) -> str:
+        """바라보는 방향의 그림 이름 (상하좌우만, 대각선 그림은 쓰지 않음)."""
+        return {(0, -1): "south", (0, 1): "north", (1, 0): "east", (-1, 0): "west"}[self.facing]
+
+    def sprite_path(self) -> str:
+        return str(config.GOLEM_IMAGE_DIR / f"{self.view}.png")
+
     def draw(self, renderer, grid: Grid) -> None:
+        """그림(방향별 서 있는 그림)을 그리고, 못 읽으면 부위별 임시 도형을 그린다. 그 위에 조준선·막대·글자.
+
+        공격 애니메이션은 아직 없어 공격 중에도 서 있는 그림을 쓰고, 예고 칸·조준선 같은 효과만 보여 준다.
+        """
         if not self.alive:
             return
         s = config.RENDER_SCALE
         tile = grid.tile_size
         vcol, vrow = self.visual_position
         left, bottom, _, _ = grid.tile_to_pixel_rect(vcol, vrow)
-        width = self.size * tile
-        cx = left + width / 2
+        cx = left + self.size * tile / 2
+        if self._draw_sprite(renderer, cx, bottom):
+            core_y = bottom + 40 * s
+            bar_top = bottom + (config.GOLEM_SPRITE_SIZE - config.GOLEM_SPRITE_FOOT_MARGIN[self.view]
+                                - config.GOLEM_SPRITE_HEAD_ROW + 4) * s
+        else:
+            core_y = self._draw_shapes(renderer, cx, bottom)
+            bar_top = bottom + 66 * s
+        if self.state == WINDUP and self.pattern == LASER:
+            # 조준선: 레이저도 패링 불가 공격이라 노란색 (발사가 가까울수록 진하게)
+            ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
+            renderer.draw_line(cx, core_y, ax, ay, self.warning_color())
+        # 체력·패링 게이지 막대 (머리 위)
+        renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)
+        renderer.fill_rect(cx - 26 * s, bar_top, cx - 26 * s + 52 * s * self.hp / config.GOLEM_MAX_HP, bar_top + 3 * s,
+                           config.COLOR_DUMMY_HP)
+        renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx + 26 * s, bar_top - 1 * s, config.COLOR_BAR_BACK)
+        renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx - 26 * s + 52 * s * self.posture.value, bar_top - 1 * s,
+                           config.COLOR_POSTURE)
+        if self.state == STUNNED:
+            renderer.draw_text(cx - 18 * s, bar_top + 10 * s, "STUN", config.COLOR_POSTURE)
+        for popup in self.popups:
+            rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
+            renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+
+    def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
+        """방향별 그림을 발 밑이 2×2칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False."""
+        if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
+            return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
+        size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
+        return bool(renderer.draw_sprite_frame(
+            self.sprite_path(), 0, size, size,
+            cx, bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s, size * s, size * s,
+        ))
+
+    def _draw_shapes(self, renderer, cx: float, bottom: float) -> float:
+        """그림이 없을 때의 임시 도형 (다리·몸통·팔·코어). 코어 높이(조준선 출발점)를 돌려준다."""
+        s = config.RENDER_SCALE
         white = self.flash_left > 0.0
         body = config.COLOR_WHITE if white else config.COLOR_GOLEM_BODY
         limb = config.COLOR_WHITE if white else config.COLOR_GOLEM_LIMB
@@ -369,20 +418,4 @@ class Golem:
         heat = p if self.pattern == LASER and self.state == WINDUP else 0.0
         core = _lerp_color(config.COLOR_GOLEM_CORE, config.COLOR_GOLEM_CORE_HOT, heat)
         renderer.fill_rect(cx - 7 * s, bottom + 34 * s - crouch, cx + 7 * s, bottom + 46 * s - crouch, core)
-        if self.state == WINDUP and self.pattern == LASER:
-            # 조준선: 레이저도 패링 불가 공격이라 노란색 (발사가 가까울수록 진하게)
-            ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
-            renderer.draw_line(cx, bottom + 40 * s - crouch, ax, ay, self.warning_color())
-        # 체력·패링 게이지 막대
-        bar_top = bottom + 66 * s
-        renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)
-        renderer.fill_rect(cx - 26 * s, bar_top, cx - 26 * s + 52 * s * self.hp / config.GOLEM_MAX_HP, bar_top + 3 * s,
-                           config.COLOR_DUMMY_HP)
-        renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx + 26 * s, bar_top - 1 * s, config.COLOR_BAR_BACK)
-        renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx - 26 * s + 52 * s * self.posture.value, bar_top - 1 * s,
-                           config.COLOR_POSTURE)
-        if self.state == STUNNED:
-            renderer.draw_text(cx - 18 * s, bar_top + 10 * s, "STUN", config.COLOR_POSTURE)
-        for popup in self.popups:
-            rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
-            renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+        return bottom + 40 * s - crouch

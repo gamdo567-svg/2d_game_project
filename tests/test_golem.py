@@ -372,3 +372,77 @@ class GolemVsPlayerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GolemSpriteTest(unittest.TestCase):
+    """골렘 그림: 방향별 그림을 발 밑이 2×2칸 바닥 가운데에 오게 2배로 그리고, 못 읽으면 임시 도형."""
+
+    class Rec:
+        def __init__(self, sprite_ok):
+            self.sprite_ok = sprite_ok
+            self.calls = []
+
+        def draw_sprite_frame(self, *args, **kwargs):
+            self.calls.append(("draw_sprite_frame", args))
+            return self.sprite_ok
+
+        def __getattr__(self, name):
+            return lambda *a, **k: self.calls.append((name, a))
+
+    def setUp(self):
+        self.golem = Golem(6, 4, open_room())
+        self.grid = Grid(16, 10, config.RENDER_TILE_SIZE)
+
+    def test_view_follows_facing(self):
+        for facing, view in (((0, -1), "south"), ((0, 1), "north"), ((1, 0), "east"), ((-1, 0), "west")):
+            self.golem.facing = facing
+            self.assertEqual(self.golem.view, view)
+            self.assertTrue(self.golem.sprite_path().endswith(f"golem\{view}.png")
+                            or self.golem.sprite_path().endswith(f"golem/{view}.png"))
+
+    def test_sprite_feet_on_bottom_center_of_two_by_two(self):
+        self.golem.facing = (0, -1)
+        rec = self.Rec(True)
+        self.golem.draw(rec, self.grid)
+        name, args = rec.calls[0]
+        self.assertEqual(name, "draw_sprite_frame")
+        size, scale, tile = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE, config.RENDER_TILE_SIZE
+        self.assertEqual(args[2:4], (size, size))
+        self.assertEqual(args[6:8], (size * scale, size * scale))
+        left, bottom, _, _ = self.grid.tile_to_pixel_rect(6, 4)
+        self.assertAlmostEqual(args[4], left + tile)  # 2×2칸 가로 가운데
+        self.assertAlmostEqual(args[5], bottom - config.GOLEM_SPRITE_FOOT_MARGIN["south"] * scale)  # 발 밑 = 칸 바닥
+        shapes = [c for c in rec.calls if c[0] == "fill_rect"]
+        self.assertEqual(len(shapes), 4)  # 임시 도형 없이 체력·게이지 막대만
+
+    def test_falls_back_to_shapes_without_image(self):
+        rec = self.Rec(False)
+        self.golem.draw(rec, self.grid)
+        shapes = [c for c in rec.calls if c[0] == "fill_rect"]
+        self.assertGreater(len(shapes), 4)  # 다리·몸통·팔·코어 + 막대
+
+    def test_hit_blinks_sprite(self):
+        rec = self.Rec(True)
+        self.golem.flash_left = config.GOLEM_HIT_FLASH_TIME
+        drawn = []
+        for _ in range(6):
+            rec.calls.clear()
+            self.golem.draw(rec, self.grid)
+            drawn.append(any(c[0] == "draw_sprite_frame" for c in rec.calls))
+            self.golem.flash_left -= 0.016
+        self.assertIn(True, drawn)
+        self.assertIn(False, drawn)
+
+    def test_sprite_files_match_config(self):
+        from tests.test_player_assets import COLOR_TYPE_RGBA, read_png_header, read_rgba_pixels
+        size = config.GOLEM_SPRITE_SIZE
+        for view, margin in config.GOLEM_SPRITE_FOOT_MARGIN.items():
+            path = str(config.GOLEM_IMAGE_DIR / f"{view}.png")
+            with self.subTest(view=view):
+                _, width, height, color_type = read_png_header(path)
+                self.assertEqual((width, height, color_type), (size, size, COLOR_TYPE_RGBA))
+                pixels = read_rgba_pixels(path)
+                self.assertTrue(all(p[3] in (0, 255) for row in pixels for p in row))
+                rows = [y for y in range(size) if any(p[3] for p in pixels[y])]
+                self.assertEqual(size - 1 - rows[-1], margin)  # 발 밑 아래 투명 줄 수
+                self.assertGreaterEqual(rows[0], config.GOLEM_SPRITE_HEAD_ROW - 1)
