@@ -65,7 +65,40 @@ class StompFrameTest(unittest.TestCase):
             self.assertEqual(ends[-1], 1.0)
 
 
+class WalkFrameTest(unittest.TestCase):
+    def test_walk_frames_follow_distance(self):
+        g = Golem(6, 4, open_room())
+        self.assertIsNone(g.walk_frame)  # 서 있음
+        anim = config.GOLEM_WALK_ANIM
+        seen = []
+        player = (12, 4)  # 멀리 오른쪽
+        can = lambda c, r: True  # noqa: E731
+        self.assertTrue(g._step_toward(player, can))  # 한 칸 걷기 시작 (패턴 고르기의 난수와 무관하게)
+        for _ in range(round(60 / config.GOLEM_MOVE_SPEED)):
+            if g.walk_frame is not None:
+                seen.append(g.walk_frame)
+            g.update(1 / 60, player, can)
+        self.assertTrue(seen, "걸어가는 동안 걷기 그림을 써야 한다")
+        self.assertTrue(set(seen) <= set(range(anim["frames"])))
+        # 한 칸 걸을 때 주기의 절반(4장)쯤 넘어간다
+        self.assertGreaterEqual(len(set(seen)), anim["frames"] // 2)
+
+    def test_dead_golem_has_no_walk_frame(self):
+        g = Golem(6, 4, open_room())
+        g._move_t = 0.5
+        g.take_hit(10_000, (1, 0))
+        self.assertIsNone(g.walk_frame)
+
+
 class StompSpriteFileTest(unittest.TestCase):
+    def test_walk_sheets_exist_for_four_directions(self):
+        anim = config.GOLEM_WALK_ANIM
+        w, h = anim["frame_size"]
+        for view in ("south", "north", "east", "west"):
+            path = config.GOLEM_IMAGE_DIR / f"walk_{view}.png"
+            self.assertTrue(path.exists(), view)
+            self.assertEqual(png_size(path), (w * anim["frames"], h), view)
+
     def test_sheets_exist_for_four_directions(self):
         w, h = ANIM["frame_size"]
         count = max(ANIM["windup_frames"] + ANIM["recover_frames"]) + 1

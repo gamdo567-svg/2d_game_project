@@ -220,6 +220,10 @@ GOLEM_SPRITE_HEAD_ROW = 5  # 그림 위쪽 투명 줄 수 (머리 꼭대기, 체
 #   예고(windup) 동안: 무릎을 들고 → 위에서 잠깐 멈췄다가 → 마지막 순간 한 장 만에 떨어짐.
 #   자세 되돌림(recover) 동안: 착지 그림을 잠깐 붙잡고(멈칫) 옆으로 눌렸다가(squash) 반동하며 일어섬.
 #   *_ends 는 각 그림이 끝나는 진행도 (0~1, 마지막 1.0). 2026-11-17 사용자 확인 (C 버전 + 미리보기 B 타이밍).
+# 걷기 그림 (2026-11-17, PixelLab skeleton-v3 walking-8-frames, assets/images/golem/walk_<방향>.png).
+#   가로 한 줄 8장, 한 장 128×128, 발 밑 가운데 foot. 걸은 거리로 그림을 고른다: 8장 한 주기에 tiles_per_cycle 칸
+#   (발이 바닥에서 미끄러지지 않게). 멈춰 있으면 서 있는 그림.
+GOLEM_WALK_ANIM = {"frame_size": (128, 128), "foot": (64, 118), "frames": 8, "tiles_per_cycle": 2.0}
 GOLEM_STOMP_ANIM = {
     "frame_size": (176, 152),
     "foot": (88, 140),

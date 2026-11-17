@@ -95,6 +95,7 @@ class Golem:
         self.laser_cooldown_left = 0.0
         self._move_from = (float(self.col), float(self.row))
         self._move_t = 1.0
+        self.walk_distance = 0.0
 
     # ----- 조회 -----
     @property
@@ -139,6 +140,14 @@ class Golem:
         else:
             return None
         return frames[next(i for i, end in enumerate(ends) if p < end or end == 1.0)]
+
+    @property
+    def walk_frame(self) -> int | None:
+        """걷기 그림 번호 (한 칸 옮겨 가는 중에만). 걸은 거리로 고르므로 발이 바닥에서 미끄러지지 않는다."""
+        if self._move_t >= 1.0 or not self.alive:
+            return None
+        anim = config.GOLEM_WALK_ANIM
+        return int(self.walk_distance / anim["tiles_per_cycle"] * anim["frames"]) % anim["frames"]
 
     @property
     def stomp_squash(self) -> float:
@@ -197,7 +206,9 @@ class Golem:
             popup.age += dt
         self.popups = [p for p in self.popups if p.age < config.DAMAGE_POPUP_TIME]
         if self._move_t < 1.0:
+            before = self._move_t
             self._move_t = min(1.0, self._move_t + dt * config.GOLEM_MOVE_SPEED)
+            self.walk_distance += self._move_t - before  # 걸은 칸 수 (걷기 그림 고르기용)
 
         if self.state == DEAD:
             self.state_left -= dt
@@ -416,13 +427,19 @@ class Golem:
     def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
         """방향별 그림을 발 밑이 2×2칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.
 
-        ③ 발 구르기 예고·자세 되돌림 중에는 발 구르기 동작 그림을 쓰고, 그 그림을 못 읽으면 서 있는 그림을 쓴다.
+        ③ 발 구르기 예고·자세 되돌림 중에는 발 구르기 동작 그림, 한 칸 걸어가는 중에는 걷기 그림을 쓰고,
+        그 그림을 못 읽으면 서 있는 그림을 쓴다.
         """
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
         frame = self.stomp_frame
-        if frame is not None and self._draw_stomp(renderer, frame, cx, bottom):
+        if frame is not None and self._draw_anim(renderer, self.stomp_sprite_path(), config.GOLEM_STOMP_ANIM,
+                                                 frame, cx, bottom, self.stomp_squash):
+            return True
+        frame = self.walk_frame
+        if frame is not None and self._draw_anim(renderer, self.walk_sprite_path(), config.GOLEM_WALK_ANIM,
+                                                 frame, cx, bottom):
             return True
         return bool(renderer.draw_sprite_frame(
             self.sprite_path(), 0, size, size,
@@ -432,19 +449,21 @@ class Golem:
     def stomp_sprite_path(self) -> str:
         return str(config.GOLEM_IMAGE_DIR / f"stomp_{self.view}.png")
 
-    def _draw_stomp(self, renderer, frame: int, cx: float, bottom: float) -> bool:
-        """발 구르기 그림 한 장을 발 밑 가운데(foot)가 2×2칸 바닥 가운데에 오게 그린다. 착지 순간은 눌러 그린다."""
-        anim, s = config.GOLEM_STOMP_ANIM, config.RENDER_SCALE
+    def walk_sprite_path(self) -> str:
+        return str(config.GOLEM_IMAGE_DIR / f"walk_{self.view}.png")
+
+    def _draw_anim(self, renderer, path: str, anim: dict, frame: int, cx: float, bottom: float,
+                   k: float = 0.0) -> bool:
+        """동작 그림 한 장을 발 밑 가운데(foot)가 2×2칸 바닥 가운데에 오게 그린다. k 만큼 눌러 그린다 (착지 순간)."""
+        s = config.RENDER_SCALE
         w, h = anim["frame_size"]
         fx, fy = anim["foot"]
-        k = self.stomp_squash
         dw, dh = round(w * s * (1 + k)), round(h * s * (1 - k))
         below = (h - fy) * s * (1 - k)  # 그림 아래쪽 투명 줄 (발 밑 아래)
         left_of_foot = fx * s * (1 + k)
         # draw_sprite_frame 은 그림 아래 가운데 기준: 발 밑 가운데가 cx 에 오도록 가운데를 옮긴다
         center_x = cx - left_of_foot + dw / 2
-        return bool(renderer.draw_sprite_frame(self.stomp_sprite_path(), frame, w, h,
-                                               center_x, bottom - below, dw, dh))
+        return bool(renderer.draw_sprite_frame(path, frame, w, h, center_x, bottom - below, dw, dh))
 
     def _draw_shapes(self, renderer, cx: float, bottom: float) -> float:
         """그림이 없을 때의 임시 도형 (다리·몸통·팔·코어). 코어 높이(조준선 출발점)를 돌려준다."""
