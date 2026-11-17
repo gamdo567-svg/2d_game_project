@@ -16,6 +16,20 @@
 
 ---
 
+## 2026-11-17 — 주인공 그림 PixelLab 교체: 걷기·점프·측면 3타 (Claude Code)
+
+- **브랜치**: `claude/pixellab-player-anims` (`claude/golem-sprite` 위에서 시작)
+- **한 일**: PixelLab 으로 주인공 걷기 4방향, 점프 4방향, 측면 1·2·3타를 다시 만들어 게임에 넣음. 칼은 계속 분리(칼 그림 한 장 + 손 위치·각도 표).
+  측면 공격은 8프레임 같은 간격, 0.675 / 0.675 / 0.75초, 판정 프레임 ⑤ ③ ⑤ (D-029).
+- **현재 상태**: 테스트 197개 통과(예전 그림 전용 검사 2개를 새 그림 규칙으로 바꿈), 스모크 실행 성공.
+  Pillow 로 `Player.draw` 를 그대로 그려 공격(오른쪽·왼쪽·아래)·걷기·점프를 캡처해 확인. 실제 창에서 직접 조작 확인은 안 함.
+- **다음 작업자가 알아야 할 것**: 그림을 다시 만들면 `python assets/concepts/pixellab/player_import/export_to_game.py` 를 실행하고
+  출력되는 `PLAYER_ATTACK_SWORD` 를 `game/config.py` 에 붙여 넣는다. 미리보기 GIF 는 `build_remake_preview.py`.
+  정면 공격은 예전 5프레임 그림이라 `PLAYER_ATTACK_FRAME_ENDS_FRONT` 로 따로 프레임을 고른다.
+- **남은 문제 / 다음 할 일**: 정면·후면 공격 PixelLab 교체, 골렘 공격 애니메이션 적용, 브랜치 정리(PR 순서대로 병합).
+
+---
+
 ## 2026-11-17 — 골렘 그림 적용 (Claude Code)
 
 - **브랜치**: `claude/golem-sprite` (`claude/golem` 위에서 시작)
