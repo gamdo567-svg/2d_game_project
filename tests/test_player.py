@@ -155,6 +155,37 @@ class JumpParryTest(unittest.TestCase):
             self.input.begin_frame()
             self.player.update(1 / 60, self.input)
 
+    def _draw_parry(self, facing_action):
+        # 그 방향을 보게 한 칸 걷고 멈춘 뒤 패링하고, 막기 자세가 나오는 순간을 그린다
+        self.tap(facing_action)
+        self.run_for(1.0)
+        self.tap(Action.PARRY)
+        self.run_for(0.1)
+        self.assertEqual(self.player.state, PARRY)
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        return renderer.calls
+
+    def test_parry_side_draws_parry_sheet_and_sword(self):
+        # 측면 패링: 패링 몸 시트 → 칼(돌림) → 손 레이어 (2026-11-17 사용자 요청: 측면 먼저)
+        from game.player.player import parry_hand_sheet_path, parry_sheet_path
+        for action, flip in ((Action.MOVE_RIGHT, False), (Action.MOVE_LEFT, True)):
+            with self.subTest(action=action):
+                self.setUp()  # 방향마다 새 주인공
+                calls = self._draw_parry(action)
+                names = [c[0] for c in calls]
+                self.assertIn("draw_image_rotated", names)
+                paths = [c[1][0] for c in calls if c[0] == "draw_sprite_frame"]
+                self.assertEqual(paths[0], parry_sheet_path("side"))
+                self.assertEqual(paths[-1], parry_hand_sheet_path("side"))
+                self.assertEqual(calls[0][2]["flip_horizontal"], flip)
+
+    def test_parry_without_view_art_uses_idle(self):
+        # 정면·후면 패링 그림은 아직 없어 서 있는 그림
+        calls = self._draw_parry(Action.MOVE_DOWN)
+        self.assertNotIn("draw_image_rotated", [c[0] for c in calls])
+        self.assertEqual(calls[0][1][0], sprite_sheet_path("idle", "front"))
+
     def test_jump_in_place_then_idle(self):
         self.tap(Action.JUMP)
         self.assertEqual(self.player.state, JUMP)

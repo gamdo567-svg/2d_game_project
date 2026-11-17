@@ -546,3 +546,16 @@
   - 충격 이펙트 `GOLEM_SLAM_EFFECT` (160×160, 16프레임 12fps, 흔들림 4픽셀 0.25초): 짧은 금, 포물선으로 튀는 돌 파편과 그림자,
     먼지. 앞 범위 칸들의 가운데에서 터진다. 생성 스크립트 `assets/concepts/vfx/slam/build_golem_slam_impact.py`.
 - 남은 문제: **후면 일어섬에서 팔이 먼저 옆으로 돌아간다** (두 번 다시 만들었으나 사용자 확인 결과 해결 안 됨).
+
+## D-037 패링 모션(측면)과 패링 성공 이펙트
+
+- 상태: 확정 (사용자 요청 2026-11-17, 측면 먼저)
+- 결정
+  - 그림: PixelLab `create_character_state` 로 막기 자세(`Parry Guard`, 4방향)를 만들고, 서 있는 측면 그림에서 그 자세까지
+    pixminimax 4장(A안: 당김 → 쳐올림 잔상 → 막기 ×2)을 그렸다. 마지막에 당김 장을 한 번 더 써 복귀 (5장).
+  - 공격과 같은 방식: 96×64 칸, 칼 분리(파란 칼 → 칼 위치표 `PLAYER_PARRY_SWORD[view]`, 손 레이어), `export_to_game.py export_parry()`.
+    그리기는 공격과 공용 `_draw_sword_pose`. 프레임은 진행도 `PLAYER_PARRY_FRAME_ENDS = (0.08, 0.18, 0.55, 0.85, 1.0)`.
+    표가 없는 방향(정면·후면)은 서 있는 그림 그대로.
+  - 이펙트: `concepts/vfx/parry/build_parry_spark.py` 가 계산해 그린 64×64 × 9장, 24fps (`PARRY_SPARK_EFFECT`, `on_top`).
+    FieldScene 이 패링 성공(PARRIED)을 받은 순간 `parry_spark_point(col, row, facing)` 에서 재생한다
+    (칸 가운데에서 바라보는 쪽으로 0.6칸, 발 밑에서 1칸 위 = `PARRY_SPARK_OFFSET`). `on_top` 이펙트는 인물 다음에 그린다.

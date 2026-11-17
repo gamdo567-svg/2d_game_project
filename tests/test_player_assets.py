@@ -243,6 +243,28 @@ class PlayerAssetTest(unittest.TestCase):
             self.assertEqual(len(shifts), config.PLAYER_ATTACK_FRAMES)
             self.assertEqual(shifts[-1], (0, 0))  # 마지막 프레임은 제자리
 
+    def test_parry_sheets_and_tables(self):
+        # 패링: 방향별 몸·손 시트가 공격과 같은 96×64 칸, 칸 수 = 프레임 표 수 = 칼 위치표 수
+        from game.player.player import parry_hand_sheet_path, parry_sheet_path
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        count = len(config.PLAYER_PARRY_FRAME_ENDS)
+        self.assertEqual(list(config.PLAYER_PARRY_FRAME_ENDS), sorted(config.PLAYER_PARRY_FRAME_ENDS))
+        self.assertEqual(config.PLAYER_PARRY_FRAME_ENDS[-1], 1.0)
+        for view, table in config.PLAYER_PARRY_SWORD.items():
+            self.assertEqual(len(table), count)
+            for path in (parry_sheet_path(view), parry_hand_sheet_path(view)):
+                signature, width, height, color_type = read_png_header(path)
+                self.assertEqual((width, height), (w * count, h))
+            for hand_x, hand_y, angle, behind in table:
+                self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
+                self.assertIsInstance(behind, bool)
+
+    def test_parry_spark_sheet(self):
+        spec = config.PARRY_SPARK_EFFECT
+        signature, width, height, color_type = read_png_header(str(spec["path"]))
+        self.assertEqual((width, height), (spec["frame_size"] * spec["columns"], spec["frame_size"]))
+        self.assertEqual(spec["frames"], spec["columns"])
+
     def test_weapon_view_art_sheets(self):
         # 찌르기용 칼 그림: 공격 시트와 같은 칸 수·크기이고, 쓰는 프레임에만 그림이 있다
         from PIL import Image
