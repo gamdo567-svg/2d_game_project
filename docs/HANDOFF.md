@@ -16,6 +16,21 @@
 
 ---
 
+## 2026-11-17 — 골렘 발 구르기 바닥 이펙트 + 화면 흔들림 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (`claude/pixellab-player-anims` 위에서 시작)
+- **한 일**: ③ 발 구르기가 터지는 순간 골렘 몸 가운데에서 바닥 이펙트(거미줄 금, 크레이터, 땅을 뚫고 솟았다 가라앉는 바닥 판,
+  포물선으로 튀는 돌과 그림자, 먼지, 2.5초)를 재생하고 화면을 0.45초 흔든다 (D-032).
+  `game/effects/effect.py` (SpriteEffect, ScreenShake), `Renderer.draw_sheet_frame`, 골렘 `effects`, FieldScene 재생·흔들림.
+- **현재 상태**: 테스트 215개 통과(이펙트 7개 추가), 스모크 실행 성공. 그림은 Pillow 미리보기로 확인했고
+  **실제 창에서 이펙트가 그려지는 것은 확인하지 못했다** (pico2d 시트 자르기 좌표 포함).
+- **다음 작업자가 알아야 할 것**: 이펙트 그림을 바꾸려면 `python assets/concepts/vfx/stomp/build_golem_stomp.py` 를 실행하면
+  `assets/images/effects/golem_stomp.png` 까지 다시 만든다 (Pillow 필요, 게임 실행에는 불필요).
+  같은 폴더에서 다른 세션이 정면 3타 작업(`config.PLAYER_ATTACK_SWORD_FRONT` 등)을 하고 있어 그 변경은 이 브랜치에 넣지 않았다.
+- **남은 문제 / 다음 할 일**: 이펙트를 인물보다 먼저 그려 골렘 앞으로 튄 돌도 인물 뒤에 보임. ①·②·④ 이펙트, 골렘 공격 애니메이션.
+
+---
+
 ## 2026-11-17 — 주인공 그림 PixelLab 교체: 점프·측면 3타 (Claude Code)
 
 - **브랜치**: `claude/pixellab-player-anims` (`claude/golem-sprite` 위에서 시작)

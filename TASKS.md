@@ -10,6 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
+| T-031 | 골렘 발 구르기 바닥 이펙트 + 화면 흔들림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | `claude/pixellab-player-anims` 위에서 작업. ③ 터질 때 거미줄 금·솟았다 가라앉는 바닥 판·튀는 돌(2.5초) + 카메라 흔들림 (D-032). 다른 패턴 이펙트 남음 |
 | T-030 | 평타 가로 판정, 정면 1·2·3타 PixelLab 그림 | 검토 중 | Claude Code | `claude/pixellab-player-anims` | 1·2타 앞 1칸 × 가로 3칸, 3타 앞 2칸 × 1칸. 정면 1·2타 교체(2타 v9), 정면 3타 두 손 찌르기 교체, 정면 휘두르는·찌르는 순간 판정 시점에 맞춤, 후면 그림 보류 (D-031) |
 | T-029 | 후딜 캔슬, 걷다가 공격 | 검토 중 | Claude Code | `claude/pixellab-player-anims` | 판정 뒤 회피·점프·패링으로 공격 끊기, 걷던 칸을 0.05초에 마저 간 뒤 공격 (D-030) |
 | T-028 | 주인공 그림 PixelLab 교체 (점프·측면 3타) | 검토 중 | Claude Code | `claude/pixellab-player-anims` | T-027 브랜치 위에서 작업. 측면 공격 8프레임 같은 간격, 0.675/0.675/0.75초, 칼 분리 유지, 점프 10프레임 0.7초(후드 잡기 없음, 왼쪽은 반전). 걷기는 비교 후 예전 그림 유지 (D-029). 정면·후면 공격 남음 |
