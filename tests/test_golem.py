@@ -75,15 +75,16 @@ class GolemAreaTest(unittest.TestCase):
         self.golem.facing = (0, 1)
         area = self.golem.front_area(3, 5, (8, 7))
         self.assertEqual(area, {(c, r) for c in (6, 7, 8) for r in (6, 7, 8)})  # 위쪽 벽(9)에서 멈춤
-        # 가로 5 (앞차기): 몸 양옆 1줄씩 + 주인공 쪽 1줄
+        # 가로 4 (앞차기): 몸 양옆 1줄씩, 대칭
         self.golem.facing = (-1, 0)
-        area = self.golem.front_area(5, 5, (2, 5))
-        self.assertEqual(area, {(c, r) for c in range(1, 6) for r in range(3, 8)})
+        area = self.golem.front_area(4, 5, (2, 8))
+        self.assertEqual(area, {(c, r) for c in range(1, 6) for r in range(3, 7)})
 
-    def test_stomp_area_seven_by_seven(self):
-        # 7×7: 몸 (6~7, 4~5) 둘레로 2칸씩 + 남는 한 줄은 주인공 쪽 (왼쪽 아래에 있으면 왼쪽·아래로)
-        self.assertEqual(self.golem.stomp_area((1, 1)), {(c, r) for c in range(3, 10) for r in range(1, 8)})
-        self.assertEqual(self.golem.stomp_area((12, 8)), {(c, r) for c in range(4, 11) for r in range(2, 9)})
+    def test_stomp_area_eight_by_eight(self):
+        # 8×8: 몸 (6~7, 4~5) 둘레로 3칸씩, 주인공 위치와 상관없이 대칭 (아래쪽 0행·위쪽 9행은 벽이라 제외)
+        area = {(c, r) for c in range(3, 11) for r in range(1, 9)}
+        self.assertEqual(self.golem.stomp_area((1, 1)), area)
+        self.assertEqual(self.golem.stomp_area((12, 8)), area)
 
     def test_laser_explodes_four_by_four_at_aim(self):
         self.golem.aim = (3.0, 5.0)  # 조준점을 가운데로 한 4×4
