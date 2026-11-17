@@ -5,8 +5,8 @@
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 5, 패링 불가·회피 무적 가능  ③ 중심 8×8, 점프로만 피함
-    범위는 몸(3×3)을 기준으로 늘린다. ①·② 가로 3 은 몸 너비와 같아 대칭이고, 몸과 홀짝이 다른 너비(③ 8)는
-    남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
+    범위의 기준은 발 칸(몸 맨 아래 줄 가운데)이고, 그 칸 바로 앞부터 늘린다 (2026-11-17 사용자 결정). ①·② 가로 3 은 대칭,
+    짝수 너비(③ 8)는 남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
@@ -301,39 +301,48 @@ class Golem:
             self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
             self.target_tiles = self.laser_tiles()
 
+    @property
+    def feet_tile(self) -> Tile:
+        """공격 기준 칸: 몸 맨 아래 줄 가운데 (그림의 발 밑). 2026-11-17 사용자 결정: 범위는 이 칸 바로 앞부터."""
+        return self.col + self.size // 2, self.row
+
     def front_area(self, width: int, depth: int, player_tile: Tile) -> frozenset[Tile]:
-        """바라보는 쪽 앞의 (가로 width × 앞으로 depth) 칸. 몸(2칸)보다 넓은 줄은 양옆으로 똑같이 늘리고,
-        남는 한 줄은 아래(왼쪽)에, 주인공이 몸보다 위(오른쪽)에 있으면 위(오른쪽)에 붙인다 (_spread)."""
+        """발 칸(feet_tile) 바로 앞부터 바라보는 쪽으로 (가로 width × 앞으로 depth) 칸. 가로는 발 칸을 가운데로
+        양옆에 똑같이 늘리고, 짝수라 남는 한 줄은 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다 (_spread).
+        측면 그림이 몸 3칸보다 좁아 범위가 몸 칸과 겹칠 수 있다 (사용자 결정)."""
         fx, fy = self.facing
+        foot_col, foot_row = self.feet_tile
         if fx != 0:
-            first, toward = self.row, player_tile[1]
+            first, toward = foot_row, player_tile[1]
         else:
-            first, toward = self.col, player_tile[0]
-        before, after = _spread(first, first + self.size - 1, width, toward)
-        lanes = range(first - before, first + self.size + after)
+            first, toward = foot_col, player_tile[0]
+        before, after = _spread(first, first, width, toward)
+        lanes = range(first - before, first + 1 + after)
         tiles = set()
         for lane in lanes:
             for k in range(depth):  # 줄마다 벽을 만나면 그 너머는 맞지 않는다
                 if fx > 0:
-                    tile = (self.col + self.size + k, lane)
+                    tile = (foot_col + 1 + k, lane)
                 elif fx < 0:
-                    tile = (self.col - 1 - k, lane)
+                    tile = (foot_col - 1 - k, lane)
                 elif fy > 0:
-                    tile = (lane, self.row + self.size + k)
+                    tile = (lane, foot_row + 1 + k)
                 else:
-                    tile = (lane, self.row - 1 - k)
+                    tile = (lane, foot_row - 1 - k)
                 if self.is_wall(*tile):
                     break
                 tiles.add(tile)
         return frozenset(tiles)
 
     def stomp_area(self, player_tile: Tile) -> frozenset[Tile]:
-        """몸을 가운데에 둔 정사각형 (GOLEM_STOMP size × size). 홀수라 남는 한 줄은 주인공 쪽으로 붙인다. 벽 칸 제외."""
+        """발 칸(feet_tile)을 가운데에 둔 정사각형 (GOLEM_STOMP size × size). 남는 한 줄은 아래(왼쪽),
+        주인공이 위(오른쪽)이면 그쪽에 붙인다 (_spread). 벽 칸 제외."""
         n = config.GOLEM_STOMP["size"]
-        left, right = _spread(self.col, self.col + self.size - 1, n, player_tile[0])
-        down, up = _spread(self.row, self.row + self.size - 1, n, player_tile[1])
-        return frozenset((c, r) for c in range(self.col - left, self.col + self.size + right)
-                         for r in range(self.row - down, self.row + self.size + up) if not self.is_wall(c, r))
+        fc, fr = self.feet_tile
+        left, right = _spread(fc, fc, n, player_tile[0])
+        down, up = _spread(fr, fr, n, player_tile[1])
+        return frozenset((c, r) for c in range(fc - left, fc + 1 + right)
+                         for r in range(fr - down, fr + 1 + up) if not self.is_wall(c, r))
 
     def _follow_aim(self, dt: float, player_tile: Tile) -> None:
         """레이저 조준점이 발사 순간까지 주인공을 그대로 따라온다 (걸어서는 못 피하고 회피 무적으로 피한다)."""
@@ -357,8 +366,9 @@ class Golem:
             self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
         self.attacks.append(EnemyAttack(tiles, spec["damage"], direction=self.facing, **PATTERN_RULES[self.pattern]))
         if self.pattern == STOMP:
-            # 발 구르기: 몸 가운데(3×3 의 가운데)에서 바닥이 갈라지는 이펙트 + 화면 흔들림
-            self.effects.append(SpriteEffect(config.GOLEM_STOMP_EFFECT, *self.center))
+            # 발 구르기: 발 칸 가운데에서 바닥이 갈라지는 이펙트 + 화면 흔들림
+            fc, fr = self.feet_tile
+            self.effects.append(SpriteEffect(config.GOLEM_STOMP_EFFECT, fc + 0.5, fr + 0.5))
         self.state = RECOVER
         self.state_left = config.GOLEM_RECOVER_TIME
         self.target_tiles = frozenset()
