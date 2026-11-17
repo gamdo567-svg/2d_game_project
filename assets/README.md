@@ -34,7 +34,7 @@
 | `concepts/player_attack_reference_front_v1.png` | 사용자가 ChatGPT로 생성한 정면 공격 시트 (2026-11-17) | 사용자 소유 (생성물) | 정면 공격 그림의 원본. 다시 받을 예정 (D-022) |
 | `concepts/attack_front_pose_guide.png`, `concepts/player_ingame_*_x10.png` | Claude Code 제작 (2026-11-17): 정면 공격 자세 안내도, 게임 스프라이트 10배 확대본 | 프로젝트 소유 | ChatGPT 요청용 |
 | `images/player/sword_attack/{side,front}_{1,2,3}.png`, `*_hand.png` | 위 참고 시트를 Claude Code가 변환 (`concepts/build_attack_v3.py`, `build_attack_view.py`, 2026-11-17) | 사용자 소유 (파생물) | 96×64 × 5프레임. 몸(칼 없음)과 칼 앞 레이어. **임시 에셋**. D-022 |
-| `maps/test_room.txt` | Claude Code 제작 (2026-11-17) | 프로젝트 소유 | 글자 맵 (D-023). 시험용 방 |
+| `maps/test_room.txt` | Claude Code 제작 (2026-11-17) | 프로젝트 소유 | 글자 맵 (D-023). 시험용 방, 허수아비 `D` 2개 (D-024) |
 | `images/player/weapons/old_sword.png` | Claude Code 제작 (`concepts/weapons/build_old_sword.py`, 2026-11-17). 컨셉 시트의 낡은 검 기준 | 프로젝트 소유 | 56×10, 칼끝 오른쪽, 손이 한가운데. D-022 |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)
