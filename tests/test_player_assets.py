@@ -220,7 +220,7 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertEqual((width, height), (w * count, h))
                 for hand_x, hand_y, angle, behind, *rest in frames:
                     self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
-                    self.assertTrue(all(0 < length <= 1.0 for length in rest))
+                    self.assertTrue(all(0 <= length <= 1.0 for length in rest))  # 0 = 칼이 몸 그림에 들어 있음
         self.assertEqual(config.PLAYER_ATTACK_SWORD_BACK, (None, None, None))
 
     def test_front_big_swing_frame_starts_at_hit_time(self):

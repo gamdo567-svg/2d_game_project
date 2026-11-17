@@ -48,10 +48,10 @@ OVERRIDES = {
     ('front2', 4): (25, 46, -132, False), ('front2', 5): (44, 29, 62, False),
     ('front2', 6): (47, 28, 140, True), ('front2', 7): (49, 29, 142, True), ('front2', 8): (47, 29, 139, True),
     # 정면 3타 = 찌르기 끝 자세 지정 (2026-11-17 사용자 확정). 칼이 보는 사람 쪽으로 기울어 자동으로 못 찾음
-    ('front3', 1): (25, 45, -129, False), ('front3', 2): (24, 41, -52, False),
-    ('front3', 3): (24, 40, -55, False), ('front3', 4): (25, 40, -59, False),
-    ('front3', 5): (26, 40, -61, False), ('front3', 6): (34, 39, -90, False),
-    ('front3', 7): (34, 39, -90, False), ('front3', 8): (34, 39, -90, False),
+    ('front3', 1): (25, 41, -129, False), ('front3', 2): (24, 37, -52, False),
+    ('front3', 3): (24, 36, -55, False), ('front3', 4): (25, 36, -59, False),
+    ('front3', 5): (26, 36, -61, False), ('front3', 6): (34, 35, -90, False),
+    ('front3', 7): (34, 35, -90, False), ('front3', 8): (34, 35, -90, False),
     # 후면은 두 손이 몸 앞(보는 사람 반대쪽)이라 칼이 몸에 가려진다: 머리 위로 든 때만 몸 위에 그린다
     ('back1', 1): (45, 43, 0, True), ('back1', 2): (44, 38, 54, True),
     ('back1', 3): (42, 28, 134, False), ('back1', 4): (36, 25, 60, False),
@@ -183,6 +183,28 @@ def analyse(frame):
         else:
             smear.extend(comp)
     return best, set(smear), set(blue)
+
+
+# 칼을 빼지 않고 PixelLab 그림 그대로 두는 프레임 (2026-11-17 사용자 결정: 정면 3타 찌르는 순간)
+KEEP_BLADE = {('front3', 6), ('front3', 7), ('front3', 8)}
+# 게임 칼(old_sword.png)의 칼날 색, 어두운 것부터
+STEEL = [(113, 83, 89, 255), (178, 154, 149, 255), (219, 204, 197, 255), (233, 220, 210, 255)]
+
+
+def steel_blade(frame):
+    """파란 칼과 흰 하이라이트를 밝기에 따라 게임 칼 색으로 바꾼다."""
+    img = frame.copy()
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            c = px[x, y]
+            if not c[3]:
+                continue
+            if is_blue(c) or min(c[:3]) > 240:
+                light = sum(c[:3]) / 3
+                level = 0 if light < 90 else 1 if light < 150 else 2 if light < 210 else 3
+                px[x, y] = STEEL[level]
+    return img
 
 
 def white_to_blue(frame):
@@ -438,6 +460,7 @@ def build_layers(name, frames):
     for (n, c), (sheet, row, col) in FRAME_SOURCE.items():
         if n == name:
             frames[c - 1] = cells(sheet, row)[col]
+    originals = list(frames)
     if name in NO_SMEAR:
         # 원본 칼날의 흰 하이라이트 줄(파랑으로 잡히지 않음)도 칼과 함께 지운다. 주인공 그림에는 흰색이 없다.
         frames = [white_to_blue(f) for f in frames]
@@ -493,6 +516,11 @@ def build_layers(name, frames):
                     # 아주 어두운 픽셀은 원본 칼 테두리일 수 있어 칼 위에 다시 그리지 않는다
                     if c[3] and max(c[:3]) >= 45 and math.dist((x, y), (hx, hy)) <= HAND_RADIUS:
                         hand.putpixel((x, y), c)
+        if (name, col) in KEEP_BLADE:
+            # PixelLab 이 그린 칼을 몸 그림에 그대로 둔다 (칼이 다리를 덮어 그려져 빼면 다리가 없음).
+            # 파란 칼만 게임 칼 색으로 바꾸고, 게임 칼과 손 레이어는 그리지 않는다 (칼 길이 비율 0).
+            sheet = steel_blade(originals[col - 1])
+            hand = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
         layers.append({'body': sheet, 'hand': hand, 'sword': (hx, hy, angle, bool(behind))})
     return layers, swords, infos
 

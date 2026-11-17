@@ -395,7 +395,8 @@ class Player:
         # 두 손 잡기: 몸(두 팔, 칼 뒤의 왼손) → 칼 → 오른손 레이어 (오른손이 칼을 감싸 쥔 모습)
         if not behind:
             draw_layer(attack_sheet_path(self.combo.hit_number, view))
-        self._draw_sword(renderer, canvas_x, canvas_bottom, hand_x, hand_y, angle, flip, length)
+        if length > 0:  # 0 = 칼이 몸 그림에 들어 있음 (정면 3타 찌르는 순간)
+            self._draw_sword(renderer, canvas_x, canvas_bottom, hand_x, hand_y, angle, flip, length)
         if behind:
             draw_layer(attack_sheet_path(self.combo.hit_number, view))
         draw_layer(attack_hand_sheet_path(self.combo.hit_number, view))

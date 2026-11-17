@@ -59,13 +59,18 @@ VIEW_ATTACKS = {
 }
 
 
+# 정면 3타 찌르기는 칼끝이 발 아래 13픽셀까지 내려와 6픽셀 올려 담는다 (2026-11-17)
+RAISE = {'front3': 6}
+
+
 def export_attacks(view='side'):
     """view 방향의 공격 시트를 내보내고 칼 위치표 {타 번호: [(손 x, 손 y, 각도, 몸 뒤), ...]} 를 돌려준다."""
     tables = {}
     for hit, name, path, row in VIEW_ATTACKS[view]:
         frames = b.cells(path, row)
         cx, foot, _ = ref_anchor(frames[0])
-        dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot
+        # RAISE: 발끝 아래로 길게 내민 칼이 잘리지 않게 그림을 위로 올린다 (게임은 PLAYER_ATTACK_FRAME_SHIFTS_FRONT 로 되돌림)
+        dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot - RAISE.get(name, 0)
         layers, _, _ = b.build_layers(name, frames[1:])
         body = Image.new('RGBA', (ATTACK_W * len(layers), ATTACK_H), (0, 0, 0, 0))
         hand = Image.new('RGBA', body.size, (0, 0, 0, 0))

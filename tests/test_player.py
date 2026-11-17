@@ -521,6 +521,20 @@ class PlayerAttackTest(unittest.TestCase):
         self.assertEqual(args[1:], bargs[1:])
         self.assertEqual(kwargs, bkw)
 
+    def test_front_thrust_draws_no_game_sword(self):
+        # 정면 3타 찌르는 순간은 칼이 몸 그림에 들어 있어(PixelLab 칼) 게임 칼을 그리지 않는다
+        self._draw_attack_frame(action=Action.MOVE_DOWN)
+        for _ in range(round(3.0 / self.DT)):
+            combo = self.player.combo
+            if combo.index == 2 and combo.current is not None and combo.current.progress >= 0.55:
+                break
+            self.click()
+        else:
+            self.fail("3타 찌르는 순간에 닿지 못함")
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        self.assertNotIn("draw_image_rotated", [call[0] for call in renderer.calls])
+
     def test_attack_facing_down_uses_front_sheets(self):
         # 아래를 보면 정면 몸·칼 앞 레이어 시트와 정면 칼 위치표를 쓴다. 반전 없음.
         body, sword, hand = self._draw_attack_frame(action=Action.MOVE_DOWN)
