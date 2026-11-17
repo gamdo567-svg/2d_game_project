@@ -50,12 +50,27 @@ class StompFrameTest(unittest.TestCase):
         self.step(config.GOLEM_RECOVER_TIME)
         self.assertIsNone(g.stomp_frame)  # 쉬는 동안은 서 있는 그림
 
-    def test_other_patterns_use_standing_sprite(self):
-        for pattern in (SLAM, KICK):
-            g = Golem(6, 4, open_room())
-            g._windup(pattern, self.player)
-            self.assertIsNone(g.stomp_frame, pattern)
-            self.assertEqual(g.stomp_squash, 0.0)
+    def test_kick_uses_standing_sprite(self):
+        g = Golem(6, 4, open_room())
+        g._windup(KICK, self.player)
+        self.assertIsNone(g.attack_frame)
+        self.assertIsNone(g.stomp_frame)
+        self.assertEqual(g.attack_squash, 0.0)
+
+    def test_slam_lifts_then_impact_then_rises(self):
+        g = Golem(6, 4, open_room())
+        g._windup(SLAM, self.player)
+        self.assertEqual(g.attack_anim[0], "slam")
+        self.assertIsNone(g.stomp_frame)  # ③ 전용 이름은 None
+        self.assertEqual(g.attack_frame, 0)
+        g.update(config.GOLEM_SLAM["windup"] * 0.8, self.player, lambda c, r: True)
+        self.assertEqual(g.attack_frame, 6)  # 위에서 멈춤
+        g.update(config.GOLEM_SLAM["windup"] * 0.2 + 0.001, self.player, lambda c, r: True)
+        self.assertEqual(g.state, RECOVER)
+        self.assertEqual(g.attack_frame, 7)  # 착지
+        self.assertGreater(g.attack_squash, 0.0)
+        g.update(config.GOLEM_RECOVER_TIME * 0.95, self.player, lambda c, r: True)
+        self.assertEqual(g.attack_frame, 13)
 
     def test_frame_tables_are_consistent(self):
         for frames, ends in ((ANIM["windup_frames"], ANIM["windup_ends"]),
@@ -91,6 +106,15 @@ class WalkFrameTest(unittest.TestCase):
 
 
 class StompSpriteFileTest(unittest.TestCase):
+    def test_slam_sheets_exist_for_four_directions(self):
+        anim = config.GOLEM_SLAM_ANIM
+        w, h = anim["frame_size"]
+        count = max(anim["windup_frames"] + anim["recover_frames"]) + 1
+        for view in ("south", "north", "east", "west"):
+            path = config.GOLEM_IMAGE_DIR / f"slam_{view}.png"
+            self.assertTrue(path.exists(), view)
+            self.assertEqual(png_size(path), (w * count, h), view)
+
     def test_walk_sheets_exist_for_four_directions(self):
         anim = config.GOLEM_WALK_ANIM
         w, h = anim["frame_size"]

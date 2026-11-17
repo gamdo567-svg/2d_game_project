@@ -79,8 +79,27 @@ class GolemStompEffectTest(unittest.TestCase):
         self.assertEqual(golem.effects, [])  # 한 프레임만 전달
 
     def test_other_patterns_have_no_effect(self):
-        for pattern in (SLAM, KICK, LASER):
+        for pattern in (KICK, LASER):
             self.assertEqual(self.release(pattern).effects, [], pattern)
+
+    def test_slam_starts_effect_at_front_area_center(self):
+        golem = Golem(6, 4, open_room())
+        golem._windup(SLAM, (4, 4))
+        area = golem.target_tiles
+        golem.update(golem.state_left + 0.001, (4, 4), lambda c, r: True)
+        self.assertEqual(len(golem.effects), 1)
+        effect = golem.effects[0]
+        self.assertIs(effect.spec, config.GOLEM_SLAM_EFFECT)
+        self.assertAlmostEqual(effect.x, sum(c for c, _ in area) / len(area) + 0.5)
+        self.assertAlmostEqual(effect.y, sum(r for _, r in area) / len(area) + 0.5)
+        self.assertIsNotNone(effect.shake)
+
+    def test_slam_effect_sheet_spec(self):
+        spec = config.GOLEM_SLAM_EFFECT
+        header = spec["path"].read_bytes()[:24]
+        w, h = int.from_bytes(header[16:20], "big"), int.from_bytes(header[20:24], "big")
+        rows = -(-spec["frames"] // spec["columns"])
+        self.assertEqual((w, h), (spec["columns"] * spec["frame_size"], rows * spec["frame_size"]))
 
 
 class SceneEffectTest(unittest.TestCase):

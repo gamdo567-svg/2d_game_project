@@ -241,6 +241,20 @@ GOLEM_STOMP_ANIM = {
     "squash": 0.06,       # 착지 순간 옆으로 넓어지고 위아래로 줄어드는 비율
     "squash_until": 0.15,  # 자세 되돌림 진행도가 이만큼 될 때까지 눌림
 }
+# ① 두 손 내려찍기 동작 그림 (2026-11-17, PixelLab, assets/images/golem/slam_<방향>.png). 가로 한 줄 14장, 한 장 144×176.
+#   들기 0~6 (두 주먹을 머리 위로, 발 고정) → 착지 7 (숙여 주먹을 앞 땅에) → 일어섬 8~13. 발 밑 가운데 foot.
+#   예고 동안 빠르게 들고 위에서 멈춤, 터진 순간 한 장 만에 착지(사이 장은 PixelLab 섬광이 그려져 있어 쓰지 않음).
+#   후면 일어섬은 팔이 먼저 돌아가는 문제가 남아 있다 (2026-11-17 사용자: 시간이 없어 일단 적용).
+GOLEM_SLAM_ANIM = {
+    "frame_size": (144, 176),
+    "foot": (72, 166),
+    "windup_frames": (0, 1, 2, 3, 4, 5, 6),
+    "windup_ends": (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 1.0),
+    "recover_frames": (7, 8, 9, 10, 11, 12, 13),
+    "recover_ends": (0.25, 0.38, 0.5, 0.63, 0.75, 0.88, 1.0),
+    "squash": 0.05,
+    "squash_until": 0.12,
+}
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
 # 2026-11-17 사용자 요청: 예고가 길어 걸어서 쉽게 빠져나가서 ① 0.8 → 0.35, ② 0.6 → 0.3, ③ 1.2 → 0.55초
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
@@ -268,6 +282,16 @@ GOLEM_STOMP_EFFECT = {
     "shake": {"amplitude": 8, "duration": 0.45, "frequency": 18},
     # 화면에 그리는 크기(칸). 없으면 frame_size × RENDER_SCALE. ③ 범위(7×7)에 맞춘다 (2026-11-17 사용자 요청)
     "draw_tiles": GOLEM_STOMP["size"],
+}
+# ① 내려찍기 충격 (2026-11-17 사용자 요청): 짧은 금·튀는 돌 파편·먼지, 약한 흔들림. 앞 범위 칸들의 가운데에서.
+#   생성 스크립트: assets/concepts/vfx/slam/build_golem_slam_impact.py (160×160, 16프레임, 12fps)
+GOLEM_SLAM_EFFECT = {
+    "path": EFFECT_IMAGE_DIR / "golem_slam.png",
+    "frame_size": 160,
+    "columns": 8,
+    "frames": 16,
+    "fps": 12,
+    "shake": {"amplitude": 4, "duration": 0.25, "frequency": 20},
 }
 
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)

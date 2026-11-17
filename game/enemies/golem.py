@@ -129,11 +129,20 @@ class Golem:
         return 1.0 - max(0.0, self.state_left) / config.GOLEM_RECOVER_TIME
 
     @property
-    def stomp_frame(self) -> int | None:
-        """③ 발 구르기 동작 그림 번호 (예고·자세 되돌림 중에만). 다른 때는 None (서 있는 그림)."""
-        if self.pattern != STOMP:
+    def attack_anim(self) -> tuple[str, dict] | None:
+        """지금 패턴의 동작 그림 (그림 이름, 설정). 그림이 있는 패턴(①·③)만, 없으면 None."""
+        if self.pattern == STOMP:
+            return "stomp", config.GOLEM_STOMP_ANIM
+        if self.pattern == SLAM:
+            return "slam", config.GOLEM_SLAM_ANIM
+        return None
+
+    @property
+    def attack_frame(self) -> int | None:
+        """공격 동작 그림 번호 (①·③ 의 예고·자세 되돌림 중에만). 다른 때는 None (서 있는 그림)."""
+        if self.attack_anim is None:
             return None
-        anim = config.GOLEM_STOMP_ANIM
+        anim = self.attack_anim[1]
         if self.state == WINDUP:
             frames, ends, p = anim["windup_frames"], anim["windup_ends"], self.windup_progress
         elif self.state == RECOVER:
@@ -151,12 +160,21 @@ class Golem:
         return int(self.walk_distance / anim["tiles_per_cycle"] * anim["frames"]) % anim["frames"]
 
     @property
-    def stomp_squash(self) -> float:
+    def stomp_frame(self) -> int | None:
+        """③ 발 구르기 동작 그림 번호 (attack_frame 중 ③ 만)."""
+        return self.attack_frame if self.pattern == STOMP else None
+
+    @property
+    def attack_squash(self) -> float:
         """착지 순간 눌림 정도 (0 = 없음). 그림을 옆으로 넓히고 위아래로 줄이는 비율."""
-        anim = config.GOLEM_STOMP_ANIM
-        if self.pattern == STOMP and self.state == RECOVER and self.recover_progress < anim["squash_until"]:
-            return anim["squash"]
-        return 0.0
+        if self.attack_anim is None or self.state != RECOVER:
+            return 0.0
+        anim = self.attack_anim[1]
+        return anim["squash"] if self.recover_progress < anim["squash_until"] else 0.0
+
+    @property
+    def stomp_squash(self) -> float:
+        return self.attack_squash if self.pattern == STOMP else 0.0
 
     @property
     def windup_progress(self) -> float:
@@ -369,6 +387,11 @@ class Golem:
             # 발 구르기: 발 칸 가운데에서 바닥이 갈라지는 이펙트 + 화면 흔들림
             fc, fr = self.feet_tile
             self.effects.append(SpriteEffect(config.GOLEM_STOMP_EFFECT, fc + 0.5, fr + 0.5))
+        elif self.pattern == SLAM and tiles:
+            # 두 손 내려찍기: 앞 범위 칸들의 가운데에서 금·돌 파편·먼지 + 약한 흔들림
+            cx = sum(c for c, _ in tiles) / len(tiles) + 0.5
+            cy = sum(r for _, r in tiles) / len(tiles) + 0.5
+            self.effects.append(SpriteEffect(config.GOLEM_SLAM_EFFECT, cx, cy))
         self.state = RECOVER
         self.state_left = config.GOLEM_RECOVER_TIME
         self.target_tiles = frozenset()
@@ -438,16 +461,17 @@ class Golem:
     def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
         """방향별 그림을 발 밑이 몸(3×3칸) 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.
 
-        ③ 발 구르기 예고·자세 되돌림 중에는 발 구르기 동작 그림, 한 칸 걸어가는 중에는 걷기 그림을 쓰고,
+        ①·③ 예고·자세 되돌림 중에는 그 공격 동작 그림, 한 칸 걸어가는 중에는 걷기 그림을 쓰고,
         그 그림을 못 읽으면 서 있는 그림을 쓴다.
         """
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
-        frame = self.stomp_frame
-        if frame is not None and self._draw_anim(renderer, self.stomp_sprite_path(), config.GOLEM_STOMP_ANIM,
-                                                 frame, cx, bottom, self.stomp_squash):
-            return True
+        frame = self.attack_frame
+        if frame is not None:
+            name, anim = self.attack_anim
+            if self._draw_anim(renderer, self.attack_sprite_path(name), anim, frame, cx, bottom, self.attack_squash):
+                return True
         frame = self.walk_frame
         if frame is not None and self._draw_anim(renderer, self.walk_sprite_path(), config.GOLEM_WALK_ANIM,
                                                  frame, cx, bottom):
@@ -457,8 +481,11 @@ class Golem:
             cx, bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s, size * s, size * s,
         ))
 
+    def attack_sprite_path(self, name: str) -> str:
+        return str(config.GOLEM_IMAGE_DIR / f"{name}_{self.view}.png")
+
     def stomp_sprite_path(self) -> str:
-        return str(config.GOLEM_IMAGE_DIR / f"stomp_{self.view}.png")
+        return self.attack_sprite_path("stomp")
 
     def walk_sprite_path(self) -> str:
         return str(config.GOLEM_IMAGE_DIR / f"walk_{self.view}.png")
