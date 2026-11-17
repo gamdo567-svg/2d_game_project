@@ -1,4 +1,4 @@
-"""회피 테스트 (pico2d 없이): Q, 5칸, 0.25초, 회피 중 무적, 끝난 뒤 1초 대기, 벽·허수아비 앞에서 멈춤."""
+"""회피 테스트 (pico2d 없이): Q, 3칸, 0.5초, 회피 중 무적, 끝난 뒤 1초 대기, 벽·허수아비 앞에서 멈춤."""
 import unittest
 
 from game import config
@@ -17,7 +17,7 @@ ROOM = """
 #..........#
 #.P........#
 #..........#
-#.....D....#
+#...D......#
 ############
 """
 
@@ -66,14 +66,17 @@ class DodgeTest(unittest.TestCase):
     def face(self, facing):
         self.player.facing = facing
 
-    def test_dodges_five_tiles_in_facing_direction(self):
+    def test_dodges_distance_in_facing_direction(self):
         self.face(Facing.RIGHT)
         self.tap(Action.DODGE)
         self.assertEqual(self.player.state, DODGE)
-        self.assertEqual((self.player.col, self.player.row), (7, 3))  # (2,3) + 5칸
-        self.run_for(config.PLAYER_DODGE_DURATION + 0.02)
+        end = (2 + config.PLAYER_DODGE_DISTANCE, 3)
+        self.assertEqual((self.player.col, self.player.row), end)
+        self.run_for(config.PLAYER_DODGE_DURATION - 0.05)
+        self.assertEqual(self.player.state, DODGE)  # 아직 미끄러지는 중
+        self.run_for(0.07)
         self.assertIn(self.player.state, (IDLE, WALK))
-        self.assertEqual(self.player.mover.visual_position, (7, 3))
+        self.assertEqual(self.player.mover.visual_position, end)
 
     def test_uses_held_direction(self):
         self.face(Facing.RIGHT)
@@ -88,14 +91,14 @@ class DodgeTest(unittest.TestCase):
         self.tap(Action.DODGE)
         self.assertEqual((self.player.col, self.player.row), (2, 4))  # 위쪽 벽 앞
         self.run_for(1.5)
-        # 아래로 내려가 (2,1) 에서 오른쪽: 허수아비 (6,1) 앞 (5,1) 에서 멈춤
+        # 아래로 내려가 (2,1) 에서 오른쪽: 허수아비 (4,1) 앞 (3,1) 에서 멈춤
         self.face(Facing.DOWN)
         self.tap(Action.DODGE)
         self.assertEqual((self.player.col, self.player.row), (2, 1))
         self.run_for(1.5)
         self.face(Facing.RIGHT)
         self.tap(Action.DODGE)
-        self.assertEqual((self.player.col, self.player.row), (5, 1))
+        self.assertEqual((self.player.col, self.player.row), (3, 1))
 
     def test_blocked_dodge_does_nothing(self):
         self.face(Facing.LEFT)
