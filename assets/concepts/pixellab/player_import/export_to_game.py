@@ -2,7 +2,8 @@
 
 - 측면 공격 1·2·3타: build_remake_preview.build_layers 의 레이어(잔상+몸 / 손)를 96×64 캔버스 8프레임 시트로.
   칼 위치표(손 x, 손 y, 각도, 몸 뒤)는 config.PLAYER_ATTACK_SWORD 에 붙여 넣을 값으로 출력한다.
-- 걷기 4방향: PixelLab 걷기 템플릿(32×48, 8프레임). 발이 2~3픽셀 위에 있어 방향별로 내려 서 있는 그림과 맞춘다.
+- 걷기: 게임은 예전 걷기 그림을 쓴다 (2026-11-17 사용자 결정). export_walk() 는 PixelLab 걷기 템플릿을 시험할 때만 쓰며
+  main() 에서 부르지 않는다.
 - 점프 4방향: PixelLab 8프레임 중 방향마다 5장(웅크림, 도약, 최고점, 다리 펴기, 착지)을 골라 32×48 로 자른다.
   높이는 게임 코드가 띄우므로, 그림 안에서 떠오른 만큼은 머리 높이를 기준 자세에 맞춰 줄인다.
 Pillow 필요 (게임 실행에는 필요 없음).
@@ -118,7 +119,6 @@ def export_jump():
 
 def main():
     tables = export_attacks()
-    export_walk()
     export_jump()
     print('PLAYER_ATTACK_SWORD = (')
     for t in tables:

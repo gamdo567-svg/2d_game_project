@@ -70,8 +70,8 @@ FRAMES = {
 }
 # 공중 프레임(도약·최고점·다리 펴기): 발이 바닥 줄에 닿지 않아도 된다 (2026-11-17 PixelLab 점프)
 AIRBORNE_FRAMES = {(JUMP, 1), (JUMP, 2), (JUMP, 3)}
-# 걷기는 PixelLab 걷기 템플릿이라 발을 드는 프레임은 발끝이 바닥에서 몇 줄 뜬다 (방향마다 가장 낮은 발은 바닥 줄)
-WALK_FOOT_LIFT = 3
+HEAD_ROWS = 17             # 후드·얼굴·턱
+LEG_ROWS = 8
 
 
 def views_of(state):
@@ -117,15 +117,8 @@ class PlayerAssetTest(unittest.TestCase):
                                 if a:
                                     opaque_rows.add(y)
                                     self.assertLessEqual(g, max(r, b) + 10, "초록 잔여 픽셀")
-                        if state == WALK:
-                            self.assertGreaterEqual(max(opaque_rows), h - 1 - WALK_FOOT_LIFT)
-                        elif (state, index) not in AIRBORNE_FRAMES:
+                        if (state, index) not in AIRBORNE_FRAMES:
                             self.assertEqual(max(opaque_rows), h - 1)
-                if state == WALK:
-                    with self.subTest(state=state, view=view, lowest=True):
-                        lowest = max(y for f in frames_of(state, view) for y, row in enumerate(f)
-                                     if any(p[3] for p in row))
-                        self.assertEqual(lowest, h - 1)
 
     def test_idle_moves_only_cape(self):
         # Idle: 후드·얼굴·몸통 윗부분과 발은 모든 프레임에서 같은 픽셀 (깜빡임 방지), 망토만 달라진다.
@@ -137,12 +130,20 @@ class PlayerAssetTest(unittest.TestCase):
                     self.assertEqual(frame[-IDLE_FIXED_FEET_ROWS:], frames[0][-IDLE_FIXED_FEET_ROWS:])
                 self.assertGreater(len({tuple(map(tuple, f)) for f in frames}), 1, "망토가 움직이지 않음")
 
-    def test_walk_has_distinct_frames(self):
-        # Walk (2026-11-17 PixelLab 걷기 템플릿): 같은 프레임을 복사해 채우지 않았는지 프레임을 비교한다.
+    def test_walk_keeps_idle_head_and_has_distinct_frames(self):
+        # Walk: 머리(후드·얼굴)는 Idle 첫 프레임과 같은 그림을 상하 반동만큼만 옮겨 쓴다.
+        # 같은 프레임을 복사해 4프레임을 채우지 않았는지 다리 줄을 비교한다.
         for view in VIEWS:
+            head = frames_of(IDLE, view)[0]
+            top = min(y for y, row in enumerate(head) if any(p[3] for p in row))
+            band = head[top:top + HEAD_ROWS]
             walk = frames_of(WALK, view)
             with self.subTest(view=view):
-                self.assertEqual(len({tuple(map(tuple, f)) for f in walk}), len(walk), "같은 프레임이 있음")
+                for index, frame in enumerate(walk):
+                    shifts = [dy for dy in range(-2, 3) if frame[top + dy:top + dy + HEAD_ROWS] == band]
+                    self.assertTrue(shifts, f"{index}번 프레임 머리 모양이 다름")
+                legs = [tuple(map(tuple, f[-LEG_ROWS:])) for f in walk]
+                self.assertEqual(len(set(legs)), len(legs), "다리 자세가 같은 프레임이 있음")
 
     def attack_frames(self, hit):
         w = config.PLAYER_ATTACK_SPRITE_WIDTH
