@@ -137,14 +137,11 @@ class FieldScene:
                                   x, y, size * config.RENDER_SCALE, size * config.RENDER_SCALE)
 
     def _draw_hud(self, renderer) -> None:
-        top = config.SCREEN_HEIGHT  # 글자는 카메라와 무관하게 화면에 고정
-        renderer.draw_text(16, top - 24, "WASD / 방향키: 이동    클릭: 공격(연타 3단 콤보)    Space: 점프    F: 패링    Q: 회피    ESC: 종료", config.COLOR_TEXT_DIM)
+        top = config.SCREEN_HEIGHT  # 화면에 고정 (카메라와 무관)
         player = self.player
-        info = f"칸 ({player.col}, {player.row}) | 상태 {player.state} | 방향 {player.facing.name}"
-        renderer.draw_text(16, top - 50, info, config.COLOR_TEXT_DIM)
-        # 주인공 체력·패링 게이지 (화면 왼쪽 위에 고정)
-        renderer.draw_text(16, top - 76, "HP", config.COLOR_TEXT_DIM)
-        renderer.fill_rect(48, top - 84, 248, top - 70, config.COLOR_BAR_BACK)
-        renderer.fill_rect(48, top - 84, 48 + 200 * player.hp / player.max_hp, top - 70, config.COLOR_PLAYER_HP)
-        renderer.fill_rect(48, top - 92, 248, top - 86, config.COLOR_BAR_BACK)
-        renderer.fill_rect(48, top - 92, 48 + 200 * player.posture.value, top - 86, config.COLOR_POSTURE)
+        # 조작 안내·칸/상태 글자는 지저분해 보여 지움 (2026-11-17 사용자 요청). 체력·패링 게이지만 왼쪽 위에.
+        renderer.draw_text(16, top - 24, "HP", config.COLOR_TEXT_DIM)
+        renderer.fill_rect(48, top - 32, 248, top - 18, config.COLOR_BAR_BACK)
+        renderer.fill_rect(48, top - 32, 48 + 200 * player.hp / player.max_hp, top - 18, config.COLOR_PLAYER_HP)
+        renderer.fill_rect(48, top - 40, 248, top - 34, config.COLOR_BAR_BACK)
+        renderer.fill_rect(48, top - 40, 48 + 200 * player.posture.value, top - 34, config.COLOR_POSTURE)
