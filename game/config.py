@@ -74,7 +74,7 @@ PLAYER_JUMP_FRAMES = len(PLAYER_JUMP_FRAME_ENDS)
 # (처음 5칸·0.25초 → 3칸·0.5초 → 느려서 3칸·0.25초. 모두 같은 날 사용자 요청)
 PLAYER_DODGE_DISTANCE = 3  # 칸
 PLAYER_DODGE_DURATION = 0.25  # 초
-PLAYER_DODGE_COOLDOWN = 1.0  # 초 (회피가 끝난 뒤부터)
+PLAYER_DODGE_COOLDOWN = 8.0  # 초 (회피가 끝난 뒤부터). 2026-11-17 사용자 요청으로 1 → 8
 
 # ----- 플레이어 공격 (검 3단 콤보) -----
 # [임시값] 2026-11-16 사용자 결정: 마우스 왼쪽 클릭, 제자리 공격, 공격 중 이동 불가,
@@ -164,7 +164,7 @@ GOLEM_SIZE = 2  # 칸 (정사각형)
 GOLEM_MOVE_SPEED = 1.5  # 칸/초
 GOLEM_REST_TIME = 1.5  # 초. 공격이 끝나고 다음 행동까지 쉼
 GOLEM_RECOVER_TIME = 0.6  # 초. 공격이 터진 뒤 자세를 되돌리는 시간 (때리기 좋은 틈)
-GOLEM_NEAR = 2  # 칸. 이 거리 안이면 ①·③
+GOLEM_NEAR = 2  # 칸. 이 거리 안이면 ①·②·③ 중 하나 (2026-11-17 사용자 요청으로 ② 추가)
 GOLEM_MID = 5  # 칸. 이 거리 안이면 ② 또는 다가감, 더 멀면 ④ 또는 다가감
 GOLEM_KICK_CHANCE = 0.5  # 중간 거리에서 ② 를 쓸 확률 (나머지는 다가감)
 GOLEM_LASER_CHANCE = 0.5  # 멀 때 ④ 를 쓸 확률 (쓸 수 있을 때만, 나머지는 다가감)

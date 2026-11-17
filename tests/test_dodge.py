@@ -90,12 +90,12 @@ class DodgeTest(unittest.TestCase):
         self.face(Facing.UP)
         self.tap(Action.DODGE)
         self.assertEqual((self.player.col, self.player.row), (2, 4))  # 위쪽 벽 앞
-        self.run_for(1.5)
+        self.run_for(config.PLAYER_DODGE_DURATION + config.PLAYER_DODGE_COOLDOWN + 0.1)  # 대기 시간이 지나야 다시 회피
         # 아래로 내려가 (2,1) 에서 오른쪽: 허수아비 (4,1) 앞 (3,1) 에서 멈춤
         self.face(Facing.DOWN)
         self.tap(Action.DODGE)
         self.assertEqual((self.player.col, self.player.row), (2, 1))
-        self.run_for(1.5)
+        self.run_for(config.PLAYER_DODGE_DURATION + config.PLAYER_DODGE_COOLDOWN + 0.1)  # 대기 시간이 지나야 다시 회피
         self.face(Facing.RIGHT)
         self.tap(Action.DODGE)
         self.assertEqual((self.player.col, self.player.row), (3, 1))

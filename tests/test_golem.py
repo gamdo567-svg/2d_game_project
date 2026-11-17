@@ -99,6 +99,14 @@ class GolemBehaviorTest(unittest.TestCase):
         self.assertEqual(attacks[0].damage, config.GOLEM_SLAM["damage"])
         self.assertEqual(self.golem.state, RECOVER)
 
+    def test_near_uses_all_three_close_patterns(self):
+        seen = set()
+        for pick in (SLAM, KICK, STOMP):
+            self.make(pick)
+            self.advance(DT, (5, 4))
+            seen.add(self.golem.pattern)
+        self.assertEqual(seen, {SLAM, KICK, STOMP})
+
     def test_mid_kick_and_far_laser(self):
         self.make(None, roll=0.0)
         self.advance(DT, (2, 4))  # 거리 4: 차기
