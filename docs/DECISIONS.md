@@ -425,3 +425,18 @@
     `SwordCombo.interrupt()` 가 콤보를 끊고, 3타였다면 쿨타임을 건다. 이동 키로는 끊지 않는다. 공격 그림·속도는 그대로.
   - 걷다가 공격: 공격 입력이 기억된 채 걷는 중이면 `GridMover.hurry(PLAYER_ATTACK_STEP_FINISH_TIME=0.05)` 로 걷던 칸을 빠르게
     마저 가고(그 사이 새 걸음은 시작하지 않음), 칸에 도착하면 기억된 입력으로 공격을 시작한다. 그림은 보이던 위치에서 이어진다.
+
+## D-031 평타 가로 판정, 정면 1타 PixelLab 그림
+
+- 상태: 확정 (사용자 결정 2026-11-17)
+- 날짜: 2026-11-17 (D-024 의 판정 범위를 바꿈)
+- 결정
+  - 판정: `Strike.width` 추가. `attack_tiles` 가 바라보는 방향 앞 reach 칸을 가로 width 줄(가운데 + 양옆)로 계산하고,
+    줄마다 벽을 만나면 그 줄만 멈춘다. `PLAYER_ATTACK_WIDTH = (3, 3, 1)`: 1·2타 앞 1칸 × 가로 3칸, 3타 앞 2칸 × 가로 1칸.
+  - 정면 공격: 1타만 PixelLab 그림(8프레임, 칼 분리). 2·3타는 예전 5프레임 그림을 그대로 쓰며 같은 진행도에서
+    `PLAYER_ATTACK_FRAME_ENDS_FRONT` 로 프레임을 고른다 (타별로 None = 8프레임 새 그림).
+  - 후면 공격 그림은 없음 (`PLAYER_ATTACK_SWORD_BACK = (None, None, None)`): 위를 볼 때 측면 그림. `attack_view(facing, hit)` 이
+    그 방향에 그 타의 표가 없으면 측면을 고른다.
+  - PixelLab 정면 2·3타·후면은 여러 방식(pixminimax, v3, 시작·끝 자세 지정, 이미지 편집 pixen·pro, skeleton, 칼 합성)으로
+    시도했으나 몸을 돌리거나 동작이 약해 보류. 시험 원본은 `assets/concepts/pixellab/player_import/remake_raw/attack*_front*`, `*_back*`.
+    다음에는 핵심 자세 그림을 먼저 만들고(다른 이미지 도구 등) 그 사이를 PixelLab 으로 채우는 방법을 시도한다.
