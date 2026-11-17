@@ -435,6 +435,11 @@
     줄마다 벽을 만나면 그 줄만 멈춘다. `PLAYER_ATTACK_WIDTH = (3, 3, 1)`: 1·2타 앞 1칸 × 가로 3칸, 3타 앞 2칸 × 가로 1칸.
   - 정면 공격: 1타만 PixelLab 그림(8프레임, 칼 분리). 2·3타는 예전 5프레임 그림을 그대로 쓰며 같은 진행도에서
     `PLAYER_ATTACK_FRAME_ENDS_FRONT` 로 프레임을 고른다 (타별로 None = 8프레임 새 그림).
+  - 정면 2타 (같은 날 추가): `create_character_state` 로 2타 끝 자세(두 손을 왼쪽 어깨 위로)를 4방향으로 만들고 좌우 반전해
+    끝 자세로, 서 있는 그림을 시작 자세로 넣어 pixminimax 로 그린 v9. 처음으로 몸을 돌리지 않고 원하는 경로가 나왔다.
+    정면 1·2타는 `PLAYER_ATTACK_FRAME_ENDS_FRONT` 로 크게 휘두르는 그림(1타 6번째, 2타 5번째)이 판정 시점에 시작하게 했다
+    (설정 시간은 측면과 같은데 그림의 휘두르는 순간이 늦어 정면이 느려 보였음).
+    후면 2타는 시작·끝 자세를 모두 등 쪽으로 지정해도 칼이 머리 옆을 지날 때 고개를 돌려 보류.
   - 후면 공격 그림은 없음 (`PLAYER_ATTACK_SWORD_BACK = (None, None, None)`): 위를 볼 때 측면 그림. `attack_view(facing, hit)` 이
     그 방향에 그 타의 표가 없으면 측면을 고른다.
   - PixelLab 정면 2·3타·후면은 여러 방식(pixminimax, v3, 시작·끝 자세 지정, 이미지 편집 pixen·pro, skeleton, 칼 합성)으로
