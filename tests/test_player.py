@@ -6,7 +6,7 @@ from game.input.input_state import Action, InputState
 from game.player.facing import Facing
 from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, Player, attack_hand_sheet_path, attack_sheet_path,
                                sprite_sheet_path, weapon_sheet_path)
-from game.player.state_machine import ATTACK, IDLE, JUMP, PARRY, WALK
+from game.player.state_machine import ATTACK, DODGE, IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
 
@@ -189,11 +189,11 @@ class JumpParryTest(unittest.TestCase):
         self.assertFalse(self.player.mover.is_moving)
 
     def test_input_buffer_runs_action_pressed_just_before_free(self):
-        # 공격이 끝나기 직전(아직 공격 중)에 누른 점프를 기억했다가 공격이 끝나자마자 실행
+        # 공격 판정 직전(선딜 중이라 아직 끊을 수 없음)에 누른 점프를 기억했다가 판정이 나오자마자 실행 (후딜 캔슬)
         self.tap(Action.ATTACK)
         self.assertEqual(self.player.state, ATTACK)
-        end = self.player.combo.current.duration
-        self.run_for(end - config.PLAYER_INPUT_BUFFER_TIME / 2)
+        hit_time = self.player.combo.current.duration * config.PLAYER_ATTACK_HIT_FRAMES[0] / config.PLAYER_ATTACK_FRAMES
+        self.run_for(hit_time - config.PLAYER_INPUT_BUFFER_TIME / 2)
         self.tap(Action.JUMP)
         self.assertEqual(self.player.state, ATTACK)
         self.run_for(config.PLAYER_INPUT_BUFFER_TIME)
@@ -300,6 +300,62 @@ class PlayerAttackTest(unittest.TestCase):
                 return
             self.step()
         self.fail("공격이 끝나지 않음")
+
+    def hit_time(self, index=0):
+        return config.PLAYER_ATTACK_DURATIONS[index] * config.PLAYER_ATTACK_HIT_FRAMES[index] / config.PLAYER_ATTACK_FRAMES
+
+    def press(self, action):
+        self.input.press(action)
+        self.step()
+        self.input.release(action)
+
+    def test_cannot_cancel_before_hit(self):
+        # 선딜 중에 누른 회피·점프·패링은 공격을 끊지 않는다 (기억 시간이 지나면 사라짐)
+        self.click()
+        for action in (Action.JUMP, Action.PARRY, Action.DODGE):
+            self.press(action)
+            self.assertEqual(self.player.state, ATTACK)
+
+    def test_recovery_cancel_after_hit(self):
+        # 판정이 나온 뒤에는 회피·점프·패링으로 공격을 바로 끊는다 (후딜 캔슬, 2026-11-17)
+        for action, state in ((Action.JUMP, JUMP), (Action.PARRY, PARRY), (Action.DODGE, DODGE)):
+            with self.subTest(action=action):
+                self.setUp()
+                self.click()
+                self.run_for(self.hit_time() + 2 * self.DT)
+                self.assertEqual(self.player.state, ATTACK)
+                self.press(action)
+                self.assertEqual(self.player.state, state)
+
+    def test_cancel_last_hit_keeps_cooldown(self):
+        # 3타를 끊어도 쿨타임은 걸린다
+        self.click()
+        for i in range(2):
+            self.run_for(config.PLAYER_ATTACK_DURATIONS[i] * 0.8)
+            self.click()
+        self.run_for(0.1)  # 예약한 다음 타(3타)로 넘어갈 때까지
+        self.assertEqual(self.player.combo.index, 2)
+        self.run_for(self.hit_time(2) + 2 * self.DT)
+        self.press(Action.JUMP)
+        self.assertEqual(self.player.state, JUMP)
+        self.assertFalse(self.player.combo.can_start)
+
+    def test_attack_while_walking_finishes_step_first(self):
+        # 걷는 중에 공격하면 걷던 칸을 빠르게 마저 가서 칸에 선 뒤 공격한다 (미끄러지며 공격하지 않음)
+        self.input.press(Action.MOVE_RIGHT)
+        for _ in range(3):
+            self.step()
+        self.assertTrue(self.player.mover.is_moving)
+        target = (self.player.col, self.player.row)
+        self.input.press(Action.ATTACK)
+        self.step()
+        self.input.release(Action.ATTACK)
+        self.assertNotEqual(self.player.state, ATTACK)  # 아직 걷던 칸을 마저 가는 중
+        self.run_for(config.PLAYER_ATTACK_STEP_FINISH_TIME + 2 * self.DT)
+        self.assertEqual(self.player.state, ATTACK)
+        self.assertFalse(self.player.mover.is_moving)
+        self.assertEqual((self.player.col, self.player.row), target)  # 다음 칸으로 가지 않음
+        self.assertEqual(self.player.mover.visual_position, (float(target[0]), float(target[1])))
 
     def test_single_click_plays_first_hit_in_place_then_idle(self):
         self.click()

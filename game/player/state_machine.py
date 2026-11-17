@@ -29,14 +29,15 @@ FREE_STATES: list[str] = [IDLE, WALK]
 TRANSITIONS: list[dict[str, str | list[str]]] = [
     {"trigger": "start_walk", "source": IDLE, "dest": WALK},
     {"trigger": "stop_walk", "source": WALK, "dest": IDLE},
-    {"trigger": "jump", "source": FREE_STATES, "dest": JUMP},
+    # 후딜 캔슬 (2026-11-17 사용자 결정): 판정이 나온 뒤에는 공격을 회피·점프·패링으로 끊는다. 조건 확인은 Player 가 한다.
+    {"trigger": "jump", "source": FREE_STATES + [ATTACK], "dest": JUMP},
     {"trigger": "land", "source": JUMP, "dest": IDLE},
-    {"trigger": "parry", "source": FREE_STATES, "dest": PARRY},
+    {"trigger": "parry", "source": FREE_STATES + [ATTACK], "dest": PARRY},
     {"trigger": "end_parry", "source": PARRY, "dest": IDLE},
     # 패링에 성공하면 우선권: 패링 동작이 끝나기 전에도 바로 공격 (PRE-PRD 2.2). 조건 확인은 Player 가 한다.
     {"trigger": "attack", "source": FREE_STATES + [PARRY], "dest": ATTACK},
     {"trigger": "end_attack", "source": ATTACK, "dest": IDLE},
-    {"trigger": "dodge", "source": FREE_STATES, "dest": DODGE},
+    {"trigger": "dodge", "source": FREE_STATES + [ATTACK], "dest": DODGE},
     {"trigger": "end_dodge", "source": DODGE, "dest": IDLE},
     # 맞으면 짧게 경직 (회피 무적으로 피하지 못하는 공격은 회피 중에도 맞는다)
     {"trigger": "hurt", "source": [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT], "dest": HURT},

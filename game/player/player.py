@@ -133,6 +133,7 @@ class Player:
     # ----- 로직 -----
     def update(self, dt: float, input_state: InputState) -> None:
         self.strikes: list[Strike] = []  # 이번 프레임에 낸 공격 (장면이 판정한다)
+        self._input = input_state
         self.combo.tick(dt)
         self.dodge_cooldown_left = max(0.0, self.dodge_cooldown_left - dt)
         self.hit_flash_left = max(0.0, self.hit_flash_left - dt)
@@ -143,8 +144,13 @@ class Player:
         for action in BUFFERED_ACTIONS:
             if input_state.was_pressed(action):
                 self._buffer[action] = config.PLAYER_INPUT_BUFFER_TIME
+        attack_waiting = False  # 걷던 칸을 마저 가는 중 (도착하면 공격)
         if self.state in FREE_STATES:
-            if self._buffered(Action.ATTACK) and self.combo.can_start:
+            if self._buffered(Action.ATTACK) and self.combo.can_start and self.mover.is_moving:
+                # 걷는 중 공격: 걷던 칸을 빠르게 마저 가서 칸에 선 뒤 공격 (클릭은 입력 기억에 남겨 둔다)
+                self.mover.hurry(config.PLAYER_ATTACK_STEP_FINISH_TIME)
+                attack_waiting = True
+            elif self._buffered(Action.ATTACK) and self.combo.can_start:
                 self._consume(Action.ATTACK)
                 self.combo.start()
                 self.fsm.trigger("attack")
@@ -160,6 +166,8 @@ class Player:
                 self._consume(Action.JUMP)
                 self.combo.cancel_window()
                 self.fsm.trigger("jump")
+        elif self.state == ATTACK and self._recovery_cancel():
+            pass
         elif self.state == ATTACK and self._buffered(Action.ATTACK):
             self._consume(Action.ATTACK)
             self.combo.request_next()
@@ -170,7 +178,7 @@ class Player:
             self.fsm.trigger("attack")
 
         # 점프·패링·공격·회피·경직 중에는 새 이동을 시작하지 않고, 진행 중인 한 칸만 마저 간다.
-        free = self.state in FREE_STATES
+        free = self.state in FREE_STATES and not attack_waiting
         dx, dy = input_state.move_direction() if free else (0, 0)
         self.mover.update(dt, dx, dy)
 
@@ -196,6 +204,26 @@ class Player:
             self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
         self._emit_strike()
         self._buffer = {a: t - dt for a, t in self._buffer.items() if t - dt > 0.0}
+
+    def _recovery_cancel(self) -> bool:
+        """후딜 캔슬: 이번 타의 판정이 나온 뒤 회피·점프·패링을 누르면 공격을 끊고 그 행동을 한다. 했으면 True."""
+        if self._last_strike != (self.combo.strike_id, self.combo.index):
+            return False  # 아직 판정 전 (선딜 중에는 끊을 수 없다)
+        if self._buffered(Action.DODGE) and self.dodge_cooldown_left <= 0.0:
+            self._consume(Action.DODGE)
+            if not self._start_dodge(self._input):
+                return False
+        elif self._buffered(Action.JUMP):
+            self._consume(Action.JUMP)
+            self.combo.interrupt()
+            self.fsm.trigger("jump")
+        elif self._buffered(Action.PARRY):
+            self._consume(Action.PARRY)
+            self.combo.interrupt()
+            self.fsm.trigger("parry")
+        else:
+            return False
+        return True
 
     def _buffered(self, action: Action) -> bool:
         return action in self._buffer
@@ -237,20 +265,26 @@ class Player:
             self.dodge_cooldown_left = 0.0
             self.perfect_text_left = config.PLAYER_PERFECT_TEXT_TIME
 
-    def _start_dodge(self, input_state: InputState) -> None:
-        """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음)."""
+    def _start_dodge(self, input_state: InputState) -> bool:
+        """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음).
+
+        회피했으면 True. 공격 중(후딜 캔슬)이었다면 콤보를 끊는다.
+        """
         dx, dy = input_state.move_direction()
         if dx == 0 and dy == 0:
             dx, dy = self.facing.value
         start_tile = (self.col, self.row)
         if self.mover.dash(dx, dy, config.PLAYER_DODGE_DISTANCE, config.PLAYER_DODGE_DURATION) == 0:
-            return
+            return False
+        if self.state == ATTACK:
+            self.combo.interrupt()
         self.combo.cancel_window()
         self.facing = facing_for_direction(dx, dy, self.facing)
         self._dodge_start_tile = start_tile
         self._since_dodge = 0.0
         self._perfect_this_dodge = False
         self.fsm.trigger("dodge")
+        return True
 
     def _emit_strike(self) -> None:
         """지금 타가 판정 프레임에 들어섰으면 공격을 한 번 낸다 (한 타에 한 번)."""

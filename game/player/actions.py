@@ -190,6 +190,13 @@ class SwordCombo:
         """다른 행동(점프·패링)을 하면 콤보가 끊긴다."""
         self.window_left = 0.0
 
+    def interrupt(self) -> None:
+        """후딜 캔슬: 지금 타를 회피·점프·패링으로 끊는다. 콤보는 끊기고, 3타였다면 쿨타임은 그대로 걸린다."""
+        self.queued = False
+        self.window_left = 0.0
+        if self.is_last_hit:
+            self.cooldown_left = self.cooldown
+
     def update(self, dt: float) -> None:
         hit = self.current
         hit.update(dt)

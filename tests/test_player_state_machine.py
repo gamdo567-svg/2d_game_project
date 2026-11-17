@@ -59,9 +59,17 @@ class PlayerStateMachineTest(unittest.TestCase):
     def test_no_new_action_during_attack(self):
         fsm = PlayerStateMachine()
         fsm.trigger("attack")
-        for trigger in ("attack", "parry", "jump", "start_walk"):
+        for trigger in ("attack", "start_walk"):
             with self.assertRaises(MachineError):
                 fsm.trigger(trigger)
+
+    def test_attack_can_be_cancelled_into_dodge_jump_parry(self):
+        # 후딜 캔슬 (판정 뒤인지는 Player 가 확인한다)
+        for trigger, dest in (("dodge", DODGE), ("jump", JUMP), ("parry", PARRY)):
+            fsm = PlayerStateMachine()
+            fsm.trigger("attack")
+            fsm.trigger(trigger)
+            self.assertEqual(fsm.state, dest)
 
     def test_no_auto_transitions(self):
         self.assertFalse(hasattr(PlayerStateMachine(), "to_walk"))
