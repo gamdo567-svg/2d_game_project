@@ -31,6 +31,7 @@
 - **평타 판정·정면 공격 (같은 날 이어서, D-031)**: 1·2타 앞 1칸 × 가로 3칸, 3타 앞 2칸 × 1칸. 정면 1타만 PixelLab 그림,
   정면 2타는 이어서 v9(끝 자세를 create_character_state 로 만들어 지정)로 교체, 3타는 예전 5프레임, 후면은 측면 그림.
   정면 1·2타는 휘두르는 그림이 판정 시점에 맞게 프레임 표를 따로 둠. 테스트 208개 통과.
+  이어서 정면 3타도 같은 방법(찌르기 끝 자세 지정)으로 PixelLab 두 손 찌르기로 교체 (사용자 확정). 테스트 215개 통과.
   핵심 자세는 `create_character_state`(10회분, 4방향)로 만들고 pixminimax 시작·끝 자세로 넣는 방법이 가장 잘 됨.
 - **다음 작업자가 알아야 할 것**: 그림을 다시 만들면 `python assets/concepts/pixellab/player_import/export_to_game.py` 를 실행하고
   출력되는 `PLAYER_ATTACK_SWORD` 를 `game/config.py` 에 붙여 넣는다. 미리보기 GIF 는 `build_remake_preview.py`.
