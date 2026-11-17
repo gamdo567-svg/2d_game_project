@@ -16,6 +16,25 @@
 
 ---
 
+## 2026-11-17 — 검 3단 콤보, 칼 분리, 두 손 잡기, 정면 공격 (Claude Code)
+
+- **브랜치**: `claude/player-sword-attack` (`claude/player-jump-parry` 위에서 시작. 점프·패링 PR이 먼저 병합되어야 함)
+- **한 일**: 3단 콤보(`SwordCombo`)와 3타 후 쿨타임, 칼 분리(칼 그림 한 장을 손 위치·각도로 돌려 그림), 두 손 잡기(칼 앞 레이어),
+  낡은 검 도트, 측면·정면 공격 그림 (D-022).
+- **현재 상태**: 테스트 129개 통과, 스모크 실행 성공, 실제 창 캡처로 측면(좌우)·정면 확인. 사용자가 측면은 "지금까지 중 제일 낫다"고 함.
+- **다음 작업자가 알아야 할 것**:
+  - 공격 그림 제작 흐름: ChatGPT 에 칼만 파란 단색(#0000FF)으로 그린 참고 시트(3행 × 5열, 초록 배경)를 받는다 →
+    `python assets/concepts/build_attack_v3.py <시트> <출력>`(측면) 또는 `build_attack_view.py <시트> <front|back> <출력>` →
+    출력의 시트를 `assets/images/player/sword_attack/` 로 복사하고 `sword_table.txt` 를 `game/config.py` 칼 위치표에 붙인다.
+  - ChatGPT 요청문은 `assets/concepts/attack_reference_prompt.md`. 색 보정은 우리 쪽에서 하므로 ChatGPT 에는 자세·손·칼만 맡긴다.
+  - 칼 그림은 `assets/concepts/weapons/build_old_sword.py` 의 칸 목록으로 고친다.
+  - 커밋하지 않은 것: `assets/concepts/pixellab/` 새 실험 폴더, `anicraft/`, `handmade/`, `attack_*_out/`(변환 결과·미리보기), 기존부터 있던
+    `assets/images/player/master/`, `palette.json`, `sprites.json`, `player_idle_walk_source_sheet.png`, 컨셉 시트 수정본.
+- **남은 문제 / 다음 할 일**: 정면 그림을 자세 안내도(`attack_front_pose_guide.png`)로 다시 받기, 후면 그림, 공격 판정(범위 [미정]).
+  사용자 제안 순서: 맵 + 벽 충돌 → 공격 판정 + 연습용 허수아비 → 회피 → 몬스터.
+
+---
+
 ## 2026-11-16 — 검 공격 1타 (Claude Code)
 
 - **브랜치**: `claude/player-sword-attack` (`claude/player-jump-parry` 위에서 시작. 점프·패링 PR이 먼저 병합되어야 함)

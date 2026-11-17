@@ -249,3 +249,27 @@
   - 에셋 제작: PixelLab `animate_image_pixminimax` 결과(움직임)에 게임 Idle 후드 픽셀을 붙이고, 원본 팔레트로 맞추고, 검은 망토를 갈색으로,
     다리를 1px씩 굵게 (`assets/concepts/pixellab/build_attack1_side_right.py`). PixelLab 단독 결과는 후드·체형이 원본과 달라 쓰지 않았다.
 - 남은 것: 2·3타와 콤보, 3타 후 쿨타임, 공격 판정은 다음 작업.
+
+## D-022 검 3단 콤보, 칼 분리, 두 손 잡기, 방향별 공격 그림
+
+- 상태: 확정 (사용자 결정 2026-11-16·17) / 임시값 (시간, 에셋)
+- 날짜: 2026-11-17 (D-021 의 그림 규격·제작 방식을 대체)
+- 결정
+  - 콤보: `game/player/actions.py` 의 `SwordCombo`. 공격 중 클릭하면 다음 타를 예약하고, 지금 타가 복귀 프레임에 닿으면 복귀를 건너뛰고 이어진다.
+    한 타가 끝난 뒤 `PLAYER_ATTACK_COMBO_WINDOW`(0.3초) 안에 클릭해도 이어진다. 3타 뒤 `PLAYER_ATTACK_COOLDOWN`(1초) 동안 공격만 막는다.
+    타별 시간 `PLAYER_ATTACK_DURATIONS = (0.45, 0.45, 0.6)`, 타별 프레임 끝 진행도 `PLAYER_ATTACK_FRAME_ENDS`.
+  - 그림: 96×64 캔버스 × 5프레임(마지막은 복귀 = Idle 몸). 파일 `sword_attack/<side|front>_<타>.png`.
+  - **칼 분리**: 몸 그림에는 칼이 없다. 칼 그림 한 장(`weapons/old_sword.png`, 칼끝 오른쪽, 손이 한가운데)을
+    `PLAYER_ATTACK_SWORD`(측면) / `PLAYER_ATTACK_SWORD_FRONT`(정면) 의 프레임별 (손 x, 손 y, 각도, 몸 뒤, [길이 비율]) 대로
+    옮기고 돌려 그린다 (`Renderer.draw_image_rotated`). 무기를 바꿀 때는 `PLAYER_WEAPON` 과 칼 그림만 바꾼다.
+    길이 비율은 화면 안쪽·바깥쪽으로 찌르는 칼을 원근으로 짧게 그리기 위한 것(정면만).
+  - **두 손 잡기**: 그리는 순서는 몸(두 팔, 칼 뒤의 왼손) → 칼 → 칼 앞 레이어(`*_hand.png`, 칼 앞에 있는 손·팔).
+  - 방향: 오른쪽 = 측면, 왼쪽 = 측면 좌우 반전(손 위치·칼 각도도 반전), 아래 = 정면. 위는 후면 그림이 생길 때까지 측면.
+    정면은 내딛기 연출 `PLAYER_ATTACK_FRAME_SHIFTS_FRONT`.
+  - 에셋 제작: ChatGPT 참고 시트에서 칼만 파란 단색(#0000FF)으로 그려 받고, `assets/concepts/build_attack_v3.py`(측면)·
+    `build_attack_view.py`(정면·후면)가 파란 칼에서 손 위치·각도를 자동으로 뽑고, 파란색만 지워 팔·손을 남긴다.
+    칼이 덮던 자리 중 원본에서 파랗지 않았던 몸 픽셀 = 칼 앞의 손·팔 → 칼 앞 레이어.
+    축소·팔레트(Idle 28색)·Idle 머리 교체·발 정렬은 `build_attack_from_reference.py`. 잔상(칼끝 호, 찌르기 속도선)은 몸 아래에 그린다.
+  - 시험 후 쓰지 않은 것: PixelLab 생성(비율·분위기 다름), AniCraft 회전(픽셀 뭉개짐), Idle 픽셀 재조립(밋밋함),
+    타별 8칸 시트(덜 역동적이고 빨라 보임, `build_attack_v4.py` 는 남겨 둠).
+- 남은 것: 공격 판정, 후면 그림, 정면 그림 재요청(자세 안내도 `attack_front_pose_guide.png` 사용).
