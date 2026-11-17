@@ -24,6 +24,8 @@
   측면 공격은 8프레임 같은 간격, 0.675 / 0.675 / 0.75초, 판정 프레임 ⑤ ③ ⑤ (D-029).
 - **현재 상태**: 테스트 197개 통과(예전 그림 전용 검사 2개를 새 그림 규칙으로 바꿈), 스모크 실행 성공.
   Pillow 로 `Player.draw` 를 그대로 그려 공격(오른쪽·왼쪽·아래)·걷기·점프를 캡처해 확인. 실제 창에서 직접 조작 확인은 안 함.
+- **점프 (같은 날 이어서)**: 사용자와 여러 번 다시 그려 정면 `jump_v7` + 측면 `jump_v19` + 후면 `jump_v14` 로 결정.
+  10프레임 0.7초, 착지 두 장, 후드 잡기 없음, 왼쪽은 측면 반전, 그림 48×56. 그림은 고치지 않고 자르기·순서·위치만 (D-029).
 - **다음 작업자가 알아야 할 것**: 그림을 다시 만들면 `python assets/concepts/pixellab/player_import/export_to_game.py` 를 실행하고
   출력되는 `PLAYER_ATTACK_SWORD` 를 `game/config.py` 에 붙여 넣는다. 미리보기 GIF 는 `build_remake_preview.py`.
   정면 공격은 예전 5프레임 그림이라 `PLAYER_ATTACK_FRAME_ENDS_FRONT` 로 따로 프레임을 고른다.
