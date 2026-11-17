@@ -16,6 +16,22 @@
 
 ---
 
+## 2026-11-17 — 골렘 발 구르기 4방향 동작 그림 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (아직 푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: PixelLab 으로 ③ 발 구르기 4방향 동작(무릎·팔을 높이 듦 → 쾅 → 깊게 쪼그린 반동 → 일어섬)을 만들어 넣었다 (D-033).
+  구간마다 골렘이 아래로 밀리던 것을 `assets/concepts/pixellab/golem_stomp_anim/align_stomp_frames.py` 로 맞춤.
+  예고 동안 들기·멈춤·떨어짐, 터진 뒤 착지 붙잡기·눌림(squash)·반동. 바닥 이펙트·화면 흔들림(D-032)과 같은 순간.
+- **현재 상태**: 테스트 220개 통과. **실제 pico2d 창에서 캡처로 확인**: 들기·떨어짐·착지·바닥 이펙트가 그려짐
+  (`assets/concepts/pixellab/golem_stomp_anim/ingame_capture_contact.png`). 직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: PixelLab 캐릭터 `Stone Golem Simple` 그룹에 state `Stomp High`(9d9160df…), `Stomp Impact`(cc05f941…)가 있고,
+  애니메이션 그룹 f2ec79cc(들기)·267d684b(떨어짐)·ddace6bf(반동)에 4방향이 있다. 그림을 다시 만들면 방향별
+  `<dir>_c_frames.png`(19장)를 만들고 `align_stomp_frames.py` → `aligned/` 를 `assets/images/golem/stomp_<dir>.png` 로 복사.
+  이 브랜치에는 다른 세션의 정면 3타 커밋(a34feef·9f96988·cf627be)이 섞여 있다 (같은 내용이 `claude/pixellab-player-anims` 에도 있음).
+- **남은 문제 / 다음 할 일**: ①·②·④·걷기 동작 그림. 옆모습 들기가 앞차기처럼 보이는 면. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-17 — 골렘 발 구르기 바닥 이펙트 + 화면 흔들림 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (`claude/pixellab-player-anims` 위에서 시작)
