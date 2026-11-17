@@ -145,6 +145,35 @@ DUMMY_DOWN_TIME = 2.0  # 초. 쓰러져 있는 시간
 DAMAGE_POPUP_TIME = 0.6  # 초. 피해 숫자가 떠 있는 시간
 DAMAGE_POPUP_RISE = 0.5  # 칸. 그동안 떠오르는 높이
 
+# ----- 주인공 체력·피격 -----
+# [임시값] 2026-11-17 사용자 결정: 체력 100, 맞으면 짧게 경직 + 깜빡임. 체력이 0 이 되면 (사망은 기획 미정) 그 자리에서 다시 채운다.
+PLAYER_MAX_HP = 100
+PLAYER_HURT_TIME = 0.3  # 초. 맞았을 때 경직
+PLAYER_HIT_FLASH_TIME = 0.15  # 초
+
+# ----- 패링 게이지 (PRE-PRD 2.2, 2026-11-17 사용자 결정) -----
+POSTURE_PARRIED_GAIN = 0.25  # 패링당하면 전체의 25% 참
+POSTURE_PARRY_RELIEF = 0.5  # 패링에 성공하면 50% 줄어듦 (패링당해 차는 양의 2배)
+POSTURE_DECAY_PER_SECOND = 0.05  # [임시값] 시간이 지나면 초당 5%씩 줄어듦
+POSTURE_STUN_TIME = 2.0  # 초. 가득 차면 기절
+
+# ----- 골렘 (첫 일반 몬스터, 몬스터형: 경직 없음) -----
+# [임시값] 2026-11-17 사용자 결정 (패턴 4종) + Claude 제안 수치. 2×2칸을 차지한다. 그림은 팔·다리를 나눈 임시 도형.
+GOLEM_MAX_HP = 300
+GOLEM_SIZE = 2  # 칸 (정사각형)
+GOLEM_MOVE_SPEED = 1.5  # 칸/초
+GOLEM_REST_TIME = 1.5  # 초. 공격이 끝나고 다음 행동까지 쉼
+GOLEM_RECOVER_TIME = 0.6  # 초. 공격이 터진 뒤 자세를 되돌리는 시간 (때리기 좋은 틈)
+GOLEM_NEAR = 2  # 칸. 이 거리 안이면 ①·③
+GOLEM_MID = 5  # 칸. 이 거리 안이면 ②, 더 멀면 ④ 또는 다가감
+GOLEM_RESPAWN_TIME = 3.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남
+GOLEM_HIT_FLASH_TIME = 0.1
+# 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
+GOLEM_SLAM = {"windup": 0.8, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
+GOLEM_KICK = {"windup": 0.6, "damage": 15, "width": 3, "depth": 5}  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
+GOLEM_STOMP = {"windup": 1.2, "damage": 30, "size": 6}  # ③ 한 발 내려찍기: 중심 6×6, 점프로만 피함
+GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3}  # ④ 코어 레이저: 4초 조준 후 벽까지 일직선, 회피 무적 가능
+
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24
 PLAYER_SHADOW_HEIGHT = 6
@@ -170,5 +199,17 @@ COLOR_DUMMY_STRAW = (196, 164, 96)
 COLOR_DUMMY_SHADOW = (20, 16, 26)
 COLOR_DUMMY_HP = (200, 70, 60)
 COLOR_DAMAGE_TEXT = (255, 236, 160)
+# 골렘 임시 도형·공격 예고 색
+COLOR_GOLEM_BODY = (98, 92, 104)
+COLOR_GOLEM_LIMB = (78, 72, 86)
+COLOR_GOLEM_EDGE = (44, 40, 52)
+COLOR_GOLEM_CORE = (90, 200, 220)
+COLOR_GOLEM_CORE_HOT = (255, 120, 90)
+COLOR_WARN_FAINT = (90, 36, 44)  # 공격 예고 칸: 처음
+COLOR_WARN_STRONG = (200, 50, 50)  # 터지기 직전
+COLOR_LASER = (255, 90, 70)
+COLOR_POSTURE = (230, 200, 90)
+COLOR_PLAYER_HP = (90, 200, 110)
+COLOR_BAR_BACK = (30, 26, 38)
 COLOR_TEXT = (232, 232, 240)
 COLOR_TEXT_DIM = (150, 146, 170)

@@ -2,7 +2,8 @@
 
 글자 맵 파일 형식 (assets/maps/*.txt, D-023):
     - 한 줄 = 한 행, 한 글자 = 한 칸. 모든 줄의 길이가 같아야 한다.
-    - `#` 벽, `.` 바닥, `P` 주인공 시작 칸(바닥), `D` 연습용 허수아비(바닥 위에 놓임). 빈 줄은 무시한다.
+    - `#` 벽, `.` 바닥, `P` 주인공 시작 칸(바닥), `D` 연습용 허수아비(바닥 위에 놓임),
+      `G` 골렘(그 칸이 골렘 2×2 의 왼쪽 아래, 나머지 칸은 바닥이어야 함). 빈 줄은 무시한다.
     - 파일의 **맨 위 줄이 가장 위쪽 행**이다. 게임의 칸 좌표는 (0, 0) 이 왼쪽 아래이므로
       맨 아래 줄이 row 0 이 된다.
 
@@ -16,13 +17,15 @@ WALL = "#"
 FLOOR = "."
 PLAYER_START = "P"
 DUMMY = "D"
-KNOWN_TILES = {WALL, FLOOR, PLAYER_START, DUMMY}
+GOLEM = "G"
+KNOWN_TILES = {WALL, FLOOR, PLAYER_START, DUMMY, GOLEM}
 
 
 class TileMap:
     def __init__(self, cols: int, rows: int, walls: set[tuple[int, int]],
                  player_start: tuple[int, int] | None = None,
-                 dummies: list[tuple[int, int]] | None = None) -> None:
+                 dummies: list[tuple[int, int]] | None = None,
+                 golems: list[tuple[int, int]] | None = None) -> None:
         if cols <= 0 or rows <= 0:
             raise ValueError("맵 크기는 1 이상이어야 합니다.")
         self.cols = cols
@@ -30,6 +33,7 @@ class TileMap:
         self.walls = frozenset(walls)
         self.player_start = player_start
         self.dummies = list(dummies or [])  # 허수아비를 놓을 칸
+        self.golems = list(golems or [])  # 골렘(2×2)의 왼쪽 아래 칸
 
     @classmethod
     def from_text(cls, text: str) -> TileMap:
@@ -43,6 +47,7 @@ class TileMap:
         rows = len(lines)
         walls: set[tuple[int, int]] = set()
         dummies: list[tuple[int, int]] = []
+        golems: list[tuple[int, int]] = []
         start = None
         for i, line in enumerate(lines):
             row = rows - 1 - i
@@ -57,7 +62,9 @@ class TileMap:
                     start = (col, row)
                 elif ch == DUMMY:
                     dummies.append((col, row))
-        return cls(cols, rows, walls, start, dummies)
+                elif ch == GOLEM:
+                    golems.append((col, row))
+        return cls(cols, rows, walls, start, dummies, golems)
 
     @classmethod
     def load(cls, path: str | Path) -> TileMap:

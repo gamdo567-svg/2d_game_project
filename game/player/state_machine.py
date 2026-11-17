@@ -1,7 +1,7 @@
 """주인공 상태 머신 (Python transitions 라이브러리 사용).
 
-현재 구현한 상태는 idle, walk, jump, parry, sword_attack, dodge 여섯 가지다.
-PRE-PRD 2.7 의 hurt / stun 은
+현재 구현한 상태는 idle, walk, jump, parry, sword_attack, dodge, hurt 일곱 가지다.
+PRE-PRD 2.7 의 stun 은
 해당 기능을 개발할 때 STATES 와 TRANSITIONS 에 추가한다.
 
 상태 머신은 '지금 어떤 상태인가'와 '어떤 전환이 허용되는가'만 관리한다.
@@ -19,8 +19,9 @@ JUMP = "jump"
 PARRY = "parry"
 ATTACK = "sword_attack"
 DODGE = "dodge"
+HURT = "hurt"
 
-STATES: list[str] = [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE]
+STATES: list[str] = [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT]
 # 서 있거나 걷는 중에만 새 행동(점프, 패링, 공격)을 시작할 수 있다.
 FREE_STATES: list[str] = [IDLE, WALK]
 
@@ -32,10 +33,14 @@ TRANSITIONS: list[dict[str, str | list[str]]] = [
     {"trigger": "land", "source": JUMP, "dest": IDLE},
     {"trigger": "parry", "source": FREE_STATES, "dest": PARRY},
     {"trigger": "end_parry", "source": PARRY, "dest": IDLE},
-    {"trigger": "attack", "source": FREE_STATES, "dest": ATTACK},
+    # 패링에 성공하면 우선권: 패링 동작이 끝나기 전에도 바로 공격 (PRE-PRD 2.2). 조건 확인은 Player 가 한다.
+    {"trigger": "attack", "source": FREE_STATES + [PARRY], "dest": ATTACK},
     {"trigger": "end_attack", "source": ATTACK, "dest": IDLE},
     {"trigger": "dodge", "source": FREE_STATES, "dest": DODGE},
     {"trigger": "end_dodge", "source": DODGE, "dest": IDLE},
+    # 맞으면 짧게 경직 (회피 무적으로 피하지 못하는 공격은 회피 중에도 맞는다)
+    {"trigger": "hurt", "source": [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT], "dest": HURT},
+    {"trigger": "end_hurt", "source": HURT, "dest": IDLE},
 ]
 
 

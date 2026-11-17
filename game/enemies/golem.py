@@ -1,0 +1,368 @@
+"""골렘: 첫 일반 몬스터 (몬스터형: 패링당하거나 맞아도 경직 없음). 2026-11-17 사용자 결정, 수치는 임시값.
+
+- 2×2칸을 차지한다. 주인공이 멀면 천천히 다가오고, 거리에 따라 패턴을 고른다.
+    가까우면(GOLEM_NEAR) ① 두 손 내려찍기 또는 ③ 한 발 내려찍기, 중간(GOLEM_MID)이면 ② 앞차기,
+    더 멀면 ④ 코어 레이저 또는 한 칸 다가감.
+- 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
+    ① 앞 3×3, 패링 가능  ② 앞 3×5, 패링 불가·회피 무적 가능  ③ 중심 6×6, 점프로만 피함
+    ④ 4초 동안 조준점이 주인공을 따라오다 그 방향으로 벽까지 일직선, 회피 무적 가능
+- 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge).
+- 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
+게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 임시 도형으로만 한다.
+"""
+from __future__ import annotations
+
+import math
+import random
+from collections.abc import Callable
+
+from game import config
+from game.combat.enemy_attack import EnemyAttack
+from game.combat.posture import PostureGauge
+from game.combat.training_dummy import DamagePopup
+from game.world.grid import Grid
+
+SLAM, KICK, STOMP, LASER = "slam", "kick", "stomp", "laser"
+REST, WALK, WINDUP, RECOVER, STUNNED, DEAD = "rest", "walk", "windup", "recover", "stunned", "dead"
+PATTERNS = {SLAM: config.GOLEM_SLAM, KICK: config.GOLEM_KICK, STOMP: config.GOLEM_STOMP, LASER: config.GOLEM_LASER}
+
+Tile = tuple[int, int]
+
+
+def _lerp_color(a, b, t):
+    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+
+class Golem:
+    def __init__(self, col: int, row: int, is_wall: Callable[[int, int], bool],
+                 rng: random.Random | None = None) -> None:
+        self.spawn = (col, row)
+        self.size = config.GOLEM_SIZE
+        self.is_wall = is_wall
+        self.rng = rng or random.Random()
+        self.attacks: list[EnemyAttack] = []  # 이번 프레임에 터진 공격 (장면이 주인공에게 전달)
+        self.popups: list[DamagePopup] = []
+        self._respawn()
+
+    def _respawn(self) -> None:
+        self.col, self.row = self.spawn
+        self.hp = config.GOLEM_MAX_HP
+        self.posture = PostureGauge()
+        self.state = REST
+        self.state_left = config.GOLEM_REST_TIME
+        self.pattern: str | None = None
+        self.facing: Tile = (-1, 0)
+        self.target_tiles: frozenset[Tile] = frozenset()  # 예고 중인 공격 범위
+        self.aim = (float(self.col), float(self.row))  # 레이저 조준점 (칸 좌표, 실수)
+        self.beam_tiles: frozenset[Tile] = frozenset()
+        self.beam_left = 0.0
+        self.flash_left = 0.0
+        self._move_from = (float(self.col), float(self.row))
+        self._move_t = 1.0
+
+    # ----- 조회 -----
+    @property
+    def alive(self) -> bool:
+        return self.state != DEAD
+
+    @property
+    def tiles(self) -> frozenset[Tile]:
+        """차지한 칸 (죽어 있으면 없음)."""
+        if not self.alive:
+            return frozenset()
+        return frozenset((self.col + dx, self.row + dy) for dx in range(self.size) for dy in range(self.size))
+
+    @property
+    def center(self) -> tuple[float, float]:
+        """몸 가운데 (칸 좌표, 실수: 칸 (c, r) 의 가운데가 (c + 0.5, r + 0.5))."""
+        return self.col + self.size / 2, self.row + self.size / 2
+
+    @property
+    def visual_position(self) -> tuple[float, float]:
+        t = self._move_t
+        return (self._move_from[0] + (self.col - self._move_from[0]) * t,
+                self._move_from[1] + (self.row - self._move_from[1]) * t)
+
+    @property
+    def windup_progress(self) -> float:
+        if self.state != WINDUP or self.pattern is None:
+            return 0.0
+        total = PATTERNS[self.pattern]["windup"]
+        return 1.0 - self.state_left / total
+
+    def distance_to(self, tile: Tile) -> int:
+        """몸에서 칸까지의 거리 (몸에 붙은 칸 = 1). 가로·세로 중 큰 쪽."""
+        c, r = tile
+        dx = max(self.col - c, 0, c - (self.col + self.size - 1))
+        dy = max(self.row - r, 0, r - (self.row + self.size - 1))
+        return max(dx, dy)
+
+    # ----- 맞기 -----
+    def take_hit(self, damage: int, direction: Tile) -> bool:
+        """주인공의 공격을 맞는다. 몬스터형이라 경직은 없다."""
+        if not self.alive:
+            return False
+        self.hp = max(0, self.hp - damage)
+        self.flash_left = config.GOLEM_HIT_FLASH_TIME
+        self.popups.append(DamagePopup(damage))
+        if self.hp == 0:
+            self.state = DEAD
+            self.state_left = config.GOLEM_RESPAWN_TIME
+            self.target_tiles = frozenset()
+            self.beam_tiles = frozenset()
+        return True
+
+    def on_parried(self) -> None:
+        """① 내려찍기가 패링당했다: 게이지 25%, 가득 차면 기절 (경직은 없음)."""
+        if self.posture.add_parried():
+            self.state = STUNNED
+            self.target_tiles = frozenset()
+
+    # ----- 로직 -----
+    def update(self, dt: float, player_tile: Tile, can_place: Callable[[int, int], bool]) -> None:
+        """can_place(col, row): 골렘의 왼쪽 아래 칸을 그 자리에 둘 수 있는지 (2×2 모두 비어 있는지)."""
+        self.attacks = []
+        self.flash_left = max(0.0, self.flash_left - dt)
+        self.beam_left = max(0.0, self.beam_left - dt)
+        if self.beam_left == 0.0:
+            self.beam_tiles = frozenset()
+        for popup in self.popups:
+            popup.age += dt
+        self.popups = [p for p in self.popups if p.age < config.DAMAGE_POPUP_TIME]
+        if self._move_t < 1.0:
+            self._move_t = min(1.0, self._move_t + dt * config.GOLEM_MOVE_SPEED)
+
+        if self.state == DEAD:
+            self.state_left -= dt
+            if self.state_left <= 0.0 and can_place(*self.spawn):
+                self._respawn()
+            return
+        self.posture.update(dt)
+        if self.state == STUNNED:
+            if not self.posture.is_stunned:
+                self._rest()
+            return
+
+        self.state_left -= dt
+        if self.state == WINDUP and self.pattern == LASER:
+            self._follow_aim(dt, player_tile)
+        if self.state_left > 0.0:
+            return
+        if self.state == WINDUP:
+            self._release()
+        elif self.state == RECOVER:
+            self._rest()
+        elif self.state in (REST, WALK) and self._move_t >= 1.0:
+            self._decide(player_tile, can_place)
+
+    def _rest(self, seconds: float = config.GOLEM_REST_TIME) -> None:
+        self.state = REST
+        self.state_left = seconds
+        self.pattern = None
+        self.target_tiles = frozenset()
+
+    def _decide(self, player_tile: Tile, can_place: Callable[[int, int], bool]) -> None:
+        dist = self.distance_to(player_tile)
+        if dist <= config.GOLEM_NEAR:
+            self._windup(self.rng.choice([SLAM, STOMP]), player_tile)
+        elif dist <= config.GOLEM_MID:
+            self._windup(KICK, player_tile)
+        elif self.rng.random() < 0.5:
+            self._windup(LASER, player_tile)
+        elif not self._step_toward(player_tile, can_place):
+            self._windup(LASER, player_tile)
+
+    def _step_toward(self, player_tile: Tile, can_place: Callable[[int, int], bool]) -> bool:
+        """주인공 쪽으로 한 칸 걷는다 (차이가 큰 축 먼저). 못 가면 False."""
+        cx, cy = self.center
+        dx = player_tile[0] + 0.5 - cx
+        dy = player_tile[1] + 0.5 - cy
+        steps = [(int(math.copysign(1, dx)), 0), (0, int(math.copysign(1, dy)))]
+        if abs(dy) > abs(dx):
+            steps.reverse()
+        for sx, sy in steps:
+            if (sx, sy) != (0, 0) and can_place(self.col + sx, self.row + sy):
+                self._move_from = (float(self.col), float(self.row))
+                self.col += sx
+                self.row += sy
+                self._move_t = 0.0
+                self.facing = (sx, sy)
+                self.state = WALK
+                self.state_left = 1.0 / config.GOLEM_MOVE_SPEED
+                return True
+        return False
+
+    def _face(self, player_tile: Tile) -> None:
+        cx, cy = self.center
+        dx = player_tile[0] + 0.5 - cx
+        dy = player_tile[1] + 0.5 - cy
+        if abs(dx) >= abs(dy):
+            self.facing = (1 if dx > 0 else -1, 0)
+        else:
+            self.facing = (0, 1 if dy > 0 else -1)
+
+    def _windup(self, pattern: str, player_tile: Tile) -> None:
+        self.pattern = pattern
+        self.state = WINDUP
+        self.state_left = PATTERNS[pattern]["windup"]
+        self._face(player_tile)
+        if pattern in (SLAM, KICK):
+            spec = PATTERNS[pattern]
+            self.target_tiles = self.front_area(spec["width"], spec["depth"], player_tile)
+        elif pattern == STOMP:
+            self.target_tiles = self.stomp_area()
+        else:
+            self.target_tiles = frozenset()
+            self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
+
+    def front_area(self, width: int, depth: int, player_tile: Tile) -> frozenset[Tile]:
+        """바라보는 쪽 앞의 (가로 width × 앞으로 depth) 칸. 몸보다 넓은 줄은 주인공이 있는 쪽으로 늘린다."""
+        fx, fy = self.facing
+        if fx != 0:
+            lanes = list(range(self.row, self.row + self.size))
+            toward = player_tile[1]
+        else:
+            lanes = list(range(self.col, self.col + self.size))
+            toward = player_tile[0]
+        while len(lanes) < width:
+            if toward < lanes[0] or (toward <= lanes[-1] and len(lanes) % 2 == 0):
+                lanes.insert(0, lanes[0] - 1)
+            else:
+                lanes.append(lanes[-1] + 1)
+        tiles = set()
+        for lane in lanes[:width]:
+            for k in range(depth):  # 줄마다 벽을 만나면 그 너머는 맞지 않는다
+                if fx > 0:
+                    tile = (self.col + self.size + k, lane)
+                elif fx < 0:
+                    tile = (self.col - 1 - k, lane)
+                elif fy > 0:
+                    tile = (lane, self.row + self.size + k)
+                else:
+                    tile = (lane, self.row - 1 - k)
+                if self.is_wall(*tile):
+                    break
+                tiles.add(tile)
+        return frozenset(tiles)
+
+    def stomp_area(self) -> frozenset[Tile]:
+        """몸을 가운데에 둔 정사각형 (GOLEM_STOMP size × size)."""
+        n = config.GOLEM_STOMP["size"]
+        m = (n - self.size) // 2
+        return frozenset((c, r) for c in range(self.col - m, self.col - m + n)
+                         for r in range(self.row - m, self.row - m + n) if not self.is_wall(c, r))
+
+    def _follow_aim(self, dt: float, player_tile: Tile) -> None:
+        """레이저 조준점이 주인공을 따라온다 (초당 최대 4칸이라, 빠르게 움직이면 떼어 놓을 수 있다)."""
+        tx, ty = player_tile[0] + 0.5, player_tile[1] + 0.5
+        ax, ay = self.aim
+        d = math.hypot(tx - ax, ty - ay)
+        step = 4.0 * dt
+        if d <= step:
+            self.aim = (tx, ty)
+        else:
+            self.aim = (ax + (tx - ax) / d * step, ay + (ty - ay) / d * step)
+        self._face((int(self.aim[0]), int(self.aim[1])))
+
+    def laser_tiles(self) -> frozenset[Tile]:
+        """코어에서 조준점 방향으로 벽(또는 맵 밖)까지 일직선 (폭 1칸)."""
+        cx, cy = self.center
+        ax, ay = self.aim
+        d = math.hypot(ax - cx, ay - cy)
+        if d < 1e-6:
+            return frozenset()
+        ux, uy = (ax - cx) / d, (ay - cy) / d
+        own = self.tiles
+        tiles = []
+        k = 0.0
+        while k < 200:
+            k += 0.2
+            tile = (math.floor(cx + ux * k), math.floor(cy + uy * k))
+            if tile in own:
+                continue
+            if self.is_wall(*tile):
+                break
+            if tile not in tiles:
+                tiles.append(tile)
+        return frozenset(tiles)
+
+    def _release(self) -> None:
+        spec = PATTERNS[self.pattern]
+        if self.pattern == SLAM:
+            attack = EnemyAttack(self.target_tiles, spec["damage"], parryable=True, dodgeable=True, direction=self.facing)
+        elif self.pattern == KICK:
+            attack = EnemyAttack(self.target_tiles, spec["damage"], parryable=False, dodgeable=True, direction=self.facing)
+        elif self.pattern == STOMP:
+            attack = EnemyAttack(self.target_tiles, spec["damage"], parryable=False, dodgeable=False, jumpable=True)
+        else:
+            self.beam_tiles = self.laser_tiles()
+            self.beam_left = spec["beam_time"]
+            attack = EnemyAttack(self.beam_tiles, spec["damage"], parryable=False, dodgeable=True, direction=self.facing)
+        self.attacks.append(attack)
+        self.state = RECOVER
+        self.state_left = config.GOLEM_RECOVER_TIME
+        self.target_tiles = frozenset()
+
+    # ----- 그리기 (임시 도형: 팔·다리·몸통·코어를 나눠 그림) -----
+    def draw_warning(self, renderer, grid: Grid) -> None:
+        """공격 예고 칸과 레이저 (주인공·골렘보다 먼저, 바닥에 그린다)."""
+        if self.state == WINDUP and self.target_tiles:
+            color = _lerp_color(config.COLOR_WARN_FAINT, config.COLOR_WARN_STRONG, self.windup_progress)
+            for col, row in self.target_tiles:
+                renderer.fill_tile(grid, col, row, color, inset=2)
+        for col, row in self.beam_tiles:
+            renderer.fill_tile(grid, col, row, config.COLOR_LASER, inset=8)
+
+    def draw(self, renderer, grid: Grid) -> None:
+        if not self.alive:
+            return
+        s = config.RENDER_SCALE
+        tile = grid.tile_size
+        vcol, vrow = self.visual_position
+        left, bottom, _, _ = grid.tile_to_pixel_rect(vcol, vrow)
+        width = self.size * tile
+        cx = left + width / 2
+        white = self.flash_left > 0.0
+        body = config.COLOR_WHITE if white else config.COLOR_GOLEM_BODY
+        limb = config.COLOR_WHITE if white else config.COLOR_GOLEM_LIMB
+        edge = config.COLOR_GOLEM_EDGE
+        p = self.windup_progress
+        raise_arms = 20 * s * p if self.pattern == SLAM and self.state == WINDUP else 0
+        lift_leg = 14 * s * p if self.pattern in (KICK, STOMP) and self.state == WINDUP else 0
+        crouch = 3 * s * p if self.pattern == STOMP and self.state == WINDUP else 0
+        # 다리 두 개
+        renderer.fill_rect(cx - 22 * s, bottom + 2 * s + lift_leg, cx - 6 * s, bottom + 24 * s + lift_leg, edge)
+        renderer.fill_rect(cx - 21 * s, bottom + 3 * s + lift_leg, cx - 7 * s, bottom + 23 * s + lift_leg, limb)
+        renderer.fill_rect(cx + 6 * s, bottom + 2 * s, cx + 22 * s, bottom + 24 * s, edge)
+        renderer.fill_rect(cx + 7 * s, bottom + 3 * s, cx + 21 * s, bottom + 23 * s, limb)
+        # 몸통
+        top = bottom + 58 * s - crouch
+        renderer.fill_rect(cx - 26 * s, bottom + 20 * s - crouch, cx + 26 * s, top, edge)
+        renderer.fill_rect(cx - 25 * s, bottom + 21 * s - crouch, cx + 25 * s, top - 1 * s, body)
+        # 팔 두 개 (내려찍기 예고 때 머리 위로 올라감)
+        for side in (-1, 1):
+            ax0 = cx + side * 26 * s
+            ax1 = cx + side * 36 * s
+            lo, hi = min(ax0, ax1), max(ax0, ax1)
+            renderer.fill_rect(lo, bottom + 14 * s + raise_arms, hi, bottom + 50 * s + raise_arms, edge)
+            renderer.fill_rect(lo + 1 * s, bottom + 15 * s + raise_arms, hi - 1 * s, bottom + 49 * s + raise_arms, limb)
+        # 코어 (레이저 충전 중에는 점점 뜨거워짐)
+        heat = p if self.pattern == LASER and self.state == WINDUP else 0.0
+        core = _lerp_color(config.COLOR_GOLEM_CORE, config.COLOR_GOLEM_CORE_HOT, heat)
+        renderer.fill_rect(cx - 7 * s, bottom + 34 * s - crouch, cx + 7 * s, bottom + 46 * s - crouch, core)
+        if self.state == WINDUP and self.pattern == LASER:
+            ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
+            renderer.draw_line(cx, bottom + 40 * s - crouch, ax, ay, core)
+        # 체력·패링 게이지 막대
+        bar_top = bottom + 66 * s
+        renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)
+        renderer.fill_rect(cx - 26 * s, bar_top, cx - 26 * s + 52 * s * self.hp / config.GOLEM_MAX_HP, bar_top + 3 * s,
+                           config.COLOR_DUMMY_HP)
+        renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx + 26 * s, bar_top - 1 * s, config.COLOR_BAR_BACK)
+        renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx - 26 * s + 52 * s * self.posture.value, bar_top - 1 * s,
+                           config.COLOR_POSTURE)
+        if self.state == STUNNED:
+            renderer.draw_text(cx - 18 * s, bar_top + 10 * s, "STUN", config.COLOR_POSTURE)
+        for popup in self.popups:
+            rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
+            renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
