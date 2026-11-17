@@ -7,8 +7,8 @@
   점프는 공중에서). 행동 중에는 새 이동을 하지 않는다.
 - 입력 기억: 행동을 지금 할 수 없을 때 누른 키를 PLAYER_INPUT_BUFFER_TIME 동안 기억했다가 할 수 있게 되면 실행한다.
 - 공격은 3단 콤보(SwordCombo). 공격 중 클릭하면 다음 타가 이어지고, 3타 뒤에는 잠시 공격만 할 수 없다.
-- 공격 그림은 검이 몸 밖으로 나가므로 96×64 캔버스이고, 지금은 타별 오른쪽 측면 그림만 있다
-  (위·아래는 임시로 같은 그림, 왼쪽은 좌우 반전).
+- 공격 그림은 검이 몸 밖으로 나가므로 96×64 캔버스다. 측면(8프레임, 2026-11-17 PixelLab)과 정면(예전 5프레임)
+  그림이 있고, 위는 임시로 측면 그림, 왼쪽은 좌우 반전한다.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from game.input.input_state import Action, InputState
 from game.combat.enemy_attack import AVOIDED, HIT, MISSED, PARRIED, EnemyAttack
 from game.combat.posture import PostureGauge
 from game.combat.strike import Strike
-from game.player.actions import Dodge, Jump, Parry, SwordCombo, TimedAction
+from game.player.actions import Dodge, Jump, Parry, SwordCombo, TimedAction, frame_for_progress
 from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
@@ -323,8 +323,13 @@ class Player:
         """
         width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
         scale = config.RENDER_SCALE
-        frame = self.combo.frame_index
         view = attack_view(self.facing)
+        if view == "front":
+            # 정면은 아직 예전 5프레임 그림: 같은 진행도에서 정면용 프레임 표로 고른다
+            ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[self.combo.index]
+            frame = frame_for_progress(self.combo.current.progress, ends)
+        else:
+            frame = self.combo.frame_index
         shifts = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT if view == "front" else config.PLAYER_ATTACK_FRAME_SHIFTS
         shift_x, shift_y = shifts[self.combo.index][frame]
         flip = self.facing == Facing.LEFT

@@ -115,7 +115,8 @@ class AttackHitTest(unittest.TestCase):
         for _ in range(3):
             self.click()
             before = self.dummy.hp
-            self.run_for(0.4)
+            # 한 타 시간보다 조금 짧게: 다음 클릭이 콤보로 이어지고, 그 사이에 이번 타의 판정 프레임이 지난다
+            self.run_for(max(config.PLAYER_ATTACK_DURATIONS) * 0.8)
             hits.append(before - self.dummy.hp)
         self.assertEqual(hits[:2], [0, 0])
         self.assertEqual(hits[2], config.PLAYER_ATTACK_DAMAGE[2])

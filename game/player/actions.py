@@ -8,6 +8,11 @@ from __future__ import annotations
 import math
 
 
+def frame_for_progress(progress: float, frame_ends: tuple[float, ...]) -> int:
+    """진행도(0~1)에 해당하는 프레임 번호. frame_ends 는 각 프레임이 끝나는 진행도 (마지막 1.0)."""
+    return next(i for i, end in enumerate(frame_ends) if progress < end or end == 1.0)
+
+
 class TimedAction:
     """duration 초 동안 진행되는 행동. 끝나면 finished 가 True."""
 
@@ -97,7 +102,7 @@ class Parry(TimedAction):
 
 
 class SwordAttack(TimedAction):
-    """검 공격 1타. frame_ends 는 각 프레임이 끝나는 진행도 (준비, 내디딤, 베기, 마무리, 복귀).
+    """검 공격 1타. frame_ends 는 각 프레임이 끝나는 진행도 (마지막 프레임은 마무리 자세).
 
     제자리 공격이라 논리적 칸 위치는 바뀌지 않는다. 공격 판정은 몬스터를 개발할 때 연결한다.
     """
@@ -110,8 +115,7 @@ class SwordAttack(TimedAction):
 
     @property
     def frame_index(self) -> int:
-        p = self.progress
-        return next(i for i, end in enumerate(self.frame_ends) if p < end or end == 1.0)
+        return frame_for_progress(self.progress, self.frame_ends)
 
 
 class SwordCombo:
@@ -119,7 +123,7 @@ class SwordCombo:
 
     - start(): 공격 시작. 유예 시간 안이면 다음 타, 아니면 1타부터.
     - request_next(): 공격 중 클릭. 마지막 타가 아니면 다음 타를 예약한다.
-    - update(dt): 지금 타를 진행한다. 예약이 있으면 복귀 프레임에 들어가는 순간 다음 타로 넘어간다.
+    - update(dt): 지금 타를 진행한다. 예약이 있으면 마지막(마무리) 프레임에 들어가는 순간 다음 타로 넘어간다.
     - tick(dt): 유예·쿨타임 시간을 줄인다 (상태와 상관없이 매 프레임).
     Player 의 애니메이션처럼 frame_index / finished / reset() 을 제공한다.
     """
@@ -187,7 +191,7 @@ class SwordCombo:
         hit = self.current
         hit.update(dt)
         if self.queued and hit.progress >= hit.frame_ends[-2]:
-            # 복귀 프레임을 건너뛰고 다음 타로
+            # 마지막(마무리) 프레임을 건너뛰고 다음 타로
             self.index += 1
             self.queued = False
             self.strike_id += 1
