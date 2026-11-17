@@ -72,6 +72,10 @@ class GolemAreaTest(unittest.TestCase):
         self.golem.facing = (-1, 0)
         area = self.golem.front_area(3, 3, (5, 3))  # 주인공이 아래쪽 줄에 있으면 아래로 넓힘
         self.assertEqual(area, {(c, r) for c in (3, 4, 5) for r in (3, 4, 5)})
+        area = self.golem.front_area(3, 3, (5, 4))  # 몸과 같은 줄이어도 남는 줄은 아래로 (위로 올라가 보이지 않게)
+        self.assertEqual(area, {(c, r) for c in (3, 4, 5) for r in (3, 4, 5)})
+        area = self.golem.front_area(3, 3, (5, 7))  # 주인공이 위쪽에 있을 때만 위로
+        self.assertEqual(area, {(c, r) for c in (3, 4, 5) for r in (4, 5, 6)})
         self.golem.facing = (0, 1)
         area = self.golem.front_area(3, 5, (8, 7))
         self.assertEqual(area, {(c, r) for c in (6, 7, 8) for r in (6, 7, 8)})  # 위쪽 벽(9)에서 멈춤

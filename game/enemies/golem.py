@@ -5,7 +5,7 @@
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 5, 패링 불가·회피 무적 가능  ③ 중심 8×8, 점프로만 피함
-    범위는 몸(2×2)을 기준으로 늘린다. 홀수 너비(①·② 3)는 남는 한 줄을 주인공 쪽에 붙인다.
+    범위는 몸(2×2)을 기준으로 늘린다. 홀수 너비(①·② 3)는 남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
@@ -48,14 +48,16 @@ Tile = tuple[int, int]
 
 
 def _spread(low: int, high: int, total: int, toward: int) -> tuple[int, int]:
-    """[low, high] 를 total 칸으로 넓힐 때 양쪽에 붙일 칸 수. 똑같이 나누고, 남는 1칸은 toward(주인공) 쪽에."""
+    """[low, high] 를 total 칸으로 넓힐 때 양쪽(작은 쪽, 큰 쪽)에 붙일 칸 수. 똑같이 나누고, 남는 1칸은
+    기본으로 작은 쪽(아래·왼쪽)에, 주인공(toward)이 범위보다 큰 쪽(위·오른쪽)에 있을 때만 큰 쪽에 붙인다.
+    (2026-11-17 사용자 요청: 주인공이 골렘과 같은 줄일 때 남는 줄이 위로 붙어 범위가 한 칸 올라가 보였음)"""
     extra = total - (high - low + 1)
     before = after = extra // 2
     if extra % 2:
-        if toward < low:
-            before += 1
-        else:
+        if toward > high:
             after += 1
+        else:
+            before += 1
     return before, after
 
 
@@ -256,7 +258,7 @@ class Golem:
 
     def front_area(self, width: int, depth: int, player_tile: Tile) -> frozenset[Tile]:
         """바라보는 쪽 앞의 (가로 width × 앞으로 depth) 칸. 몸(2칸)보다 넓은 줄은 양옆으로 똑같이 늘리고,
-        남는 한 줄은 주인공이 있는 쪽으로 늘린다 (예: 가로 3 = 몸 2 + 주인공 쪽 1, 가로 5 = 양옆 1 + 주인공 쪽 1)."""
+        남는 한 줄은 아래(왼쪽)에, 주인공이 몸보다 위(오른쪽)에 있으면 위(오른쪽)에 붙인다 (_spread)."""
         fx, fy = self.facing
         if fx != 0:
             first, toward = self.row, player_tile[1]
