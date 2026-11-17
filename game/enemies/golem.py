@@ -25,6 +25,23 @@ from game.world.grid import Grid
 SLAM, KICK, STOMP, LASER = "slam", "kick", "stomp", "laser"
 REST, WALK, WINDUP, RECOVER, STUNNED, DEAD = "rest", "walk", "windup", "recover", "stunned", "dead"
 PATTERNS = {SLAM: config.GOLEM_SLAM, KICK: config.GOLEM_KICK, STOMP: config.GOLEM_STOMP, LASER: config.GOLEM_LASER}
+# 패턴별로 피하는 방법: 패링 가능 / 회피 무적으로 피함 / 점프(공중)로 피함
+PATTERN_RULES = {
+    SLAM: {"parryable": True, "dodgeable": True, "jumpable": False},
+    KICK: {"parryable": False, "dodgeable": True, "jumpable": False},
+    STOMP: {"parryable": False, "dodgeable": False, "jumpable": True},
+    LASER: {"parryable": False, "dodgeable": True, "jumpable": False},
+}
+
+
+def warning_kind(pattern: str) -> str:
+    """예고 칸 색 종류: 패링 가능(빨강) / 패링 불가(노랑) / 점프로만 피함(하늘색)."""
+    rules = PATTERN_RULES[pattern]
+    if rules["parryable"]:
+        return "parryable"
+    if rules["jumpable"] and not rules["dodgeable"]:
+        return "jump_only"
+    return "unparryable"
 
 Tile = tuple[int, int]
 
@@ -289,18 +306,12 @@ class Golem:
 
     def _release(self) -> None:
         spec = PATTERNS[self.pattern]
-        if self.pattern == SLAM:
-            attack = EnemyAttack(self.target_tiles, spec["damage"], parryable=True, dodgeable=True, direction=self.facing)
-        elif self.pattern == KICK:
-            attack = EnemyAttack(self.target_tiles, spec["damage"], parryable=False, dodgeable=True, direction=self.facing)
-        elif self.pattern == STOMP:
-            attack = EnemyAttack(self.target_tiles, spec["damage"], parryable=False, dodgeable=False, jumpable=True)
-        else:
-            self.beam_tiles = self.laser_tiles()
+        tiles = self.target_tiles
+        if self.pattern == LASER:
+            tiles = self.beam_tiles = self.laser_tiles()
             self.beam_left = spec["beam_time"]
             self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
-            attack = EnemyAttack(self.beam_tiles, spec["damage"], parryable=False, dodgeable=True, direction=self.facing)
-        self.attacks.append(attack)
+        self.attacks.append(EnemyAttack(tiles, spec["damage"], direction=self.facing, **PATTERN_RULES[self.pattern]))
         self.state = RECOVER
         self.state_left = config.GOLEM_RECOVER_TIME
         self.target_tiles = frozenset()
@@ -309,11 +320,18 @@ class Golem:
     def draw_warning(self, renderer, grid: Grid) -> None:
         """공격 예고 칸과 레이저 (주인공·골렘보다 먼저, 바닥에 그린다)."""
         if self.state == WINDUP and self.target_tiles:
-            color = _lerp_color(config.COLOR_WARN_FAINT, config.COLOR_WARN_STRONG, self.windup_progress)
+            color = self.warning_color()
             for col, row in self.target_tiles:
                 renderer.fill_tile(grid, col, row, color, inset=2)
-        for col, row in self.beam_tiles:
-            renderer.fill_tile(grid, col, row, config.COLOR_LASER, inset=8)
+        if self.beam_tiles:
+            beam = config.COLOR_WARN[warning_kind(LASER)][1]
+            for col, row in self.beam_tiles:
+                renderer.fill_tile(grid, col, row, beam, inset=8)
+
+    def warning_color(self) -> tuple[int, int, int]:
+        """지금 예고 중인 공격의 색 (종류별 색, 터지기 직전일수록 진하게)."""
+        faint, strong = config.COLOR_WARN[warning_kind(self.pattern)]
+        return _lerp_color(faint, strong, self.windup_progress)
 
     def draw(self, renderer, grid: Grid) -> None:
         if not self.alive:
@@ -353,8 +371,9 @@ class Golem:
         core = _lerp_color(config.COLOR_GOLEM_CORE, config.COLOR_GOLEM_CORE_HOT, heat)
         renderer.fill_rect(cx - 7 * s, bottom + 34 * s - crouch, cx + 7 * s, bottom + 46 * s - crouch, core)
         if self.state == WINDUP and self.pattern == LASER:
+            # 조준선: 레이저도 패링 불가 공격이라 노란색 (발사가 가까울수록 진하게)
             ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
-            renderer.draw_line(cx, bottom + 40 * s - crouch, ax, ay, core)
+            renderer.draw_line(cx, bottom + 40 * s - crouch, ax, ay, self.warning_color())
         # 체력·패링 게이지 막대
         bar_top = bottom + 66 * s
         renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)

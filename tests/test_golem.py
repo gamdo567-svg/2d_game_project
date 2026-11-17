@@ -76,6 +76,32 @@ class GolemAreaTest(unittest.TestCase):
         self.assertEqual(self.golem.laser_tiles(), {(c, 5) for c in range(1, 6)})
 
 
+class WarningColorTest(unittest.TestCase):
+    def test_color_by_attack_kind(self):
+        from game.enemies.golem import warning_kind
+        self.assertEqual(warning_kind(SLAM), "parryable")  # 빨강
+        self.assertEqual(warning_kind(KICK), "unparryable")  # 노랑
+        self.assertEqual(warning_kind(LASER), "unparryable")
+        self.assertEqual(warning_kind(STOMP), "jump_only")  # 하늘색
+
+    def test_warning_tiles_drawn_in_kind_color_getting_stronger(self):
+        golem = Golem(6, 4, open_room(), FixedRng(STOMP))
+        golem._windup(STOMP, (5, 4))
+        calls = []
+
+        class Rec:
+            def fill_tile(self, grid, col, row, color, inset=0):
+                calls.append(color)
+
+        golem.draw_warning(Rec(), Grid(16, 10, 64))
+        faint, strong = config.COLOR_WARN["jump_only"]
+        self.assertEqual(set(calls), {faint})
+        golem.state_left = 0.0001  # 터지기 직전
+        calls.clear()
+        golem.draw_warning(Rec(), Grid(16, 10, 64))
+        self.assertEqual(set(calls), {strong})
+
+
 class GolemBehaviorTest(unittest.TestCase):
     def make(self, pick, roll=0.0):
         self.golem = Golem(6, 4, open_room(), FixedRng(pick, roll))

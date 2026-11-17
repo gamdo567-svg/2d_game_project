@@ -174,7 +174,7 @@ GOLEM_HIT_FLASH_TIME = 0.1
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
 # 2026-11-17 사용자 요청: 예고가 길어 걸어서 쉽게 빠져나가서 ① 0.8 → 0.35, ② 0.6 → 0.3, ③ 1.2 → 0.55초
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
-GOLEM_KICK = {"windup": 0.3, "damage": 15, "width": 3, "depth": 5}  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
+GOLEM_KICK = {"windup": 0.6, "damage": 15, "width": 3, "depth": 5}  # 2026-11-17 사용자 요청으로 예고 0.3 → 0.6초  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
 GOLEM_STOMP = {"windup": 0.55, "damage": 30, "size": 6}  # ③ 한 발 내려찍기: 중심 6×6, 점프로만 피함
 # ④ 코어 레이저: 4초 조준(조준선이 발사 순간까지 주인공을 따라옴, 2026-11-17 사용자 결정) 후 벽까지 일직선. 회피 무적으로만 피함
 GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3}
@@ -210,9 +210,12 @@ COLOR_GOLEM_LIMB = (78, 72, 86)
 COLOR_GOLEM_EDGE = (44, 40, 52)
 COLOR_GOLEM_CORE = (90, 200, 220)
 COLOR_GOLEM_CORE_HOT = (255, 120, 90)
-COLOR_WARN_FAINT = (90, 36, 44)  # 공격 예고 칸: 처음
-COLOR_WARN_STRONG = (200, 50, 50)  # 터지기 직전
-COLOR_LASER = (255, 90, 70)
+# 공격 예고 칸(히트박스) 색: 공격 종류별로 (처음 색, 터지기 직전 색). 2026-11-17 사용자 결정.
+COLOR_WARN = {
+    "parryable": ((90, 36, 44), (215, 50, 50)),  # 패링 가능한 일반 공격: 빨강
+    "unparryable": ((92, 82, 30), (235, 205, 50)),  # 패링 불가 (회피로 피함): 노랑
+    "jump_only": ((30, 72, 92), (100, 205, 245)),  # 점프로만 피함: 하늘색
+}
 COLOR_POSTURE = (230, 200, 90)
 COLOR_PLAYER_HP = (90, 200, 110)
 COLOR_BAR_BACK = (30, 26, 38)
