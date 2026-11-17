@@ -16,6 +16,21 @@
 
 ---
 
+## 2026-11-18 — 골렘 올려차기 동작 그림, 앞차기 앞으로 4칸 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: ② 올려차기 4방향 그림을 넣고(화면 흔들림·이펙트 없음), 범위를 가로 3 × 앞으로 4 로 줄였다 (D-038, PRE-PRD 2.4).
+  PixelLab 만으로는 실패해, 핵심 자세는 사용자가 ChatGPT 로 그리고(`assets/concepts/pixellab/golem_kick/chatgpt_kit/`)
+  사이는 PixelLab 으로 채웠다.
+- **현재 상태**: 테스트 240개 통과. 실제 pico2d 창 캡처로 서쪽을 볼 때 당김 → 차기 → 되돌아옴과 4×3 예고 칸 확인
+  (`assets/concepts/pixellab/golem_kick/ingame_capture_contact.png`). 직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: 그림을 바꾸려면 chatgpt_kit/README.txt 순서대로 `result_<dir>.png` 를 바꾸고
+  `process_results.py` → PixelLab 사이 동작 → `build_golem_kick.py` → `aligned/kick_*.png` 를 `assets/images/golem/` 로 복사.
+  `*_try/` 폴더는 실패한 시안 (커밋 안 함).
+- **남은 문제 / 다음 할 일**: ④ 레이저 그림(지금은 설정으로 꺼 둠). 발 구르기·내려찍기 후면 일어섬 문제. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-17 — 패링 모션(측면) + 패링 성공 이펙트 (Claude Code)
 
 - **브랜치**: `claude/player-parry` (`claude/golem-stomp-vfx` 위에서 시작, 그 브랜치가 아직 푸시 전이라 푸시 보류)
