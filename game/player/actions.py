@@ -105,3 +105,90 @@ class SwordAttack(TimedAction):
     def frame_index(self) -> int:
         p = self.progress
         return next(i for i, end in enumerate(self.frame_ends) if p < end or end == 1.0)
+
+
+class SwordCombo:
+    """검 3단 콤보. 지금 타(SwordAttack)의 진행, 다음 타 예약, 콤보 유예 시간, 3타 후 쿨타임을 관리한다.
+
+    - start(): 공격 시작. 유예 시간 안이면 다음 타, 아니면 1타부터.
+    - request_next(): 공격 중 클릭. 마지막 타가 아니면 다음 타를 예약한다.
+    - update(dt): 지금 타를 진행한다. 예약이 있으면 복귀 프레임에 들어가는 순간 다음 타로 넘어간다.
+    - tick(dt): 유예·쿨타임 시간을 줄인다 (상태와 상관없이 매 프레임).
+    Player 의 애니메이션처럼 frame_index / finished / reset() 을 제공한다.
+    """
+
+    def __init__(self, durations: tuple[float, ...], frame_ends: tuple[tuple[float, ...], ...],
+                 combo_window: float, cooldown: float) -> None:
+        if len(durations) != len(frame_ends) or not durations:
+            raise ValueError("durations 와 frame_ends 는 타 수만큼 있어야 합니다.")
+        self.hits = [SwordAttack(d, ends) for d, ends in zip(durations, frame_ends)]
+        self.combo_window = combo_window
+        self.cooldown = cooldown
+        self.index = 0  # 지금(또는 마지막) 타. 0 = 1타
+        self.queued = False
+        self.window_left = 0.0
+        self.cooldown_left = 0.0
+
+    @property
+    def current(self) -> SwordAttack:
+        return self.hits[self.index]
+
+    @property
+    def hit_number(self) -> int:
+        """1타 = 1"""
+        return self.index + 1
+
+    @property
+    def is_last_hit(self) -> bool:
+        return self.index == len(self.hits) - 1
+
+    @property
+    def can_start(self) -> bool:
+        return self.cooldown_left <= 0.0
+
+    @property
+    def frame_index(self) -> int:
+        return self.current.frame_index
+
+    @property
+    def finished(self) -> bool:
+        return self.current.finished
+
+    def reset(self) -> None:
+        """상태 전환 때 호출된다. 타 선택은 start() 가 하므로 여기서는 아무것도 하지 않는다."""
+
+    def start(self) -> None:
+        if self.window_left > 0.0 and not self.is_last_hit:
+            self.index += 1
+        else:
+            self.index = 0
+        self.window_left = 0.0
+        self.queued = False
+        self.current.reset()
+
+    def request_next(self) -> None:
+        if not self.is_last_hit:
+            self.queued = True
+
+    def cancel_window(self) -> None:
+        """다른 행동(점프·패링)을 하면 콤보가 끊긴다."""
+        self.window_left = 0.0
+
+    def update(self, dt: float) -> None:
+        hit = self.current
+        hit.update(dt)
+        if self.queued and hit.progress >= hit.frame_ends[-2]:
+            # 복귀 프레임을 건너뛰고 다음 타로
+            self.index += 1
+            self.queued = False
+            self.current.reset()
+        elif hit.finished:
+            if self.is_last_hit:
+                self.cooldown_left = self.cooldown
+                self.window_left = 0.0
+            else:
+                self.window_left = self.combo_window
+
+    def tick(self, dt: float) -> None:
+        self.window_left = max(0.0, self.window_left - dt)
+        self.cooldown_left = max(0.0, self.cooldown_left - dt)

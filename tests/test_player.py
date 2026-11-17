@@ -4,7 +4,8 @@ from pathlib import Path
 from game import config
 from game.input.input_state import Action, InputState
 from game.player.facing import Facing
-from game.player.player import LEFT_SHEET_STATES, SHADOW_PATH, Player, sprite_sheet_path
+from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, Player, attack_hand_sheet_path, attack_sheet_path,
+                               sprite_sheet_path, weapon_sheet_path)
 from game.player.state_machine import ATTACK, IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
 from game.world.grid import Grid
@@ -257,65 +258,219 @@ class JumpParryTest(unittest.TestCase):
         self.assertEqual((args[0], args[1]), (sprite_sheet_path(IDLE, "front"), 0))
 
 class PlayerAttackTest(unittest.TestCase):
+    DT = 1 / 60
+
     def setUp(self):
         self.player = make_player()
         self.input = InputState()
 
-    def step(self, dt=1 / 60):
-        self.player.update(dt, self.input)
+    def step(self):
+        self.player.update(self.DT, self.input)
         self.input.begin_frame()
 
-    def run_for(self, seconds, dt=1 / 60):
-        for _ in range(round(seconds / dt)):
-            self.step(dt)
+    def run_for(self, seconds):
+        for _ in range(round(seconds / self.DT)):
+            self.step()
 
     def click(self):
         self.input.press(Action.ATTACK)
         self.step()
         self.input.release(Action.ATTACK)
 
-    def test_attack_starts_immediately_in_place_then_idle(self):
+    def run_until_idle(self, limit=3.0):
+        for _ in range(round(limit / self.DT)):
+            if self.player.state != ATTACK:
+                return
+            self.step()
+        self.fail("공격이 끝나지 않음")
+
+    def test_single_click_plays_first_hit_in_place_then_idle(self):
         self.click()
         self.assertEqual(self.player.state, ATTACK)
-        self.run_for(config.PLAYER_ATTACK_DURATION * 0.9)
+        self.assertEqual(self.player.combo.hit_number, 1)
+        self.run_for(config.PLAYER_ATTACK_DURATIONS[0] * 0.9)
         self.assertEqual(self.player.state, ATTACK)
         self.assertEqual((self.player.col, self.player.row), (5, 5))
-        self.run_for(config.PLAYER_ATTACK_DURATION * 0.1 + 2 / 60)
+        self.run_for(config.PLAYER_ATTACK_DURATIONS[0] * 0.1 + 2 * self.DT)
         self.assertEqual(self.player.state, IDLE)
 
     def test_no_movement_during_attack(self):
         self.click()
         self.input.press(Action.MOVE_RIGHT)
-        self.run_for(config.PLAYER_ATTACK_DURATION * 0.9)
+        self.run_for(config.PLAYER_ATTACK_DURATIONS[0] * 0.9)
         self.assertEqual((self.player.col, self.player.row), (5, 5))
         self.assertEqual(self.player.state, ATTACK)
+
+    def test_click_during_attack_chains_next_hit_skipping_recovery(self):
+        self.click()
+        self.click()  # 1타 중에 미리 클릭
+        hit1 = self.player.combo.hits[0]
+        frames = []
+        while self.player.combo.hit_number == 1:
+            frames.append(self.player.combo.frame_index)
+            self.step()
+        self.assertEqual(self.player.state, ATTACK)
+        self.assertEqual(self.player.combo.hit_number, 2)
+        self.assertNotIn(config.PLAYER_ATTACK_FRAMES - 1, frames)  # 복귀 프레임을 건너뜀
+        self.assertLess(hit1.progress, 1.0)
+        self.assertEqual(self.player.combo.frame_index, 0)
+
+    def test_three_hits_then_cooldown_blocks_only_attack(self):
+        self.click()
+        while not self.player.combo.is_last_hit:
+            self.click()  # 공격 중 클릭: 다음 타 예약
+            hit = self.player.combo.hit_number
+            while self.player.combo.hit_number == hit:
+                self.step()
+            self.assertEqual(self.player.state, ATTACK)
+        self.assertEqual(self.player.combo.hit_number, 3)
+        self.run_until_idle()
+        # 쿨타임: 클릭해도 공격하지 않지만 이동은 된다
+        self.click()
+        self.assertNotEqual(self.player.state, ATTACK)
+        self.input.press(Action.MOVE_RIGHT)
+        self.run_for(0.2)
+        self.input.release(Action.MOVE_RIGHT)
+        self.assertGreater(self.player.col, 5)
+        self.run_for(config.PLAYER_ATTACK_COOLDOWN)
+        self.click()
+        self.assertEqual(self.player.state, ATTACK)
+        self.assertEqual(self.player.combo.hit_number, 1)
+
+    def test_click_within_window_after_hit_continues_combo(self):
+        self.click()
+        self.run_until_idle()
+        self.run_for(config.PLAYER_ATTACK_COMBO_WINDOW / 2)
+        self.click()
+        self.assertEqual(self.player.combo.hit_number, 2)
+
+    def test_click_after_window_restarts_combo(self):
+        self.click()
+        self.run_until_idle()
+        self.run_for(config.PLAYER_ATTACK_COMBO_WINDOW + 0.05)
+        self.click()
+        self.assertEqual(self.player.combo.hit_number, 1)
+
+    def test_third_hit_does_not_queue_more(self):
+        combo = self.player.combo
+        combo.index = 2
+        combo.queued = False
+        combo.request_next()
+        self.assertFalse(combo.queued)
 
     def test_attack_frames_follow_frame_ends(self):
         self.click()
         seen = []
-        for _ in range(round(config.PLAYER_ATTACK_DURATION * 60)):
-            seen.append(self.player.attack.frame_index)
+        while self.player.state == ATTACK:
+            seen.append(self.player.combo.frame_index)
             self.step()
         self.assertEqual(sorted(set(seen)), list(range(config.PLAYER_ATTACK_FRAMES)))
         self.assertEqual(seen, sorted(seen))
 
-    def test_attack_draws_64_canvas_feet_on_tile(self):
-        self.input.press(Action.MOVE_LEFT)  # 왼쪽 보기 (화면 끝이 아니므로 한 칸 이동 시작)
+    def test_attack_frame_shift_moves_sprite_forward_only(self):
+        # 3타 찌름 프레임: 앞쪽으로 옮겨 그리지만 칸 위치는 그대로
+        combo = self.player.combo
+        self.click()
+        combo.index = 2
+        combo.current.reset()
+        while combo.frame_index != 2:
+            self.step()
+        self.player.facing = Facing.RIGHT
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        (name, args, kwargs), _sword, _hand = renderer.calls
+        tile, scale = config.RENDER_TILE_SIZE, config.RENDER_SCALE
+        shift_x, _ = config.PLAYER_ATTACK_FRAME_SHIFTS[2][2]
+        self.assertAlmostEqual(args[4], 5 * tile + tile / 2 + shift_x * scale)
+        self.assertEqual((self.player.col, self.player.row), (5, 5))
+
+    def test_attack_draws_hit_sheet_with_feet_on_tile(self):
+        self.input.press(Action.MOVE_LEFT)  # 왼쪽 보기
         self.step()
         self.input.release(Action.MOVE_LEFT)
         self.run_for(1.0)
         self.click()
+        self.click()
+        while self.player.combo.hit_number == 1:
+            self.step()
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
-        (name, args, kwargs), = renderer.calls
-        size, scale = config.PLAYER_ATTACK_SPRITE_SIZE, config.RENDER_SCALE
-        self.assertEqual(args[0], sprite_sheet_path(ATTACK, "side"))
-        self.assertEqual(args[2:4], (size, size))
-        self.assertEqual(args[6:8], (size * scale, size * scale))
+        (name, args, kwargs), _sword, _hand = renderer.calls
+        w, h, scale = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT, config.RENDER_SCALE
+        self.assertEqual(args[0], attack_sheet_path(2))
+        self.assertEqual(args[2:4], (w, h))
+        self.assertEqual(args[6:8], (w * scale, h * scale))
         tile = config.RENDER_TILE_SIZE
         col, row = self.player.col, self.player.row
         self.assertAlmostEqual(args[4], col * tile + tile / 2)
         self.assertAlmostEqual(args[5], row * tile - config.PLAYER_ATTACK_FOOT_MARGIN * scale)
+        self.assertTrue(kwargs["flip_horizontal"])
+
+    def _draw_attack_frame(self, facing_left: bool = False, action: Action | None = None):
+        # 바라볼 방향으로 한 칸 걸은 뒤 멈추고 공격한다 (기본: 오른쪽, facing_left: 왼쪽)
+        action = action or (Action.MOVE_LEFT if facing_left else Action.MOVE_RIGHT)
+        self.input.press(action)
+        self.step()
+        self.input.release(action)
+        self.run_for(1.0)
+        self.click()
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        return renderer.calls
+
+    def test_attack_draws_one_sword_image_at_hand(self):
+        # 몸 그림 다음에 칼 그림 한 장을 그린다: 그림 한가운데(손)가 캔버스의 손 픽셀 가운데에 오고, 각도만큼 돌린다.
+        body, sword, hand = self._draw_attack_frame(facing_left=False)
+        _, bargs, _ = body
+        name, args, kwargs = sword
+        scale = config.RENDER_SCALE
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        hand_x, hand_y, angle, behind = config.PLAYER_ATTACK_SWORD[0][self.player.combo.frame_index]
+        self.assertFalse(behind)
+        self.assertEqual(name, "draw_image_rotated")
+        self.assertEqual(args[0], weapon_sheet_path(config.PLAYER_WEAPON))
+        canvas_left = bargs[4] - w * scale / 2
+        canvas_top = bargs[5] + h * scale
+        self.assertAlmostEqual(args[1], canvas_left + (hand_x + 0.5) * scale)
+        self.assertAlmostEqual(args[2], canvas_top - (hand_y + 0.5) * scale)
+        self.assertEqual(args[3:5], (config.PLAYER_SWORD_SPRITE_WIDTH * scale, config.PLAYER_SWORD_SPRITE_HEIGHT * scale))
+        self.assertEqual(args[5], angle)
+        self.assertFalse(kwargs["flip_horizontal"])
+
+    def test_attack_draws_right_hand_layer_over_sword(self):
+        # 두 손 잡기: 칼 다음에 오른손 레이어를 몸과 같은 자리·크기·반전으로 그린다
+        body, sword, hand = self._draw_attack_frame(facing_left=True)
+        _, bargs, bkw = body
+        name, args, kwargs = hand
+        self.assertEqual(name, "draw_sprite_frame")
+        self.assertEqual(args[0], attack_hand_sheet_path(1))
+        self.assertEqual(args[1:], bargs[1:])
+        self.assertEqual(kwargs, bkw)
+
+    def test_attack_facing_down_uses_front_sheets_and_short_sword(self):
+        # 아래를 보면 정면 몸·칼 앞 레이어 시트와 정면 칼 위치표(칼 길이 비율 포함)를 쓴다. 반전 없음.
+        body, sword, hand = self._draw_attack_frame(action=Action.MOVE_DOWN)
+        frame = self.player.combo.frame_index
+        hand_x, hand_y, angle, behind, length = config.PLAYER_ATTACK_SWORD_FRONT[0][frame]
+        self.assertEqual(body[1][0], attack_sheet_path(1, "front"))
+        self.assertEqual(hand[1][0], attack_hand_sheet_path(1, "front"))
+        _, args, kwargs = sword
+        scale = config.RENDER_SCALE
+        self.assertEqual(args[3], round(config.PLAYER_SWORD_SPRITE_WIDTH * length) * scale)
+        self.assertEqual(args[5], angle)
+        self.assertFalse(kwargs["flip_horizontal"])
+        self.assertFalse(body[2]["flip_horizontal"])
+
+    def test_attack_sword_mirrors_when_facing_left(self):
+        # 왼쪽: 손 위치를 좌우로 뒤집고, 칼은 뒤집은 뒤 반대 각도로 돌린다 (칼끝 방향 180 - 각도)
+        body, sword, hand = self._draw_attack_frame(facing_left=True)
+        _, bargs, _ = body
+        _, args, kwargs = sword
+        scale, w = config.RENDER_SCALE, config.PLAYER_ATTACK_SPRITE_WIDTH
+        hand_x, _, angle, _ = config.PLAYER_ATTACK_SWORD[0][self.player.combo.frame_index]
+        canvas_left = bargs[4] - w * scale / 2
+        self.assertAlmostEqual(args[1], canvas_left + (w - hand_x - 0.5) * scale)
+        self.assertEqual(args[5], -angle)
         self.assertTrue(kwargs["flip_horizontal"])
 
 

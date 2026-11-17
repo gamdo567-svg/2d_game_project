@@ -4,7 +4,8 @@ import unittest
 import zlib
 
 from game import config
-from game.player.player import LEFT_SHEET_STATES, SHADOW_PATH, SPRITE_FALLBACK, sprite_sheet_path
+from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, SPRITE_FALLBACK, attack_hand_sheet_path,
+                               attack_sheet_path, sprite_sheet_path, weapon_sheet_path)
 from game.player.state_machine import ATTACK, IDLE, JUMP, STATES, WALK
 
 VIEWS = ("front", "back", "side")
@@ -143,35 +144,102 @@ class PlayerAssetTest(unittest.TestCase):
                 legs = [tuple(map(tuple, f[-LEG_ROWS:])) for f in walk]
                 self.assertEqual(len(set(legs)), len(legs), "다리 자세가 같은 프레임이 있음")
 
-    def test_attack_sheet(self):
-        # 공격: 64×64 캔버스 5프레임, 오른쪽 측면만. 투명/불투명만 있고, 발끝 줄이 모든 프레임에서 같다.
-        size = config.PLAYER_ATTACK_SPRITE_SIZE
-        path = sprite_sheet_path(ATTACK, "side")
+    def attack_frames(self, hit):
+        w = config.PLAYER_ATTACK_SPRITE_WIDTH
+        pixels = read_rgba_pixels(attack_sheet_path(hit))
+        return [[row[i * w:(i + 1) * w] for row in pixels] for i in range(config.PLAYER_ATTACK_FRAMES)]
+
+    def test_attack_sheets(self):
+        # 콤보 타마다 96×64 캔버스 5프레임, 오른쪽 측면만. 투명/불투명만 있고, 발끝 줄이 모든 프레임에서 같다.
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        foot_row = h - 1 - config.PLAYER_ATTACK_FOOT_MARGIN
+        for hit in range(1, config.PLAYER_ATTACK_HITS + 1):
+            signature, width, height, color_type = read_png_header(attack_sheet_path(hit))
+            with self.subTest(hit=hit):
+                self.assertEqual((width, height), (w * config.PLAYER_ATTACK_FRAMES, h))
+                self.assertEqual(color_type, COLOR_TYPE_RGBA)
+            for index, frame in enumerate(self.attack_frames(hit)):
+                with self.subTest(hit=hit, frame=index):
+                    self.assertTrue(all(p[3] in (0, 255) for row in frame for p in row))
+                    # 발 줄에는 그림이 있고, 그 아래로는 칼끝만 몇 줄 내려갈 수 있다
+                    self.assertTrue(any(p[3] for p in frame[foot_row]))
+                    rows_below = [row for row in frame[foot_row + 1:] if any(p[3] for p in row)]
+                    self.assertLessEqual(len(rows_below), 3)
+
+    def test_attack_hand_sheets_match_body_sheets(self):
+        # 칼 앞 레이어(칼을 쥔 손·팔): 몸 시트와 같은 크기, 프레임마다 손 둘레에 그림이 있고 칼 길이 안에만 있다
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        for hit in range(1, config.PLAYER_ATTACK_HITS + 1):
+            path = attack_hand_sheet_path(hit)
+            signature, width, height, color_type = read_png_header(path)
+            self.assertEqual((width, height), (w * config.PLAYER_ATTACK_FRAMES, h))
+            pixels = read_rgba_pixels(path)
+            for i in range(config.PLAYER_ATTACK_FRAMES):
+                hand_x, hand_y = config.PLAYER_ATTACK_SWORD[hit - 1][i][:2]
+                opaque = [(x, y) for y in range(h) for x in range(w) if pixels[y][i * w + x][3]]
+                with self.subTest(hit=hit, frame=i):
+                    self.assertTrue(any(abs(x - hand_x) <= 3 and abs(y - hand_y) <= 3 for x, y in opaque))
+                    reach = config.PLAYER_SWORD_SPRITE_WIDTH // 2 + 2
+                    self.assertTrue(all(abs(x - hand_x) <= reach and abs(y - hand_y) <= reach for x, y in opaque))
+
+    def test_front_attack_sheets_and_table(self):
+        # 정면 공격: 몸·칼 앞 레이어 시트가 측면과 같은 규격이고, 칼 위치표는 (x, y, 각도, 뒤, 길이 비율)
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        for hit in range(1, config.PLAYER_ATTACK_HITS + 1):
+            for path in (attack_sheet_path(hit, "front"), attack_hand_sheet_path(hit, "front")):
+                signature, width, height, color_type = read_png_header(path)
+                with self.subTest(path=path):
+                    self.assertEqual((width, height), (w * config.PLAYER_ATTACK_FRAMES, h))
+        self.assertEqual(len(config.PLAYER_ATTACK_SWORD_FRONT), config.PLAYER_ATTACK_HITS)
+        for hit in config.PLAYER_ATTACK_SWORD_FRONT:
+            self.assertEqual(len(hit), config.PLAYER_ATTACK_FRAMES)
+            for hand_x, hand_y, angle, behind, length in hit:
+                self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
+                self.assertTrue(0 < length <= 1.0)
+
+    def test_attack_timing_tables_match_hits(self):
+        self.assertEqual(len(config.PLAYER_ATTACK_DURATIONS), config.PLAYER_ATTACK_HITS)
+        self.assertEqual(len(config.PLAYER_ATTACK_FRAME_ENDS), config.PLAYER_ATTACK_HITS)
+        self.assertEqual(len(config.PLAYER_ATTACK_FRAME_SHIFTS), config.PLAYER_ATTACK_HITS)
+        for ends, shifts in zip(config.PLAYER_ATTACK_FRAME_ENDS, config.PLAYER_ATTACK_FRAME_SHIFTS):
+            self.assertEqual(len(ends), config.PLAYER_ATTACK_FRAMES)
+            self.assertEqual(len(shifts), config.PLAYER_ATTACK_FRAMES)
+            self.assertEqual(shifts[-1], (0, 0))  # 복귀 프레임은 제자리
+
+    def test_attack_recovery_frame_matches_idle(self):
+        # 타마다 마지막(복귀) 프레임은 Idle 측면 첫 프레임과 같은 머리: 공격이 끝날 때 몸이 튀지 않는다.
+        idle = frames_of(IDLE, "side")[0]
+        ox = (config.PLAYER_ATTACK_SPRITE_WIDTH - config.PLAYER_SPRITE_WIDTH) // 2
+        oy = config.PLAYER_ATTACK_SPRITE_HEIGHT - config.PLAYER_ATTACK_FOOT_MARGIN - config.PLAYER_SPRITE_HEIGHT
+        for hit in range(1, config.PLAYER_ATTACK_HITS + 1):
+            last = self.attack_frames(hit)[-1]
+            with self.subTest(hit=hit):
+                self.assertTrue(all(last[oy + y][ox + x] == idle[y][x]
+                                    for y in range(HEAD_ROWS + 2) for x in range(config.PLAYER_SPRITE_WIDTH)))
+
+    def test_weapon_is_one_image_with_hand_at_center(self):
+        # 칼 그림은 한 장: 칼끝이 오른쪽, 한가운데(손)에 주먹이 있고, 투명/불투명만 쓴다.
+        w, h = config.PLAYER_SWORD_SPRITE_WIDTH, config.PLAYER_SWORD_SPRITE_HEIGHT
+        path = weapon_sheet_path(config.PLAYER_WEAPON)
         signature, width, height, color_type = read_png_header(path)
-        self.assertEqual((width, height), (size * config.PLAYER_ATTACK_FRAMES, size))
+        self.assertEqual((width, height), (w, h))
         self.assertEqual(color_type, COLOR_TYPE_RGBA)
         pixels = read_rgba_pixels(path)
-        foot_row = size - 1 - config.PLAYER_ATTACK_FOOT_MARGIN
-        for index in range(config.PLAYER_ATTACK_FRAMES):
-            frame = [row[index * size:(index + 1) * size] for row in pixels]
-            with self.subTest(frame=index):
-                self.assertTrue(all(p[3] in (0, 255) for row in frame for p in row))
-                # 발 줄에는 그림이 있고, 그 아래로는 칼끝만 몇 줄 내려갈 수 있다
-                self.assertTrue(any(p[3] for p in frame[foot_row]))
-                rows_below = [row for row in frame[foot_row + 1:] if any(p[3] for p in row)]
-                self.assertLessEqual(len(rows_below), 3)
+        self.assertTrue(all(p[3] in (0, 255) for row in pixels for p in row))
+        self.assertEqual(pixels[h // 2][w // 2][3], 255)
+        right = sum(1 for row in pixels for p in row[w // 2:] if p[3])
+        left = sum(1 for row in pixels for p in row[:w // 2] if p[3])
+        self.assertGreater(right, left * 2)  # 칼날은 손 오른쪽
 
-    def test_attack_idle_frame_matches_idle(self):
-        # 마지막(복귀) 프레임은 Idle 측면 첫 프레임과 같은 몸 (검만 더해짐): 공격이 끝날 때 몸이 튀지 않는다.
-        size = config.PLAYER_ATTACK_SPRITE_SIZE
-        attack = read_rgba_pixels(sprite_sheet_path(ATTACK, "side"))
-        last = [row[(config.PLAYER_ATTACK_FRAMES - 1) * size:] for row in attack]
-        idle = frames_of(IDLE, "side")[0]
-        ox = (size - config.PLAYER_SPRITE_WIDTH) // 2
-        oy = size - config.PLAYER_ATTACK_FOOT_MARGIN - config.PLAYER_SPRITE_HEIGHT
-        head_same = all(last[oy + y][ox + x] == idle[y][x]
-                        for y in range(HEAD_ROWS + 2) for x in range(config.PLAYER_SPRITE_WIDTH))
-        self.assertTrue(head_same)
+    def test_attack_sword_table_matches_frames(self):
+        self.assertEqual(len(config.PLAYER_ATTACK_SWORD), config.PLAYER_ATTACK_HITS)
+        for hit in config.PLAYER_ATTACK_SWORD:
+            self.assertEqual(len(hit), config.PLAYER_ATTACK_FRAMES)
+            for hand_x, hand_y, angle, behind in hit:
+                self.assertTrue(0 <= hand_x < config.PLAYER_ATTACK_SPRITE_WIDTH)
+                self.assertTrue(0 <= hand_y < config.PLAYER_ATTACK_SPRITE_HEIGHT)
+                self.assertTrue(-180 <= angle <= 180)
+                self.assertIsInstance(behind, bool)
 
     def test_shadow_is_translucent(self):
         signature, width, height, color_type = read_png_header(SHADOW_PATH)

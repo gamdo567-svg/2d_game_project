@@ -5,6 +5,7 @@ Renderer 는 pico2d.open_canvas() 이후에 생성해야 한다 (폰트 로드 �
 """
 from __future__ import annotations
 
+import math
 import os
 
 import pico2d
@@ -119,3 +120,23 @@ class Renderer:
         image.clip_composite_draw(
             left, 0, frame_width, frame_height, 0, flip, x, y, draw_width, draw_height
         )
+
+    def draw_image_rotated(
+        self,
+        path: str,
+        center_x: float,
+        center_y: float,
+        draw_width: int,
+        draw_height: int,
+        angle_degrees: float,
+        flip_horizontal: bool = False,
+    ) -> None:
+        """그림 한 장을 (center_x, center_y)를 중심으로 angle_degrees(반시계 +) 만큼 돌려 그린다.
+
+        좌우 반전이 있으면 먼저 뒤집은 뒤 돌린다 (SDL 규칙). 확대는 nearest 방식이다.
+        """
+        image = self._image(path)
+        if image is None:
+            return
+        flip = "h" if flip_horizontal else ""
+        image.composite_draw(math.radians(angle_degrees), flip, center_x, center_y, draw_width, draw_height)
