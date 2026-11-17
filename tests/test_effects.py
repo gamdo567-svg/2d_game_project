@@ -131,6 +131,57 @@ class SceneEffectTest(unittest.TestCase):
         self.assertTrue(effect.finished)
         self.assertNotIn(effect, scene.effects)  # 다 재생하면 사라짐
 
+    def test_parry_success_starts_spark_on_top(self):
+        # 패링에 성공하면 칼이 막은 자리(바라보는 쪽 앞)에서 노란 불꽃 이펙트가 인물 위에 그려진다 (2026-11-17)
+        from game.scenes.field_scene import FieldScene
+        from game.world.grid import Grid
+        from game.world.tile_map import TileMap
+        from game.input.input_state import Action, InputState
+        from game.combat.enemy_attack import EnemyAttack
+        from game.player.player import parry_spark_point
+        from tests.test_golem import ROOM
+
+        tile_map = TileMap.from_text(ROOM)
+        scene = FieldScene(Grid(tile_map.cols, tile_map.rows, config.RENDER_TILE_SIZE), tile_map)
+        player, golem = scene.player, scene.golems[0]
+        inp = InputState()
+        inp.press(Action.PARRY)
+        scene.update(1 / 60, inp)
+        inp.begin_frame()
+        inp.release(Action.PARRY)
+        hit = EnemyAttack(frozenset({(player.col, player.row)}), 10, parryable=True)
+
+        def fake_update(dt, player_tile, can_place):
+            golem.attacks = [hit]
+            golem.effects = []
+
+        golem.update = fake_update
+        scene.update(1 / 60, inp)
+        sparks = [e for e in scene.effects if e.spec is config.PARRY_SPARK_EFFECT]
+        self.assertEqual(len(sparks), 1)
+        self.assertEqual((sparks[0].x, sparks[0].y), parry_spark_point(player.col, player.row, player.facing))
+        self.assertEqual(player.hp, player.max_hp)  # 막았으니 피해 없음
+
+        class Rec:
+            def __init__(self):
+                self.calls = []
+
+            def __getattr__(self, name):
+                return lambda *a, **k: self.calls.append(name)
+
+            def draw_sheet_frame(self, path, *args):
+                self.calls.append(("effect", path))
+
+            def draw_sprite_frame(self, path, *args, **kwargs):
+                self.calls.append(("sprite", path))
+
+        rec = Rec()
+        scene.draw(rec)
+        order = [c for c in rec.calls if isinstance(c, tuple)]
+        spark_at = order.index(("effect", str(config.PARRY_SPARK_EFFECT["path"])))
+        self.assertTrue(all(kind == "effect" or i < spark_at for i, (kind, _) in enumerate(order)
+                            if kind == "sprite"))  # 인물 그림보다 나중에
+
     def test_stomp_effect_drawn_at_range_size(self):
         # 발 구르기 이펙트는 ③ 범위(7×7칸) 크기로 그린다 (2026-11-17 사용자 요청)
         from game.scenes.field_scene import FieldScene

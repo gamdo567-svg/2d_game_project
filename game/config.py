@@ -65,6 +65,13 @@ PLAYER_JUMP_DURATION = 0.7  # 초 (2026-11-17 착지 두 장을 넣으며 0.6 �
 PLAYER_JUMP_HEIGHT = 1.0  # 칸. 그림만 띄우며 논리적 칸 위치는 그대로 (2026-11-10 높게 뛰도록 0.5 -> 1.0)
 PLAYER_PARRY_DURATION = 0.4  # 초. 이 동안 이동 불가
 PLAYER_PARRY_WINDOW = 0.15  # 초. 누른 순간부터 막기 판정
+# 패링 그림 (2026-11-17 사용자 요청, 측면만): PixelLab 그림을 공격과 같은 96×64 칸 5장으로 (칼 분리).
+# 칼을 가슴 쪽으로 당김 → 위로 쳐올림(잔상) → 막기 자세 ×2 → 당김(복귀). 각 장이 끝나는 진행도 (막기 판정 0.15초 안에 막기 자세).
+PLAYER_PARRY_FRAME_ENDS = (0.08, 0.18, 0.55, 0.85, 1.0)
+# 방향별 칼 위치표 (손 x, 손 y, 각도, 몸 뒤). export_to_game.py 가 뽑은 값. 없는 방향은 서 있는 그림.
+PLAYER_PARRY_SWORD = {
+    "side": ((57, 28, 108, True), (60, 38, 60, False), (58, 35, 48, False), (58, 35, 48, False), (57, 28, 108, True)),
+}
 # 점프 그림: 2026-11-17 PixelLab 으로 다시 그림 (사용자 결정: 정면 v7, 측면 v19, 후면 v14, 후드를 잡지 않음).
 # 10프레임이 끝나는 진행도: 웅크림 → 깊게 웅크림 → 도약 → 공중 ×4 → 다리 폄 → 착지(깊게 웅크림) → 일어섬.
 # 처음 PLAYER_JUMP_TAKEOFF_FRAMES 장이 끝나면 떠오르고, 마지막 PLAYER_JUMP_LANDING_FRAMES 장이 시작될 때 땅에 닿는다.
@@ -283,6 +290,17 @@ GOLEM_STOMP_EFFECT = {
     # 화면에 그리는 크기(칸). 없으면 frame_size × RENDER_SCALE. ③ 범위(7×7)에 맞춘다 (2026-11-17 사용자 요청)
     "draw_tiles": GOLEM_STOMP["size"],
 }
+# 패링 성공 이펙트 (2026-11-17 사용자 요청: 노란 성공 파티클). 흰 십자 섬광 → 노란 고리 → 불꽃이 튀며 식음.
+# on_top: 인물 위에 그린다. 터지는 점은 주인공 칸에서 바라보는 쪽으로 PARRY_SPARK_OFFSET (앞으로, 위로) 칸.
+PARRY_SPARK_EFFECT = {
+    "path": EFFECT_IMAGE_DIR / "parry_spark.png",
+    "frame_size": 64,
+    "columns": 9,
+    "frames": 9,
+    "fps": 24,
+    "on_top": True,
+}
+PARRY_SPARK_OFFSET = (0.6, 1.0)
 # ① 내려찍기 충격 (2026-11-17 사용자 요청): 짧은 금·튀는 돌 파편·먼지, 약한 흔들림. 앞 범위 칸들의 가운데에서.
 #   생성 스크립트: assets/concepts/vfx/slam/build_golem_slam_impact.py (160×160, 16프레임, 12fps)
 GOLEM_SLAM_EFFECT = {

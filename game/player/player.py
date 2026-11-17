@@ -59,6 +59,23 @@ def attack_view(facing: Facing, hit_index: int = 0) -> str:
     return view
 
 
+def parry_sheet_path(view: str) -> str:
+    """패링 시트 경로 (몸, 칼 없음). 예: parry/side.png"""
+    return str(config.PLAYER_IMAGE_DIR / "parry" / f"{view}.png")
+
+
+def parry_hand_sheet_path(view: str) -> str:
+    """패링 오른손 레이어 시트 경로. 예: parry/side_hand.png"""
+    return str(config.PLAYER_IMAGE_DIR / "parry" / f"{view}_hand.png")
+
+
+def parry_spark_point(col: int, row: int, facing: Facing) -> tuple[float, float]:
+    """패링 성공 이펙트가 터지는 점 (칸 좌표, 실수): 바라보는 쪽 칼이 막는 자리."""
+    dx, dy = facing.value
+    forward, up = config.PARRY_SPARK_OFFSET
+    return col + 0.5 + dx * forward, row + up + dy * forward
+
+
 def weapon_sheet_path(weapon: str) -> str:
     """무기 그림 경로 (칼 한 장). 예: weapons/old_sword.png"""
     return str(config.PLAYER_IMAGE_DIR / "weapons" / f"{weapon}.png")
@@ -346,6 +363,8 @@ class Player:
         if self.state == ATTACK:
             self._draw_attack(renderer, center_x, bottom)
             return
+        if self.state == PARRY and self._draw_parry(renderer, center_x, bottom):
+            return
 
         # 그림의 발끝(아래 가운데)을 칸의 아래 가운데에 맞춘다. 점프 중에는 lift 만큼 띄운다.
         sprite_state = SPRITE_FALLBACK.get(self.state, self.state)
@@ -375,8 +394,6 @@ class Player:
         아래를 보면 정면, 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
         후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 3타 찌르는 순간은 무기의 찌르기용 칼 그림을 쓴다.
         """
-        width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
-        scale = config.RENDER_SCALE
         view = attack_view(self.facing, self.combo.index)
         ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[self.combo.index] if view == "front" else None
         if ends is not None:
@@ -386,11 +403,41 @@ class Player:
         else:
             frame = self.combo.frame_index
             shift_x, shift_y = config.PLAYER_ATTACK_FRAME_SHIFTS[self.combo.index][frame]
+        # 찌르기용 칼 그림이 있는 프레임이면 옆모습 칼을 돌리는 대신 그 그림을 몸 위에 겹친다 (없는 무기는 옆모습 칼)
+        art_path = weapon_view_art_path(config.PLAYER_WEAPON, view, self.combo.hit_number)
+        use_art = (frame in config.PLAYER_WEAPON_VIEW_ART.get((view, self.combo.hit_number), ())
+                   and os.path.exists(art_path))
+        self._draw_sword_pose(renderer, center_x, bottom, frame, (shift_x, shift_y),
+                              attack_sheet_path(self.combo.hit_number, view),
+                              attack_hand_sheet_path(self.combo.hit_number, view),
+                              ATTACK_SWORD_TABLES[view][self.combo.index][frame], art_path if use_art else None)
+
+    def _draw_parry(self, renderer, center_x: float, bottom: float) -> bool:
+        """패링 그림(공격과 같은 96×64 칸, 칼 분리)을 그린다. 이 방향 그림이 없으면 False (서 있는 그림을 쓴다)."""
+        view, _ = sprite_view(self.facing)
+        table = config.PLAYER_PARRY_SWORD.get(view)
+        if table is None:
+            return False
+        frame = frame_for_progress(self.parry.progress, config.PLAYER_PARRY_FRAME_ENDS)
+        self._draw_sword_pose(renderer, center_x, bottom, frame, (0, 0),
+                              parry_sheet_path(view), parry_hand_sheet_path(view), table[frame])
+        return True
+
+    def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
+                         body_path: str, hand_path: str, sword: tuple, art_path: str | None = None) -> None:
+        """칼을 든 자세 한 프레임 (공격·패링): 몸 → 칼 → 오른손 레이어. 칼이 몸 뒤면 칼 → 몸 → 손.
+
+        발끝이 칸 아래 가운데에 오고, 왼쪽을 볼 때는 측면 그림을 좌우 반전한다.
+        sword = (손 x, 손 y, 각도, 몸 뒤[, 칼 길이 비율]). art_path 가 있으면 칼을 돌리는 대신 그 그림을 겹친다.
+        """
+        width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        scale = config.RENDER_SCALE
+        shift_x, shift_y = shift
         flip = self.facing == Facing.LEFT
         forward = -1 if flip else 1
         canvas_x = center_x + shift_x * scale * forward  # 캔버스 아래 가운데
         canvas_bottom = bottom - config.PLAYER_ATTACK_FOOT_MARGIN * scale + shift_y * scale
-        hand_x, hand_y, angle, behind, *rest = ATTACK_SWORD_TABLES[view][self.combo.index][frame]
+        hand_x, hand_y, angle, behind, *rest = sword
         length = rest[0] if rest else 1.0
 
         def draw_layer(path: str) -> None:
@@ -399,20 +446,16 @@ class Player:
                 canvas_x, canvas_bottom, width * scale, height * scale, flip_horizontal=flip,
             )
 
-        # 찌르기용 칼 그림이 있는 프레임이면 옆모습 칼을 돌리는 대신 그 그림을 몸 위에 겹친다 (없는 무기는 옆모습 칼)
-        art_path = weapon_view_art_path(config.PLAYER_WEAPON, view, self.combo.hit_number)
-        use_art = (frame in config.PLAYER_WEAPON_VIEW_ART.get((view, self.combo.hit_number), ())
-                   and os.path.exists(art_path))
         # 두 손 잡기: 몸(두 팔, 칼 뒤의 왼손) → 칼 → 오른손 레이어 (오른손이 칼을 감싸 쥔 모습)
         if not behind:
-            draw_layer(attack_sheet_path(self.combo.hit_number, view))
-        if use_art:
+            draw_layer(body_path)
+        if art_path:
             draw_layer(art_path)
         else:
             self._draw_sword(renderer, canvas_x, canvas_bottom, hand_x, hand_y, angle, flip, length)
         if behind:
-            draw_layer(attack_sheet_path(self.combo.hit_number, view))
-        draw_layer(attack_hand_sheet_path(self.combo.hit_number, view))
+            draw_layer(body_path)
+        draw_layer(hand_path)
 
     def _draw_sword(self, renderer, canvas_x: float, canvas_bottom: float,
                     hand_x: int, hand_y: int, angle: float, flip: bool, length: float = 1.0) -> None:

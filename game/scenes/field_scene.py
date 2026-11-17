@@ -20,7 +20,7 @@ from game.combat.training_dummy import TrainingDummy
 from game.effects.effect import ScreenShake, SpriteEffect
 from game.enemies.golem import Golem
 from game.physics.collision import can_enter
-from game.player.player import Player
+from game.player.player import Player, parry_spark_point
 from game.world.camera import Camera
 from game.world.grid import Grid
 from game.world.tile_map import TileMap
@@ -79,6 +79,9 @@ class FieldScene:
             for attack in golem.attacks:
                 if self.player.receive_attack(attack) == PARRIED:
                     golem.on_parried()
+                    # 패링 성공: 칼이 막은 자리에서 노란 불꽃 (2026-11-17 사용자 요청)
+                    point = parry_spark_point(self.player.col, self.player.row, self.player.facing)
+                    self._start_effects([SpriteEffect(config.PARRY_SPARK_EFFECT, *point)])
             self._start_effects(golem.effects)
         self._update_effects(dt)
         self._follow_player()
@@ -117,13 +120,17 @@ class FieldScene:
         for golem in self.golems:
             golem.draw_warning(renderer, grid)  # 공격 예고 칸·레이저는 바닥에
         for effect in self.effects:  # 바닥 이펙트 (금·솟은 바닥 판·돌): 인물보다 먼저
-            self._draw_effect(renderer, effect)
+            if not effect.spec.get("on_top"):
+                self._draw_effect(renderer, effect)
         # 위쪽 행(멀리 있는 것)부터 그려서 아래쪽 행이 앞에 보이게 한다
         actors = [(dummy.row, dummy.draw) for dummy in self.dummies]
         actors += [(golem.visual_position[1], golem.draw) for golem in self.golems]
         actors.append((self.player.mover.visual_position[1], lambda r, g: self.player.draw(r)))
         for _, draw in sorted(actors, key=lambda a: -a[0]):
             draw(renderer, grid)
+        for effect in self.effects:  # 인물 위에 그리는 이펙트 (패링 불꽃)
+            if effect.spec.get("on_top"):
+                self._draw_effect(renderer, effect)
 
         self._draw_hud(renderer)
 

@@ -63,6 +63,33 @@ VIEW_ATTACKS = {
 RAISE = {'front3': 6}
 
 
+# 패링 (2026-11-17 사용자 요청: 측면 먼저): 방향 → (이름, 시트, 행). 공격과 같은 칸(96×64)·칼 분리.
+VIEW_PARRY = {'side': ('parry_side', 'parry_side_sheet_68.png', 0)}
+
+
+def export_parry():
+    """패링 시트(player/parry/<방향>.png, _hand.png)를 내보내고 칼 위치표 {방향: [...]} 를 돌려준다."""
+    tables = {}
+    os.makedirs(os.path.join(OUT, 'parry'), exist_ok=True)
+    for view, (name, path, row) in VIEW_PARRY.items():
+        frames = b.cells(path, row, count=6)
+        cx, foot, _ = ref_anchor(frames[0])
+        dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot
+        layers, _, _ = b.build_layers(name, frames[1:])
+        body = Image.new('RGBA', (ATTACK_W * len(layers), ATTACK_H), (0, 0, 0, 0))
+        hand = Image.new('RGBA', body.size, (0, 0, 0, 0))
+        table = []
+        for i, layer in enumerate(layers):
+            body.alpha_composite(layer['body'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
+            hand.alpha_composite(layer['hand'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
+            hx, hy, angle, behind = layer['sword']
+            table.append((round(hx + dx), round(hy + dy), round(angle), behind))
+        body.save(os.path.join(OUT, 'parry', f'{view}.png'))
+        hand.save(os.path.join(OUT, 'parry', f'{view}_hand.png'))
+        tables[view] = table
+    return tables
+
+
 def export_attacks(view='side'):
     """view 방향의 공격 시트를 내보내고 칼 위치표 {타 번호: [(손 x, 손 y, 각도, 몸 뒤), ...]} 를 돌려준다."""
     tables = {}
@@ -238,6 +265,8 @@ def main():
             rows = [f'({x}, {y}, {a}, {bh})' for x, y, a, bh in t]
             print('    (' + ', '.join(rows[:4]) + ',' + chr(10) + '     ' + ', '.join(rows[4:]) + '),')
         print(')')
+    for view, t in export_parry().items():
+        print(f'PLAYER_PARRY_SWORD[{view!r}] = (' + ', '.join(f'({x}, {y}, {a}, {bh})' for x, y, a, bh in t) + ')')
     export_jump()
 
 
