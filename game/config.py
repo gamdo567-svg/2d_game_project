@@ -28,6 +28,11 @@ GRID_ROWS = 18
 VIEW_COLS = SCREEN_WIDTH / RENDER_TILE_SIZE
 VIEW_ROWS = SCREEN_HEIGHT / RENDER_TILE_SIZE
 
+# ----- 맵 -----
+# 글자 맵 파일 (D-023): # 벽, . 바닥, P 주인공 시작 칸. 크기는 GRID_COLS × GRID_ROWS 와 같아야 한다.
+MAP_DIR = PROJECT_ROOT / "assets" / "maps"
+FIELD_MAP_PATH = MAP_DIR / "test_room.txt"
+
 # ----- 플레이어 그림 크기 -----
 # 스프라이트 시트 원본 프레임 크기 (에셋 픽셀). 충돌은 논리적 칸 좌표로 처리한다.
 PLAYER_SPRITE_WIDTH = 32
@@ -133,5 +138,8 @@ COLOR_BACKGROUND = (24, 20, 32)
 COLOR_GRID_LINE = (52, 46, 68)
 COLOR_ORIGIN_TILE = (88, 62, 138)
 COLOR_MARKER = (232, 196, 92)
+# 벽 칸 임시 표시 (타일 그림이 생기기 전). 안쪽 면과 테두리.
+COLOR_WALL = (64, 54, 78)
+COLOR_WALL_EDGE = (40, 34, 52)
 COLOR_TEXT = (232, 232, 240)
 COLOR_TEXT_DIM = (150, 146, 170)

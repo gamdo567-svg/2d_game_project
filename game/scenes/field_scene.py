@@ -1,7 +1,7 @@
 """주인공 이동 확인용 장면.
 
-- 칸 격자 위에서 주인공을 상하좌우 4방향으로 움직인다.
-- 맵 데이터, 벽 충돌, 전투 등은 포함하지 않는다. 이동 가능 범위는 격자(맵) 안이다.
+- 글자 맵 파일(config.FIELD_MAP_PATH)의 칸 맵 위에서 주인공을 상하좌우 4방향으로 움직인다.
+- 벽 칸으로는 들어갈 수 없다 (game/physics/collision.py). 벽은 타일 그림이 생기기 전까지 단색 칸으로 그린다.
 - 맵이 화면보다 크므로 카메라가 주인공을 따라간다. 카메라 위치는 grid 의 원점(origin)으로 반영한다.
 
 이 모듈은 pico2d 를 import 하지 않는다. 그리기는 전달받은 renderer 로만 한다.
@@ -10,15 +10,21 @@ from __future__ import annotations
 
 from game import config
 from game.input.input_state import InputState
+from game.physics.collision import can_enter
 from game.player.player import Player
 from game.world.camera import Camera
 from game.world.grid import Grid
+from game.world.tile_map import TileMap
 
 
 class FieldScene:
-    def __init__(self, grid: Grid) -> None:
+    def __init__(self, grid: Grid, tile_map: TileMap | None = None) -> None:
         self.grid = grid
-        self.player = Player(grid, config.PLAYER_START_COL, config.PLAYER_START_ROW)
+        self.tile_map = tile_map or TileMap.load(config.FIELD_MAP_PATH)
+        if (self.tile_map.cols, self.tile_map.rows) != (grid.cols, grid.rows):
+            raise ValueError(f"맵 크기 {self.tile_map.cols}×{self.tile_map.rows} 가 격자 {grid.cols}×{grid.rows} 와 다릅니다.")
+        start = self.tile_map.player_start or (config.PLAYER_START_COL, config.PLAYER_START_ROW)
+        self.player = Player(grid, *start, can_enter=lambda col, row: can_enter(self.tile_map, col, row))
         self.camera = Camera(config.SCREEN_WIDTH, config.SCREEN_HEIGHT, grid.width_px, grid.height_px)
         self._follow_player()
 
@@ -40,6 +46,9 @@ class FieldScene:
         grid = self.grid
         renderer.fill_screen(config.COLOR_BACKGROUND)
         renderer.draw_grid(grid, config.COLOR_GRID_LINE)
+        for col, row in sorted(self.tile_map.walls):
+            renderer.fill_tile(grid, col, row, config.COLOR_WALL_EDGE)
+            renderer.fill_tile(grid, col, row, config.COLOR_WALL, inset=3)
 
         self.player.draw(renderer)
 

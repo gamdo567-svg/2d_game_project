@@ -16,7 +16,7 @@ from game.input.input_state import Action, InputState
 from game.player.actions import Jump, Parry, SwordCombo
 from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
-from game.player.movement import GridMover
+from game.player.movement import CanEnter, GridMover
 from game.player.state_machine import ATTACK, FREE_STATES, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
 from game.world.grid import Grid
 
@@ -60,9 +60,10 @@ LEFT_SHEET_STATES = {JUMP}
 
 
 class Player:
-    def __init__(self, grid: Grid, col: int, row: int) -> None:
+    def __init__(self, grid: Grid, col: int, row: int, can_enter: CanEnter | None = None) -> None:
+        """can_enter(col, row): 들어갈 수 있는 칸인지 (벽 충돌). 없으면 격자 안이면 된다."""
         self.grid = grid
-        self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED)
+        self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED, can_enter=can_enter)
         self.facing = Facing.DOWN
         self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAME_ENDS)
         self.parry = Parry(config.PLAYER_PARRY_DURATION, config.PLAYER_PARRY_WINDOW, frame_count=1)

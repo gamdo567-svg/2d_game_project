@@ -491,6 +491,34 @@ class FieldSceneTest(unittest.TestCase):
         self.assertIn("fill_screen", names)
         self.assertIn("draw_sprite_frame", names)
 
+    def test_player_starts_at_map_start_tile(self):
+        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
+        self.assertEqual((scene.player.col, scene.player.row), scene.tile_map.player_start)
+
+    def test_walls_block_player_but_turn_facing(self):
+        # 시작 칸 (16, 9)에서 위로: (16, 10)은 바닥, (16, 11)은 가로 벽 → 한 칸만 가고 멈춘다. 방향은 위를 본다.
+        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
+        self.assertTrue(scene.tile_map.is_wall(16, 11))
+        inp = InputState()
+        inp.press(Action.MOVE_UP)
+        for _ in range(120):
+            scene.update(1 / 60, inp)
+            inp.begin_frame()
+            self.assertFalse(scene.tile_map.is_wall(scene.player.col, scene.player.row))
+        self.assertEqual((scene.player.col, scene.player.row), (16, 10))
+        self.assertEqual(scene.player.facing, Facing.UP)
+
+    def test_draw_fills_wall_tiles(self):
+        scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
+        renderer = _RecordingRenderer()
+        scene.draw(renderer)
+        filled = {(c[1][1], c[1][2]) for c in renderer.calls if c[0] == "fill_tile"}
+        self.assertEqual(filled, set(scene.tile_map.walls))
+
+    def test_map_size_must_match_grid(self):
+        with self.assertRaises(ValueError):
+            FieldScene(Grid(10, 10, config.RENDER_TILE_SIZE))
+
     def test_camera_keeps_player_on_screen(self):
         scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
         inp = InputState()
