@@ -52,8 +52,9 @@ def ref_anchor(frame):
 # 방향별 공격 (2026-11-17): 방향 → [(타 번호, 이름, 시트, 행)]. 목록에 없는 타는 게임이 예전 그림이나 측면을 쓴다.
 VIEW_ATTACKS = {
     'side': [(hit, name, path, row) for hit, (name, path, row) in enumerate(b.ATTACKS, start=1)],
-    # 정면 1·2타만 PixelLab (2타는 v9, attack_front_final_68.png 2행). 정면 3타·후면은 보류 (2026-11-17 사용자 결정).
-    'front': [(1, 'front1', 'attack_front_final_68.png', 0), (2, 'front2', 'attack_front_final_68.png', 1)],
+    # 정면 1·2·3타 PixelLab (2타 v9, 3타 찌르기는 끝 자세 지정, attack_front_final_68.png 2·3행). 후면은 보류 (2026-11-17 사용자 결정).
+    'front': [(1, 'front1', 'attack_front_final_68.png', 0), (2, 'front2', 'attack_front_final_68.png', 1),
+              (3, 'front3', 'attack_front_final_68.png', 2)],
     'back': [],
 }
 
