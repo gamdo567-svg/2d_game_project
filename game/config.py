@@ -172,10 +172,12 @@ GOLEM_LASER_COOLDOWN = 8.0  # 초. ④ 를 쓰고 나서 다시 쓸 수 있을 �
 GOLEM_RESPAWN_TIME = 3.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남
 GOLEM_HIT_FLASH_TIME = 0.1
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
-GOLEM_SLAM = {"windup": 0.8, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
-GOLEM_KICK = {"windup": 0.6, "damage": 15, "width": 3, "depth": 5}  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
-GOLEM_STOMP = {"windup": 1.2, "damage": 30, "size": 6}  # ③ 한 발 내려찍기: 중심 6×6, 점프로만 피함
-GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3}  # ④ 코어 레이저: 4초 조준 후 벽까지 일직선, 회피 무적 가능
+# 2026-11-17 사용자 요청: 예고가 길어 걸어서 쉽게 빠져나가서 ① 0.8 → 0.35, ② 0.6 → 0.3, ③ 1.2 → 0.55초
+GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
+GOLEM_KICK = {"windup": 0.3, "damage": 15, "width": 3, "depth": 5}  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
+GOLEM_STOMP = {"windup": 0.55, "damage": 30, "size": 6}  # ③ 한 발 내려찍기: 중심 6×6, 점프로만 피함
+# ④ 코어 레이저: 4초 조준(조준선이 발사 순간까지 주인공을 따라옴, 2026-11-17 사용자 결정) 후 벽까지 일직선. 회피 무적으로만 피함
+GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3}
 
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24

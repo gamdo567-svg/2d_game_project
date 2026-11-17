@@ -123,12 +123,11 @@ class GolemBehaviorTest(unittest.TestCase):
         self.assertEqual(self.golem.state, WALK)
         self.assertEqual((self.golem.col, self.golem.row), (7, 4))
 
-    def test_laser_aim_follows_player_slowly(self):
+    def test_laser_aim_follows_player_until_fire(self):
         self.make(None, roll=0.0)
         self.advance(DT, (14, 8))
-        start = self.golem.aim
         self.advance(0.5, (14, 1))
-        self.assertNotEqual(self.golem.aim, start)
+        self.assertEqual(self.golem.aim, (14.5, 1.5))  # 주인공 칸 가운데를 그대로 따라옴
         attacks = self.advance(config.GOLEM_LASER["windup"], (14, 1))
         self.assertEqual(len(attacks), 1)
         self.assertTrue(attacks[0].tiles)
@@ -253,6 +252,23 @@ class GolemVsPlayerTest(unittest.TestCase):
         self.assertEqual(self.player.state, JUMP)
         self.run_for(config.PLAYER_JUMP_DURATION / 2)
         self.assertEqual(self.player.hp, config.PLAYER_MAX_HP)  # 공중이라 피함
+
+    def test_laser_follows_walking_player_but_dodge_avoids(self):
+        self.start_pattern(LASER)
+        self.input.press(Action.MOVE_UP)  # 걸어서 도망쳐도 조준선이 따라옴
+        self.run_until_release(0.0)
+        self.input.release(Action.MOVE_UP)
+        self.run_for(0.05)
+        self.assertEqual(self.player.hp, config.PLAYER_MAX_HP - config.GOLEM_LASER["damage"])
+        self.run_for(config.PLAYER_HURT_TIME + 0.1)
+        hp = self.player.hp
+        self.player.facing = Facing.LEFT
+        self.start_pattern(LASER)
+        self.run_until_release(0.05)
+        self.player.dodge_cooldown_left = 0.0
+        self.tap(Action.DODGE)  # 발사 직전 회피: 무적
+        self.run_for(0.1)
+        self.assertEqual(self.player.hp, hp)
 
     def test_receive_attack_results(self):
         from game.combat.enemy_attack import EnemyAttack

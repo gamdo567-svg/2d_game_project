@@ -5,7 +5,7 @@
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 3×5, 패링 불가·회피 무적 가능  ③ 중심 6×6, 점프로만 피함
-    ④ 4초 동안 조준점이 주인공을 따라오다 그 방향으로 벽까지 일직선, 회피 무적 가능
+    ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 그 방향으로 벽까지 일직선, 회피 무적으로 피함
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge).
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
 게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 임시 도형으로만 한다.
@@ -261,16 +261,9 @@ class Golem:
                          for r in range(self.row - m, self.row - m + n) if not self.is_wall(c, r))
 
     def _follow_aim(self, dt: float, player_tile: Tile) -> None:
-        """레이저 조준점이 주인공을 따라온다 (초당 최대 4칸이라, 빠르게 움직이면 떼어 놓을 수 있다)."""
-        tx, ty = player_tile[0] + 0.5, player_tile[1] + 0.5
-        ax, ay = self.aim
-        d = math.hypot(tx - ax, ty - ay)
-        step = 4.0 * dt
-        if d <= step:
-            self.aim = (tx, ty)
-        else:
-            self.aim = (ax + (tx - ax) / d * step, ay + (ty - ay) / d * step)
-        self._face((int(self.aim[0]), int(self.aim[1])))
+        """레이저 조준점이 발사 순간까지 주인공을 그대로 따라온다 (걸어서는 못 피하고 회피 무적으로 피한다)."""
+        self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
+        self._face(player_tile)
 
     def laser_tiles(self) -> frozenset[Tile]:
         """코어에서 조준점 방향으로 벽(또는 맵 밖)까지 일직선 (폭 1칸)."""
