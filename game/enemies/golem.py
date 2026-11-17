@@ -4,7 +4,7 @@
     가까우면(GOLEM_NEAR) ① 두 손 내려찍기·② 앞차기·③ 한 발 내려찍기 중 하나, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감,
     더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
-    ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 5, 패링 불가·회피 무적 가능  ③ 중심 7×7, 점프로만 피함
+    ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 4, 패링 불가·회피 무적 가능  ③ 중심 7×7, 점프로만 피함
     범위의 기준은 발 칸(몸 맨 아래 줄 가운데)이고, 그 칸 바로 앞부터 늘린다 (2026-11-17 사용자 결정). ①·② 가로 3 은 대칭,
     짝수 너비(③ 8)는 남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
@@ -130,16 +130,18 @@ class Golem:
 
     @property
     def attack_anim(self) -> tuple[str, dict] | None:
-        """지금 패턴의 동작 그림 (그림 이름, 설정). 그림이 있는 패턴(①·③)만, 없으면 None."""
+        """지금 패턴의 동작 그림 (그림 이름, 설정). 그림이 있는 패턴(①·②·③)만, 없으면 None."""
         if self.pattern == STOMP:
             return "stomp", config.GOLEM_STOMP_ANIM
         if self.pattern == SLAM:
             return "slam", config.GOLEM_SLAM_ANIM
+        if self.pattern == KICK:
+            return "kick", config.GOLEM_KICK_ANIM
         return None
 
     @property
     def attack_frame(self) -> int | None:
-        """공격 동작 그림 번호 (①·③ 의 예고·자세 되돌림 중에만). 다른 때는 None (서 있는 그림)."""
+        """공격 동작 그림 번호 (①·②·③ 의 예고·자세 되돌림 중에만). 다른 때는 None (서 있는 그림)."""
         if self.attack_anim is None:
             return None
         anim = self.attack_anim[1]
@@ -461,7 +463,7 @@ class Golem:
     def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
         """방향별 그림을 발 밑이 발 칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.
 
-        ①·③ 예고·자세 되돌림 중에는 그 공격 동작 그림, 한 칸 걸어가는 중에는 걷기 그림을 쓰고,
+        ①·②·③ 예고·자세 되돌림 중에는 그 공격 동작 그림, 한 칸 걸어가는 중에는 걷기 그림을 쓰고,
         그 그림을 못 읽으면 서 있는 그림을 쓴다.
         """
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:

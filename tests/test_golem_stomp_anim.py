@@ -50,12 +50,27 @@ class StompFrameTest(unittest.TestCase):
         self.step(config.GOLEM_RECOVER_TIME)
         self.assertIsNone(g.stomp_frame)  # 쉬는 동안은 서 있는 그림
 
-    def test_kick_uses_standing_sprite(self):
+    def test_kick_pulls_back_then_kicks_without_squash(self):
         g = Golem(6, 4, open_room())
         g._windup(KICK, self.player)
-        self.assertIsNone(g.attack_frame)
+        self.assertEqual(g.attack_anim[0], "kick")
         self.assertIsNone(g.stomp_frame)
-        self.assertEqual(g.attack_squash, 0.0)
+        self.assertEqual(g.attack_frame, 0)
+        g.update(config.GOLEM_KICK["windup"] * 0.6, self.player, lambda c, r: True)
+        self.assertEqual(g.attack_frame, 3)  # 다리를 뒤로 당긴 채 멈춤
+        g.update(config.GOLEM_KICK["windup"] * 0.4 + 0.001, self.player, lambda c, r: True)
+        self.assertEqual(g.state, RECOVER)
+        self.assertEqual(g.attack_frame, 4)  # 차올림
+        self.assertEqual(g.attack_squash, 0.0)  # 눌림 없음
+        self.assertEqual(g.effects, [])  # 이펙트·화면 흔들림 없음 (사용자 요청)
+        g.update(config.GOLEM_RECOVER_TIME * 0.95, self.player, lambda c, r: True)
+        self.assertEqual(g.attack_frame, 10)
+
+    def test_kick_range_three_wide_four_ahead(self):
+        self.assertEqual((config.GOLEM_KICK["width"], config.GOLEM_KICK["depth"]), (3, 4))
+        g = Golem(6, 4, open_room())
+        g._windup(KICK, (2, 4))  # 왼쪽을 봄
+        self.assertEqual(len(g.target_tiles), 3 * 4)
 
     def test_slam_lifts_then_impact_then_rises(self):
         g = Golem(6, 4, open_room())
@@ -106,6 +121,15 @@ class WalkFrameTest(unittest.TestCase):
 
 
 class StompSpriteFileTest(unittest.TestCase):
+    def test_kick_sheets_exist_for_four_directions(self):
+        anim = config.GOLEM_KICK_ANIM
+        w, h = anim["frame_size"]
+        count = max(anim["windup_frames"] + anim["recover_frames"]) + 1
+        for view in ("south", "north", "east", "west"):
+            path = config.GOLEM_IMAGE_DIR / f"kick_{view}.png"
+            self.assertTrue(path.exists(), view)
+            self.assertEqual(png_size(path), (w * count, h), view)
+
     def test_slam_sheets_exist_for_four_directions(self):
         anim = config.GOLEM_SLAM_ANIM
         w, h = anim["frame_size"]
