@@ -16,6 +16,19 @@
 
 ---
 
+## 2026-11-18 — 주인공 후면 패링 모션 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: 후면 패링(당김 → 쳐올림 → 막기 ×2 → 당김)을 넣었다 (D-039, PRE-PRD 2.2). PixelLab 이 후면을 못 그려
+  핵심 자세는 사용자가 ChatGPT 로 그렸다 (`assets/concepts/pixellab/player_import/parry_back_kit/`).
+  위를 볼 때 패링 불꽃은 화면 왼쪽(칼날 쪽).
+- **현재 상태**: 테스트 241개 통과. 실제 pico2d 창 캡처로 쳐올림 잔상 → 왼쪽 위 막기 → 당김 확인. 직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: 그림을 바꾸려면 `result_back.png` 를 바꾸고 `build_parry_back.py` → `export_to_game.py` 를 돌린 뒤
+  출력된 `PLAYER_PARRY_SWORD['back']` 를 `game/config.py` 에 옮긴다. 칼 자리는 `build_remake_preview.OVERRIDES` 의 `parry_back`.
+- **남은 문제 / 다음 할 일**: ④ 레이저 그림. 발 구르기·내려찍기 후면 일어섬 문제. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-18 — 골렘 올려차기 동작 그림, 앞차기 앞으로 4칸 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
