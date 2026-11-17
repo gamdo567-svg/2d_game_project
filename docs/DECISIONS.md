@@ -559,3 +559,9 @@
   - 이펙트: `concepts/vfx/parry/build_parry_spark.py` 가 계산해 그린 64×64 × 9장, 24fps (`PARRY_SPARK_EFFECT`, `on_top`).
     FieldScene 이 패링 성공(PARRIED)을 받은 순간 `parry_spark_point(col, row, facing)` 에서 재생한다
     (칸 가운데에서 바라보는 쪽으로 0.6칸, 발 밑에서 1칸 위 = `PARRY_SPARK_OFFSET`). `on_top` 이펙트는 인물 다음에 그린다.
+- 정면 (2026-11-18 사용자 결정): 처음 정면(A·B안)이 측면과 흐름이 달라 측면 1번 자세에 해당하는 `Parry Ready`
+  (칼을 세워 가슴 앞, 4방향 state)를 만들고 그 자세 → `Parry Guard` 를 pixminimax 로 그린 C안. 측면과 같은 순서로 5장
+  (`build_parry_front.py`). PixelLab 이 몸을 조금 다른 갈색·검정으로 칠해 어두워 보여서(사용자 지적) 칼을 뺀 몸 픽셀을
+  게임 주인공 그림(측면 패링·정면 1·2타)의 가장 가까운 색으로 바꿨다 (모양은 그대로).
+  성공 불꽃은 위·아래를 볼 때 칸 가운데에서 화면 오른쪽(칼날 쪽)으로 `PARRY_SPARK_FRONT_SIDE` 칸, 가슴 높이.
+- 후면: PixelLab 이 칼을 드는 중간 장에서 고개를 돌려 얼굴이 보여 쓰지 않음 (두 번 시도). 아직 서 있는 그림.

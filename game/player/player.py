@@ -73,7 +73,10 @@ def parry_spark_point(col: int, row: int, facing: Facing) -> tuple[float, float]
     """패링 성공 이펙트가 터지는 점 (칸 좌표, 실수): 바라보는 쪽 칼이 막는 자리."""
     dx, dy = facing.value
     forward, up = config.PARRY_SPARK_OFFSET
-    return col + 0.5 + dx * forward, row + up + dy * forward
+    if dy:
+        # 위·아래를 볼 때는 칼이 몸 앞 가슴 높이에서 막는다: 칼날 쪽(화면 오른쪽)으로 조금
+        return col + 0.5 + config.PARRY_SPARK_FRONT_SIDE, row + up
+    return col + 0.5 + dx * forward, row + up
 
 
 def weapon_sheet_path(weapon: str) -> str:

@@ -180,11 +180,19 @@ class JumpParryTest(unittest.TestCase):
                 self.assertEqual(paths[-1], parry_hand_sheet_path("side"))
                 self.assertEqual(calls[0][2]["flip_horizontal"], flip)
 
-    def test_parry_without_view_art_uses_idle(self):
-        # 정면·후면 패링 그림은 아직 없어 서 있는 그림
+    def test_parry_front_draws_front_sheet(self):
+        # 정면 패링 (2026-11-18): 정면 시트, 반전 없음
+        from game.player.player import parry_sheet_path
         calls = self._draw_parry(Action.MOVE_DOWN)
+        self.assertIn("draw_image_rotated", [c[0] for c in calls])
+        self.assertEqual(calls[0][1][0], parry_sheet_path("front"))
+        self.assertFalse(calls[0][2]["flip_horizontal"])
+
+    def test_parry_without_view_art_uses_idle(self):
+        # 후면 패링 그림은 아직 없어 서 있는 그림
+        calls = self._draw_parry(Action.MOVE_UP)
         self.assertNotIn("draw_image_rotated", [c[0] for c in calls])
-        self.assertEqual(calls[0][1][0], sprite_sheet_path("idle", "front"))
+        self.assertEqual(calls[0][1][0], sprite_sheet_path("idle", "back"))
 
     def test_jump_in_place_then_idle(self):
         self.tap(Action.JUMP)
@@ -297,14 +305,15 @@ class JumpParryTest(unittest.TestCase):
         self.assertEqual(args[0], sprite_sheet_path(WALK, "side"))
         self.assertTrue(kwargs["flip_horizontal"])
 
-    def test_parry_draws_standing_sprite(self):
-        # 패링 애니메이션은 아직 없다 (공격 모션과 함께 제작). 서 있는 그림 첫 프레임만, 검 없이 그린다.
+    def test_parry_back_draws_standing_sprite(self):
+        # 후면 패링 그림은 아직 없다: 위를 볼 때는 서 있는 그림 첫 프레임만, 검 없이 그린다.
+        self.player.facing = Facing.UP
         self.tap(Action.PARRY)
         self.run_for(0.2)
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
         (name, args, _), = renderer.calls
-        self.assertEqual((args[0], args[1]), (sprite_sheet_path(IDLE, "front"), 0))
+        self.assertEqual((args[0], args[1]), (sprite_sheet_path(IDLE, "back"), 0))
 
 class PlayerAttackTest(unittest.TestCase):
     DT = 1 / 60
