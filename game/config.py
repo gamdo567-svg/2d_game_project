@@ -93,6 +93,10 @@ PLAYER_ATTACK_FRAME_SHIFTS_FRONT = (
 )
 # 공격 중에 클릭해 두면 이어지고, 한 타가 끝난 뒤 이 시간(초) 안에 클릭해도 다음 타로 이어진다.
 PLAYER_ATTACK_COMBO_WINDOW = 0.3
+# 공격 판정 (2026-11-17 사용자 결정, D-024): 칸 단위, 바라보는 방향으로 타별 칸 수, 휘두르는 프레임에 들어설 때 한 번.
+PLAYER_ATTACK_REACH = (1, 1, 2)  # 1·2타 앞 1칸, 3타(찌르기) 앞 2칸
+PLAYER_ATTACK_HIT_FRAMES = (2, 1, 2)  # 판정 프레임 (0부터): 1타 ③ 베기, 2타 ② 올려침, 3타 ③ 찌름
+PLAYER_ATTACK_DAMAGE = (10, 12, 20)  # [임시값] 타별 피해량
 PLAYER_ATTACK_COOLDOWN = 1.0  # 초. 3타가 끝난 뒤 공격만 막는다 (이동·점프·패링은 가능)
 # 공격 그림은 검과 찌르기가 몸 밖으로 나가므로 96×64 캔버스를 쓴다 (몸은 Idle 과 같은 32×48 크기, 가로 가운데).
 PLAYER_ATTACK_SPRITE_WIDTH = 96
@@ -123,6 +127,16 @@ PLAYER_SWORD_SPRITE_HEIGHT = 10
 PLAYER_WEAPON = "old_sword"  # 시작 장비: 낡은 검
 # 지금은 오른쪽 측면 그림만 있다. 다른 방향도 이 그림을 쓰고 왼쪽은 좌우 반전한다 (임시).
 
+# ----- 연습용 허수아비 (공격 판정 확인용) -----
+# [임시값] 2026-11-17. 맞으면 깜빡임·흔들림·피해 숫자, 체력이 다하면 쓰러졌다가 다시 선다.
+DUMMY_MAX_HP = 60
+DUMMY_FLASH_TIME = 0.12  # 초. 하얗게 깜빡이는 시간
+DUMMY_SHAKE_TIME = 0.15  # 초. 맞은 방향으로 밀렸다 돌아오는 시간
+DUMMY_SHAKE_PIXELS = 3  # 원본 픽셀. 처음 밀리는 거리 (칸 위치는 그대로)
+DUMMY_DOWN_TIME = 2.0  # 초. 쓰러져 있는 시간
+DAMAGE_POPUP_TIME = 0.6  # 초. 피해 숫자가 떠 있는 시간
+DAMAGE_POPUP_RISE = 0.5  # 칸. 그동안 떠오르는 높이
+
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
 PLAYER_SHADOW_WIDTH = 24
 PLAYER_SHADOW_HEIGHT = 6
@@ -141,5 +155,12 @@ COLOR_MARKER = (232, 196, 92)
 # 벽 칸 임시 표시 (타일 그림이 생기기 전). 안쪽 면과 테두리.
 COLOR_WALL = (64, 54, 78)
 COLOR_WALL_EDGE = (40, 34, 52)
+COLOR_WHITE = (255, 255, 255)
+# 허수아비 임시 도형 색
+COLOR_DUMMY_WOOD = (120, 84, 52)
+COLOR_DUMMY_STRAW = (196, 164, 96)
+COLOR_DUMMY_SHADOW = (20, 16, 26)
+COLOR_DUMMY_HP = (200, 70, 60)
+COLOR_DAMAGE_TEXT = (255, 236, 160)
 COLOR_TEXT = (232, 232, 240)
 COLOR_TEXT_DIM = (150, 146, 170)

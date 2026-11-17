@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from game import config
 from game.input.input_state import Action, InputState
+from game.combat.strike import Strike
 from game.player.actions import Jump, Parry, SwordCombo
 from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
@@ -63,6 +64,8 @@ class Player:
     def __init__(self, grid: Grid, col: int, row: int, can_enter: CanEnter | None = None) -> None:
         """can_enter(col, row): 들어갈 수 있는 칸인지 (벽 충돌). 없으면 격자 안이면 된다."""
         self.grid = grid
+        self.strikes: list[Strike] = []
+        self._last_strike: tuple[int, int] | None = None
         self.mover = GridMover(grid, col, row, speed=config.PLAYER_MOVE_SPEED, can_enter=can_enter)
         self.facing = Facing.DOWN
         self.jump = Jump(config.PLAYER_JUMP_DURATION, config.PLAYER_JUMP_HEIGHT, config.PLAYER_JUMP_FRAME_ENDS)
@@ -101,6 +104,7 @@ class Player:
 
     # ----- 로직 -----
     def update(self, dt: float, input_state: InputState) -> None:
+        self.strikes: list[Strike] = []  # 이번 프레임에 낸 공격 (장면이 판정한다)
         self.combo.tick(dt)
         if self.state in FREE_STATES:
             if input_state.was_pressed(Action.ATTACK) and self.combo.can_start:
@@ -140,6 +144,18 @@ class Player:
             self.fsm.trigger("end_parry")
         elif self.state == ATTACK and self.combo.finished:
             self.fsm.trigger("end_attack")
+        self._emit_strike()
+
+    def _emit_strike(self) -> None:
+        """지금 타가 판정 프레임에 들어섰으면 공격을 한 번 낸다 (한 타에 한 번)."""
+        if self.state != ATTACK:
+            return
+        i = self.combo.index
+        key = (self.combo.strike_id, i)
+        if self.combo.frame_index >= config.PLAYER_ATTACK_HIT_FRAMES[i] and key != self._last_strike:
+            self._last_strike = key
+            self.strikes.append(Strike(self.col, self.row, self.facing.value,
+                                       config.PLAYER_ATTACK_REACH[i], config.PLAYER_ATTACK_DAMAGE[i]))
 
     def _on_state_changed(self, state: str) -> None:
         # 새 상태의 애니메이션은 첫 프레임부터 재생한다.

@@ -128,6 +128,7 @@ class SwordCombo:
         self.queued = False
         self.window_left = 0.0
         self.cooldown_left = 0.0
+        self.strike_id = 0  # 타가 새로 시작할 때마다 1씩 늘어난다 (공격 판정을 한 타에 한 번만 내기 위함)
 
     @property
     def current(self) -> SwordAttack:
@@ -164,6 +165,7 @@ class SwordCombo:
             self.index = 0
         self.window_left = 0.0
         self.queued = False
+        self.strike_id += 1
         self.current.reset()
 
     def request_next(self) -> None:
@@ -181,6 +183,7 @@ class SwordCombo:
             # 복귀 프레임을 건너뛰고 다음 타로
             self.index += 1
             self.queued = False
+            self.strike_id += 1
             self.current.reset()
         elif hit.finished:
             if self.is_last_hit:

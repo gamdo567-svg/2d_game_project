@@ -2,7 +2,7 @@
 
 글자 맵 파일 형식 (assets/maps/*.txt, D-023):
     - 한 줄 = 한 행, 한 글자 = 한 칸. 모든 줄의 길이가 같아야 한다.
-    - `#` 벽, `.` 바닥, `P` 주인공 시작 칸(바닥). 빈 줄은 무시한다.
+    - `#` 벽, `.` 바닥, `P` 주인공 시작 칸(바닥), `D` 연습용 허수아비(바닥 위에 놓임). 빈 줄은 무시한다.
     - 파일의 **맨 위 줄이 가장 위쪽 행**이다. 게임의 칸 좌표는 (0, 0) 이 왼쪽 아래이므로
       맨 아래 줄이 row 0 이 된다.
 
@@ -15,18 +15,21 @@ from pathlib import Path
 WALL = "#"
 FLOOR = "."
 PLAYER_START = "P"
-KNOWN_TILES = {WALL, FLOOR, PLAYER_START}
+DUMMY = "D"
+KNOWN_TILES = {WALL, FLOOR, PLAYER_START, DUMMY}
 
 
 class TileMap:
     def __init__(self, cols: int, rows: int, walls: set[tuple[int, int]],
-                 player_start: tuple[int, int] | None = None) -> None:
+                 player_start: tuple[int, int] | None = None,
+                 dummies: list[tuple[int, int]] | None = None) -> None:
         if cols <= 0 or rows <= 0:
             raise ValueError("맵 크기는 1 이상이어야 합니다.")
         self.cols = cols
         self.rows = rows
         self.walls = frozenset(walls)
         self.player_start = player_start
+        self.dummies = list(dummies or [])  # 허수아비를 놓을 칸
 
     @classmethod
     def from_text(cls, text: str) -> TileMap:
@@ -39,6 +42,7 @@ class TileMap:
             raise ValueError("맵의 모든 줄은 길이가 같아야 합니다.")
         rows = len(lines)
         walls: set[tuple[int, int]] = set()
+        dummies: list[tuple[int, int]] = []
         start = None
         for i, line in enumerate(lines):
             row = rows - 1 - i
@@ -51,7 +55,9 @@ class TileMap:
                     if start is not None:
                         raise ValueError("주인공 시작 칸(P)이 둘 이상입니다.")
                     start = (col, row)
-        return cls(cols, rows, walls, start)
+                elif ch == DUMMY:
+                    dummies.append((col, row))
+        return cls(cols, rows, walls, start, dummies)
 
     @classmethod
     def load(cls, path: str | Path) -> TileMap:

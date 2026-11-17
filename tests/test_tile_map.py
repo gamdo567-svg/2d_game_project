@@ -25,6 +25,11 @@ class TileMapTest(unittest.TestCase):
         self.assertFalse(tile_map.is_wall(1, 1))
         self.assertTrue(tile_map.is_wall(0, 0))
 
+    def test_dummy_letter(self):
+        tile_map = TileMap.from_text("#####\n#PD.#\n#####")
+        self.assertEqual(tile_map.dummies, [(2, 1)])
+        self.assertFalse(tile_map.is_wall(2, 1))  # 허수아비 칸은 바닥 (막는 것은 장면의 충돌 판정)
+
     def test_outside_is_wall(self):
         tile_map = TileMap.from_text(SMALL)
         for col, row in ((-1, 1), (5, 1), (1, -1), (1, 4)):

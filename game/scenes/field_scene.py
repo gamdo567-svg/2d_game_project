@@ -2,6 +2,8 @@
 
 - 글자 맵 파일(config.FIELD_MAP_PATH)의 칸 맵 위에서 주인공을 상하좌우 4방향으로 움직인다.
 - 벽 칸으로는 들어갈 수 없다 (game/physics/collision.py). 벽은 타일 그림이 생기기 전까지 단색 칸으로 그린다.
+- 맵의 `D` 칸에 연습용 허수아비를 세운다. 허수아비 칸도 지나갈 수 없다.
+- 주인공이 낸 공격(Strike)을 칸 단위로 판정해 닿는 칸의 허수아비에게 피해를 준다 (벽 너머는 맞지 않음).
 - 맵이 화면보다 크므로 카메라가 주인공을 따라간다. 카메라 위치는 grid 의 원점(origin)으로 반영한다.
 
 이 모듈은 pico2d 를 import 하지 않는다. 그리기는 전달받은 renderer 로만 한다.
@@ -10,6 +12,8 @@ from __future__ import annotations
 
 from game import config
 from game.input.input_state import InputState
+from game.combat.strike import attack_tiles
+from game.combat.training_dummy import TrainingDummy
 from game.physics.collision import can_enter
 from game.player.player import Player
 from game.world.camera import Camera
@@ -24,13 +28,26 @@ class FieldScene:
         if (self.tile_map.cols, self.tile_map.rows) != (grid.cols, grid.rows):
             raise ValueError(f"맵 크기 {self.tile_map.cols}×{self.tile_map.rows} 가 격자 {grid.cols}×{grid.rows} 와 다릅니다.")
         start = self.tile_map.player_start or (config.PLAYER_START_COL, config.PLAYER_START_ROW)
-        self.player = Player(grid, *start, can_enter=lambda col, row: can_enter(self.tile_map, col, row))
+        self.dummies = [TrainingDummy(col, row) for col, row in self.tile_map.dummies]
+        self.player = Player(grid, *start, can_enter=self.can_enter)
         self.camera = Camera(config.SCREEN_WIDTH, config.SCREEN_HEIGHT, grid.width_px, grid.height_px)
         self._follow_player()
 
     # ----- 로직 -----
+    def can_enter(self, col: int, row: int) -> bool:
+        """벽과 허수아비가 있는 칸에는 들어갈 수 없다."""
+        return can_enter(self.tile_map, col, row) and not any(
+            (d.col, d.row) == (col, row) for d in self.dummies)
+
     def update(self, dt: float, input_state: InputState) -> None:
         self.player.update(dt, input_state)
+        for strike in self.player.strikes:
+            tiles = attack_tiles(strike, self.tile_map.is_wall)
+            for dummy in self.dummies:
+                if (dummy.col, dummy.row) in tiles:
+                    dummy.take_hit(strike.damage, strike.direction)
+        for dummy in self.dummies:
+            dummy.update(dt)
         self._follow_player()
 
     def _follow_player(self) -> None:
@@ -50,7 +67,11 @@ class FieldScene:
             renderer.fill_tile(grid, col, row, config.COLOR_WALL_EDGE)
             renderer.fill_tile(grid, col, row, config.COLOR_WALL, inset=3)
 
-        self.player.draw(renderer)
+        # 위쪽 행(멀리 있는 것)부터 그려서 아래쪽 행이 앞에 보이게 한다
+        actors = [(dummy.row, dummy.draw) for dummy in self.dummies]
+        actors.append((self.player.mover.visual_position[1], lambda r, g: self.player.draw(r)))
+        for _, draw in sorted(actors, key=lambda a: -a[0]):
+            draw(renderer, grid)
 
         top = config.SCREEN_HEIGHT  # 글자는 카메라와 무관하게 화면에 고정
         renderer.draw_text(16, top - 24, "WASD / 방향키: 이동    클릭: 공격(연타 3단 콤보)    Space: 점프    F: 패링    ESC: 종료", config.COLOR_TEXT_DIM)
