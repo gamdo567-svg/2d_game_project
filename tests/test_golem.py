@@ -63,32 +63,32 @@ class GolemAreaTest(unittest.TestCase):
     def setUp(self):
         self.golem = Golem(6, 4, open_room())
 
-    def test_occupies_three_by_three(self):
-        # 몸 3×3 (2026-11-17 사용자 요청, 2×2 는 홀수 너비 범위가 대칭이 안 맞음)
-        self.assertEqual(self.golem.tiles, {(c, r) for c in (6, 7, 8) for r in (4, 5, 6)})
+    def test_occupies_one_by_two(self):
+        # 몸 1×2: 발 칸과 그 위 한 칸 (2026-11-17 사용자 요청: 3×3 은 너무 큼)
+        self.assertEqual(self.golem.tiles, {(6, 4), (6, 5)})
         self.assertEqual(self.golem.distance_to((5, 4)), 1)
         self.assertEqual(self.golem.distance_to((2, 5)), 4)
 
     def test_front_area_toward_player(self):
         self.golem.facing = (-1, 0)
-        # 기준은 발 칸 (몸 (6~8, 4~6) 의 맨 아래 줄 가운데 = (7, 4)), 그 칸 바로 앞부터 (2026-11-17 사용자 결정)
-        self.assertEqual(self.golem.feet_tile, (7, 4))
+        # 기준은 발 칸 (몸 1×2 의 아래 칸 = (6, 4)), 그 칸 바로 앞부터 (2026-11-17 사용자 결정)
+        self.assertEqual(self.golem.feet_tile, (6, 4))
         # 가로 3 은 발 칸을 가운데로 대칭 (주인공 위치와 상관없음)
         for player in ((5, 3), (5, 5), (5, 8)):
-            self.assertEqual(self.golem.front_area(3, 3, player), {(c, r) for c in (4, 5, 6) for r in (3, 4, 5)})
+            self.assertEqual(self.golem.front_area(3, 3, player), {(c, r) for c in (3, 4, 5) for r in (3, 4, 5)})
         self.golem.facing = (0, 1)
         area = self.golem.front_area(3, 5, (8, 8))
-        self.assertEqual(area, {(c, r) for c in (6, 7, 8) for r in range(5, 9)})  # 위쪽 벽(9)에서 멈춤
+        self.assertEqual(area, {(c, r) for c in (5, 6, 7) for r in range(5, 9)})  # 위쪽 벽(9)에서 멈춤
         self.golem.facing = (0, -1)
-        self.assertEqual(self.golem.front_area(3, 3, (7, 1)), {(c, r) for c in (6, 7, 8) for r in (1, 2, 3)})
+        self.assertEqual(self.golem.front_area(3, 3, (6, 1)), {(c, r) for c in (5, 6, 7) for r in (1, 2, 3)})
         # 가로 4: 남는 한 줄은 아래, 주인공이 발 칸보다 위에 있을 때만 위
         self.golem.facing = (-1, 0)
-        self.assertEqual(self.golem.front_area(4, 5, (2, 3)), {(c, r) for c in range(2, 7) for r in range(2, 6)})
-        self.assertEqual(self.golem.front_area(4, 5, (2, 8)), {(c, r) for c in range(2, 7) for r in range(3, 7)})
+        self.assertEqual(self.golem.front_area(4, 5, (2, 3)), {(c, r) for c in range(1, 6) for r in range(2, 6)})
+        self.assertEqual(self.golem.front_area(4, 5, (2, 8)), {(c, r) for c in range(1, 6) for r in range(3, 7)})
 
     def test_stomp_area_seven_by_seven(self):
-        # 7×7: 발 칸 (7, 4) 둘레로 3칸씩, 주인공 위치와 상관없이 대칭 (2026-11-17 사용자 요청)
-        area = {(c, r) for c in range(4, 11) for r in range(1, 8)}
+        # 7×7: 발 칸 (6, 4) 둘레로 3칸씩, 주인공 위치와 상관없이 대칭 (2026-11-17 사용자 요청)
+        area = {(c, r) for c in range(3, 10) for r in range(1, 8)}
         self.assertEqual(self.golem.stomp_area((1, 1)), area)
         self.assertEqual(self.golem.stomp_area((12, 8)), area)
 
@@ -128,6 +128,12 @@ class WarningColorTest(unittest.TestCase):
 
 
 class GolemBehaviorTest(unittest.TestCase):
+    def enable_laser(self):
+        # 레이저는 지금 빠져 있어(GOLEM_LASER_ENABLED) 레이저 시험에서만 켠다
+        original = config.GOLEM_LASER_ENABLED
+        config.GOLEM_LASER_ENABLED = True
+        self.addCleanup(setattr, config, "GOLEM_LASER_ENABLED", original)
+
     def make(self, pick, roll=0.0):
         self.golem = Golem(6, 4, open_room(), FixedRng(pick, roll))
         self.golem.state_left = 0.0  # 쉬지 않고 바로 판단
@@ -158,7 +164,16 @@ class GolemBehaviorTest(unittest.TestCase):
             seen.add(self.golem.pattern)
         self.assertEqual(seen, {SLAM, KICK, STOMP})
 
+    def test_laser_disabled_for_now(self):
+        # 2026-11-17 사용자 요청: 시험을 위해 레이저를 잠시 뺌. 멀어도 레이저 대신 다가간다
+        self.assertFalse(config.GOLEM_LASER_ENABLED)
+        self.make(None, roll=0.0)
+        self.advance(DT, (14, 8))
+        self.assertNotEqual(self.golem.pattern, LASER)
+        self.assertEqual(self.golem.state, WALK)
+
     def test_mid_kick_and_far_laser(self):
+        self.enable_laser()
         self.make(None, roll=0.0)
         self.advance(DT, (2, 4))  # 거리 4: 차기
         self.assertEqual(self.golem.pattern, KICK)
@@ -168,6 +183,7 @@ class GolemBehaviorTest(unittest.TestCase):
 
     def test_approaches_until_near(self):
         # 주인공이 멀리 있으면 레이저를 한 번 쏜 뒤에는 쿨타임 동안 걸어서 다가와 가까운 패턴을 쓴다
+        self.enable_laser()
         self.make(SLAM, roll=0.0)
         self.advance(DT, (14, 4))
         self.assertEqual(self.golem.pattern, LASER)
@@ -183,6 +199,7 @@ class GolemBehaviorTest(unittest.TestCase):
         self.assertEqual((self.golem.col, self.golem.row), (7, 4))
 
     def test_laser_aim_follows_player_until_fire(self):
+        self.enable_laser()
         self.make(None, roll=0.0)
         self.advance(DT, (14, 8))
         self.advance(0.5, (14, 1))
@@ -412,7 +429,7 @@ class GolemSpriteTest(unittest.TestCase):
         self.assertEqual(args[2:4], (size, size))
         self.assertEqual(args[6:8], (size * scale, size * scale))
         left, bottom, _, _ = self.grid.tile_to_pixel_rect(6, 4)
-        self.assertAlmostEqual(args[4], left + tile * config.GOLEM_SIZE / 2)  # 몸(3×3) 가로 가운데
+        self.assertAlmostEqual(args[4], left + tile * config.GOLEM_BODY[0] / 2)  # 발 칸 가로 가운데
         self.assertAlmostEqual(args[5], bottom - config.GOLEM_SPRITE_FOOT_MARGIN["south"] * scale)  # 발 밑 = 칸 바닥
         shapes = [c for c in rec.calls if c[0] == "fill_rect"]
         self.assertEqual(len(shapes), 4)  # 임시 도형 없이 체력·게이지 막대만

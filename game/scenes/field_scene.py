@@ -4,7 +4,7 @@
 - 벽 칸으로는 들어갈 수 없다 (game/physics/collision.py). 벽은 타일 그림이 생기기 전까지 단색 칸으로 그린다.
 - 맵의 `D` 칸에 연습용 허수아비를 세운다. 허수아비 칸도 지나갈 수 없다.
 - 주인공이 낸 공격(Strike)을 칸 단위로 판정해 닿는 칸의 허수아비·골렘에게 피해를 준다 (벽 너머는 맞지 않음).
-- 맵의 `G` 칸에 골렘(3×3)을 둔다. 골렘이 낸 공격(EnemyAttack)은 주인공이 받는다 (패링·회피 무적·점프 판정은 Player).
+- 맵의 `G` 칸에 골렘(1×2)을 둔다. 골렘이 낸 공격(EnemyAttack)은 주인공이 받는다 (패링·회피 무적·점프 판정은 Player).
   ① 내려찍기가 패링당하면 골렘의 패링 게이지가 찬다.
 - 맵이 화면보다 크므로 카메라가 주인공을 따라간다. 카메라 위치는 grid 의 원점(origin)으로 반영한다.
 
@@ -49,10 +49,10 @@ class FieldScene:
                 and not any((col, row) in g.tiles for g in self.golems))
 
     def _golem_can_place(self, golem: Golem, col: int, row: int) -> bool:
-        """골렘의 왼쪽 아래 칸을 (col, row) 에 둘 수 있는지: 3×3 이 모두 벽·허수아비·주인공·다른 골렘이 없는 칸."""
+        """골렘의 왼쪽 아래 칸을 (col, row) 에 둘 수 있는지: 몸 칸(1×2)이 모두 벽·허수아비·주인공·다른 골렘이 없는 칸."""
         player = (self.player.col, self.player.row)
-        for c in range(col, col + golem.size):
-            for r in range(row, row + golem.size):
+        for c in range(col, col + golem.width):
+            for r in range(row, row + golem.height):
                 if not can_enter(self.tile_map, c, r) or (c, r) == player:
                     return False
                 if any((d.col, d.row) == (c, r) for d in self.dummies):

@@ -73,7 +73,7 @@ class GolemStompEffectTest(unittest.TestCase):
         golem = self.release(STOMP)
         self.assertEqual(len(golem.effects), 1)
         effect = golem.effects[0]
-        self.assertEqual((effect.x, effect.y), (7.5, 4.5))  # 발 칸 (7, 4) 가운데 (3×3 몸 (6,4)~(8,6) 의 맨 아래 줄 가운데)
+        self.assertEqual((effect.x, effect.y), (6.5, 4.5))  # 발 칸 (6, 4) 가운데 (몸 1×2 의 아래 칸)
         self.assertIsNotNone(effect.shake)
         golem.update(0.01, (4, 4), lambda c, r: True)
         self.assertEqual(golem.effects, [])  # 한 프레임만 전달

@@ -3,7 +3,7 @@
 글자 맵 파일 형식 (assets/maps/*.txt, D-023):
     - 한 줄 = 한 행, 한 글자 = 한 칸. 모든 줄의 길이가 같아야 한다.
     - `#` 벽, `.` 바닥, `P` 주인공 시작 칸(바닥), `D` 연습용 허수아비(바닥 위에 놓임),
-      `G` 골렘(그 칸이 골렘 3×3 의 왼쪽 아래, 나머지 칸은 바닥이어야 함). 빈 줄은 무시한다.
+      `G` 골렘(그 칸이 골렘의 발 칸(몸 1×2 의 아래 칸), 그 위 칸은 바닥이어야 함). 빈 줄은 무시한다.
     - 파일의 **맨 위 줄이 가장 위쪽 행**이다. 게임의 칸 좌표는 (0, 0) 이 왼쪽 아래이므로
       맨 아래 줄이 row 0 이 된다.
 
@@ -33,7 +33,7 @@ class TileMap:
         self.walls = frozenset(walls)
         self.player_start = player_start
         self.dummies = list(dummies or [])  # 허수아비를 놓을 칸
-        self.golems = list(golems or [])  # 골렘(3×3)의 왼쪽 아래 칸
+        self.golems = list(golems or [])  # 골렘의 발 칸 (몸 1×2 의 아래 칸)
 
     @classmethod
     def from_text(cls, text: str) -> TileMap:
