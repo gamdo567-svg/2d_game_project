@@ -16,6 +16,21 @@
 
 ---
 
+## 2026-11-17 — 골렘 두 손 내려찍기 동작 그림 + 충격 이펙트 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: ① 내려찍기 4방향 동작 그림(PixelLab 핵심 자세 + 구간 잇기)과 충격 이펙트(짧은 금·돌 파편·먼지, 약한 흔들림)를 넣었다 (D-036).
+  공격 동작 그림 고르기를 ①·③ 공용(`attack_frame`, `attack_squash`, `attack_sprite_path`)으로 묶었다.
+- **현재 상태**: 테스트 231개 통과. 실제 pico2d 창 캡처로 들기 → 착지 → 이펙트 → 일어섬 확인
+  (`assets/concepts/pixellab/golem_slam/ingame_capture_contact.png`, 서쪽을 볼 때). 직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: 그림을 다시 만들면 `assets/concepts/pixellab/golem_slam/build_golem_slam.py` (방향별 원본은 SOURCES)
+  → `aligned/slam_*.png` 를 `assets/images/golem/` 로 복사. 이펙트는 `assets/concepts/vfx/slam/build_golem_slam_impact.py` 가
+  `assets/images/effects/golem_slam.png` 까지 저장. PixelLab state: Slam Raise(3be21c60…), Slam Impact(b8f7f352…), Slam Impact Flat(6eedb94b…).
+- **남은 문제 / 다음 할 일**: **후면 일어섬에서 팔이 먼저 옆으로 돌아감** (사용자 확인: 해결 안 됨, 시간이 없어 일단 적용).
+  ② 앞차기·④ 레이저 동작 그림. 3×3 몸에 비해 그림이 작아 보일 수 있음.
+
+---
+
 ## 2026-11-17 — 골렘 몸 3×3 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (골렘 작업 세션과 조율해 그 브랜치에 커밋)
