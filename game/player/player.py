@@ -7,8 +7,8 @@
   점프는 공중에서). 행동 중에는 새 이동을 하지 않는다.
 - 입력 기억: 행동을 지금 할 수 없을 때 누른 키를 PLAYER_INPUT_BUFFER_TIME 동안 기억했다가 할 수 있게 되면 실행한다.
 - 공격은 3단 콤보(SwordCombo). 공격 중 클릭하면 다음 타가 이어지고, 3타 뒤에는 잠시 공격만 할 수 없다.
-- 공격 그림은 검이 몸 밖으로 나가므로 96×64 캔버스다. 측면(8프레임, 2026-11-17 PixelLab)과 정면(예전 5프레임)
-  그림이 있고, 위는 임시로 측면 그림, 왼쪽은 좌우 반전한다.
+- 공격 그림은 검이 몸 밖으로 나가므로 96×64 캔버스, 타마다 8프레임이다 (2026-11-17 PixelLab).
+  측면·정면 그림이 있고(정면 2·3타는 예전 5프레임, 후면은 없어 측면), 왼쪽은 측면을 좌우 반전한다.
 """
 from __future__ import annotations
 
@@ -40,14 +40,21 @@ def attack_hand_sheet_path(hit_number: int, view: str = "side") -> str:
     return sprite_sheet_path(ATTACK, f"{view}_{hit_number}_hand")
 
 
-# 방향별 공격 칼 위치표. 후면(back)은 아직 그림이 없어 측면을 쓴다.
-ATTACK_SWORD_TABLES = {"side": config.PLAYER_ATTACK_SWORD, "front": config.PLAYER_ATTACK_SWORD_FRONT}
+# 방향별 공격 칼 위치표. 타 하나가 None 이면 그 방향 그림이 없어 측면을 쓴다 (지금은 후면 2타).
+ATTACK_SWORD_TABLES = {
+    "side": config.PLAYER_ATTACK_SWORD,
+    "front": config.PLAYER_ATTACK_SWORD_FRONT,
+    "back": config.PLAYER_ATTACK_SWORD_BACK,
+}
 
 
-def attack_view(facing: Facing) -> str:
-    """공격 그림 방향: 아래 = front, 그 밖 = side (위는 후면 그림이 생길 때까지 임시로 측면)."""
+def attack_view(facing: Facing, hit_index: int = 0) -> str:
+    """공격 그림 방향: 아래 = front, 위 = back, 좌우 = side. 그 방향에 이 타의 그림이 없으면 side."""
     view, _ = sprite_view(facing)
-    return view if view in ATTACK_SWORD_TABLES else "side"
+    table = ATTACK_SWORD_TABLES.get(view)
+    if table is None or table[hit_index] is None:
+        return "side"
+    return view
 
 
 def weapon_sheet_path(weapon: str) -> str:
@@ -295,7 +302,8 @@ class Player:
         if self.combo.frame_index >= config.PLAYER_ATTACK_HIT_FRAMES[i] and key != self._last_strike:
             self._last_strike = key
             self.strikes.append(Strike(self.col, self.row, self.facing.value,
-                                       config.PLAYER_ATTACK_REACH[i], config.PLAYER_ATTACK_DAMAGE[i]))
+                                       config.PLAYER_ATTACK_REACH[i], config.PLAYER_ATTACK_DAMAGE[i],
+                                       config.PLAYER_ATTACK_WIDTH[i]))
 
     def _on_state_changed(self, state: str) -> None:
         if state == PARRY:
@@ -357,20 +365,20 @@ class Player:
     def _draw_attack(self, renderer, center_x: float, bottom: float) -> None:
         """지금 타의 공격 그림(96×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.
 
-        아래를 보면 정면 그림, 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
-        후면 그림은 아직 없어 위를 볼 때는 임시로 측면 그림을 쓴다.
+        아래를 보면 정면, 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
+        후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 2·3타는 예전 5프레임 그림이다.
         """
         width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
         scale = config.RENDER_SCALE
-        view = attack_view(self.facing)
-        if view == "front":
-            # 정면은 아직 예전 5프레임 그림: 같은 진행도에서 정면용 프레임 표로 고른다
-            ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[self.combo.index]
+        view = attack_view(self.facing, self.combo.index)
+        ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[self.combo.index] if view == "front" else None
+        if ends is not None:
+            # 정면 2·3타는 예전 5프레임 그림: 같은 진행도에서 그 그림의 프레임 표로 고른다
             frame = frame_for_progress(self.combo.current.progress, ends)
+            shift_x, shift_y = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT[self.combo.index][frame]
         else:
             frame = self.combo.frame_index
-        shifts = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT if view == "front" else config.PLAYER_ATTACK_FRAME_SHIFTS
-        shift_x, shift_y = shifts[self.combo.index][frame]
+            shift_x, shift_y = config.PLAYER_ATTACK_FRAME_SHIFTS[self.combo.index][frame]
         flip = self.facing == Facing.LEFT
         forward = -1 if flip else 1
         canvas_x = center_x + shift_x * scale * forward  # 캔버스 아래 가운데

@@ -41,6 +41,20 @@ PAD = 16  # 칼끝이 68 칸 밖으로 나가도 잘리지 않게 좌우 여백
 OVERRIDES = {
     ('attack1', 5): (55, 48, -40, False),  # 몸을 7번 그림으로 쓰므로 손도 7번 자리 (각도만 더 숙임)
     ('attack1', 6): (55, 48, -33, False),
+    # 정면·후면 (2026-11-17): 칼이 잔상에 묻히거나 보는 사람 쪽으로 향해 자동으로 못 찾은 프레임
+    ('front1', 3): (47, 34, 117, True), ('front1', 5): (50, 40, -40, False),
+    ('front1', 6): (36, 43, -146, False), ('front1', 7): (25, 45, -138, False),
+    ('front2', 4): (30, 44, -30, False), ('front2', 5): (40, 38, 70, False),
+    ('front3', 1): (32, 43, -126, False), ('front3', 2): (31, 39, 180, False),
+    ('front3', 3): (35, 40, -90, False), ('front3', 4): (34, 40, -90, False),
+    ('front3', 5): (34, 45, -90, False), ('front3', 6): (33, 47, -90, False),
+    ('front3', 7): (34, 49, -90, False), ('front3', 8): (33, 50, -90, False),
+    # 후면은 두 손이 몸 앞(보는 사람 반대쪽)이라 칼이 몸에 가려진다: 머리 위로 든 때만 몸 위에 그린다
+    ('back1', 1): (45, 43, 0, True), ('back1', 2): (44, 38, 54, True),
+    ('back1', 3): (42, 28, 134, False), ('back1', 4): (36, 25, 60, False),
+    ('back1', 5): (27, 37, -133, True), ('back1', 6): (27, 43, -142, True),
+    ('back1', 7): (29, 44, -142, True), ('back1', 8): (29, 44, -142, True),
+    ('back3', 7): (42, 28, 90, False), ('back3', 8): (34, 26, 90, False),
     ('attack2', 3): (56, 40, -65, False),
     ('attack2', 4): (40, 24, 110, True),
     ('attack2', 5): (37, 18, 155, True),  # 손잡이 끝이 얼굴 앞으로 삐져나와 눈처럼 보여 손을 머리 뒤로
@@ -403,7 +417,7 @@ def transplant_head(target, donor, box):
 
 def build_layers(name, frames):
     """프레임 목록 → (프레임별 레이어 {body, hand, sword}, 칼 표, 분석 결과). 좌표는 68×68 칸 기준."""
-    picks = FRAME_PICK[name]
+    picks = FRAME_PICK.get(name, [1, 2, 3, 4, 5, 6, 7, 8])
     frames = list(frames)
     for (n, c), (sheet, row, col) in FRAME_SOURCE.items():
         if n == name:

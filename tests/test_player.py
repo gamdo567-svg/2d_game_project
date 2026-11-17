@@ -5,6 +5,7 @@ from game import config
 from game.input.input_state import Action, InputState
 from game.player.facing import Facing
 from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, Player, attack_hand_sheet_path, attack_sheet_path,
+                               attack_view,
                                sprite_sheet_path, weapon_sheet_path)
 from game.player.state_machine import ATTACK, DODGE, IDLE, JUMP, PARRY, WALK
 from game.scenes.field_scene import FieldScene
@@ -520,19 +521,27 @@ class PlayerAttackTest(unittest.TestCase):
         self.assertEqual(args[1:], bargs[1:])
         self.assertEqual(kwargs, bkw)
 
-    def test_attack_facing_down_uses_front_sheets_and_short_sword(self):
-        # 아래를 보면 정면 몸·칼 앞 레이어 시트와 정면 칼 위치표(칼 길이 비율 포함)를 쓴다. 반전 없음.
+    def test_attack_facing_down_uses_front_sheets(self):
+        # 아래를 보면 정면 몸·칼 앞 레이어 시트와 정면 칼 위치표를 쓴다. 반전 없음.
         body, sword, hand = self._draw_attack_frame(action=Action.MOVE_DOWN)
         frame = self.player.combo.frame_index
-        hand_x, hand_y, angle, behind, length = config.PLAYER_ATTACK_SWORD_FRONT[0][frame]
+        hand_x, hand_y, angle, behind = config.PLAYER_ATTACK_SWORD_FRONT[0][frame]
+        self.assertFalse(behind)
         self.assertEqual(body[1][0], attack_sheet_path(1, "front"))
         self.assertEqual(hand[1][0], attack_hand_sheet_path(1, "front"))
         _, args, kwargs = sword
         scale = config.RENDER_SCALE
-        self.assertEqual(args[3], round(config.PLAYER_SWORD_SPRITE_WIDTH * length) * scale)
+        self.assertEqual(args[3], config.PLAYER_SWORD_SPRITE_WIDTH * scale)
         self.assertEqual(args[5], angle)
         self.assertFalse(kwargs["flip_horizontal"])
         self.assertFalse(body[2]["flip_horizontal"])
+
+    def test_attack_view_uses_side_when_facing_up(self):
+        # 후면 공격 그림이 없어 위를 볼 때는 측면 그림. 아래는 정면.
+        for index in range(config.PLAYER_ATTACK_HITS):
+            self.assertEqual(attack_view(Facing.UP, index), "side")
+            self.assertEqual(attack_view(Facing.DOWN, index), "front")
+        self.assertEqual(attack_view(Facing.LEFT, 0), "side")
 
     def test_attack_sword_mirrors_when_facing_left(self):
         # 왼쪽: 손 위치를 좌우로 뒤집고, 칼은 뒤집은 뒤 반대 각도로 돌린다 (칼끝 방향 180 - 각도)

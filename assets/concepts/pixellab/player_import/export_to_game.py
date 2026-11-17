@@ -49,9 +49,19 @@ def ref_anchor(frame):
     return (x0 + x1) // 2, y1 - 1, y0
 
 
-def export_attacks():
-    tables = []
-    for hit, (name, path, row) in enumerate(b.ATTACKS, start=1):
+# 방향별 공격 (2026-11-17): 방향 → [(타 번호, 이름, 시트, 행)]. 목록에 없는 타는 게임이 예전 그림이나 측면을 쓴다.
+VIEW_ATTACKS = {
+    'side': [(hit, name, path, row) for hit, (name, path, row) in enumerate(b.ATTACKS, start=1)],
+    # 정면 2·3타·후면은 PixelLab 결과를 쓰지 않기로 함 (2026-11-17 사용자 결정). 시험 원본은 remake_raw 에 남김.
+    'front': [(1, 'front1', 'attack_front_final_68.png', 0)],
+    'back': [],
+}
+
+
+def export_attacks(view='side'):
+    """view 방향의 공격 시트를 내보내고 칼 위치표 {타 번호: [(손 x, 손 y, 각도, 몸 뒤), ...]} 를 돌려준다."""
+    tables = {}
+    for hit, name, path, row in VIEW_ATTACKS[view]:
         frames = b.cells(path, row)
         cx, foot, _ = ref_anchor(frames[0])
         dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot
@@ -64,9 +74,9 @@ def export_attacks():
             hand.alpha_composite(layer['hand'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
             hx, hy, angle, behind = layer['sword']
             table.append((round(hx + dx), round(hy + dy), round(angle), behind))
-        body.save(os.path.join(OUT, 'sword_attack', f'side_{hit}.png'))
-        hand.save(os.path.join(OUT, 'sword_attack', f'side_{hit}_hand.png'))
-        tables.append(table)
+        body.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}.png'))
+        hand.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}_hand.png'))
+        tables[hit] = table
     return tables
 
 
@@ -201,12 +211,19 @@ def export_jump():
 
 
 def main():
-    tables = export_attacks()
+    for view, const in (('side', 'PLAYER_ATTACK_SWORD'), ('front', 'PLAYER_ATTACK_SWORD_FRONT'),
+                        ('back', 'PLAYER_ATTACK_SWORD_BACK')):
+        tables = export_attacks(view)
+        print(f'{const} = (')
+        for hit in range(1, 4):
+            t = tables.get(hit)
+            if t is None:
+                print('    None,')
+                continue
+            rows = [f'({x}, {y}, {a}, {bh})' for x, y, a, bh in t]
+            print('    (' + ', '.join(rows[:4]) + ',' + chr(10) + '     ' + ', '.join(rows[4:]) + '),')
+        print(')')
     export_jump()
-    print('PLAYER_ATTACK_SWORD = (')
-    for t in tables:
-        print('    (' + ', '.join(f'({x}, {y}, {a}, {bh})' for x, y, a, bh in t) + '),')
-    print(')')
 
 
 if __name__ == '__main__':

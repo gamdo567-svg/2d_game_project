@@ -200,25 +200,28 @@ class PlayerAssetTest(unittest.TestCase):
             with self.subTest(hit=hit):
                 self.assertGreaterEqual(with_hand * 2, front_frames)
 
-    def test_front_attack_sheets_and_table(self):
-        # 정면 공격: 몸·칼 앞 레이어 시트가 측면과 같은 규격이고, 칼 위치표는 (x, y, 각도, 뒤, 길이 비율)
+    def test_front_attack_sheets_and_tables(self):
+        # 정면 공격: 1타는 PixelLab 8프레임, 2·3타는 예전 5프레임 그림 (프레임 표·그림 옮김·칼 길이 비율이 따로 있음).
+        # 후면은 그림이 없어 표가 모두 None (위를 볼 때 측면 그림).
         w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
-        for hit in range(1, config.PLAYER_ATTACK_HITS + 1):
-            for path in (attack_sheet_path(hit, "front"), attack_hand_sheet_path(hit, "front")):
-                signature, width, height, color_type = read_png_header(path)
-                with self.subTest(path=path):
-                    self.assertEqual((width, height), (w * config.PLAYER_ATTACK_FRAMES_FRONT, h))
         self.assertEqual(len(config.PLAYER_ATTACK_SWORD_FRONT), config.PLAYER_ATTACK_HITS)
-        self.assertEqual(len(config.PLAYER_ATTACK_FRAME_ENDS_FRONT), config.PLAYER_ATTACK_HITS)
-        for ends in config.PLAYER_ATTACK_FRAME_ENDS_FRONT:
-            self.assertEqual(len(ends), config.PLAYER_ATTACK_FRAMES_FRONT)
-            self.assertEqual(list(ends), sorted(ends))
-            self.assertEqual(ends[-1], 1.0)
-        for hit in config.PLAYER_ATTACK_SWORD_FRONT:
-            self.assertEqual(len(hit), config.PLAYER_ATTACK_FRAMES_FRONT)
-            for hand_x, hand_y, angle, behind, length in hit:
-                self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
-                self.assertTrue(0 < length <= 1.0)
+        for index, frames in enumerate(config.PLAYER_ATTACK_SWORD_FRONT):
+            hit = index + 1
+            ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[index]
+            count = config.PLAYER_ATTACK_FRAMES if ends is None else len(ends)
+            with self.subTest(hit=hit):
+                self.assertEqual(len(frames), count)
+                if ends is not None:
+                    self.assertEqual(list(ends), sorted(ends))
+                    self.assertEqual(ends[-1], 1.0)
+                    self.assertEqual(len(config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT[index]), count)
+                for path in (attack_sheet_path(hit, "front"), attack_hand_sheet_path(hit, "front")):
+                    signature, width, height, color_type = read_png_header(path)
+                    self.assertEqual((width, height), (w * count, h))
+                for hand_x, hand_y, angle, behind, *rest in frames:
+                    self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
+                    self.assertTrue(all(0 < length <= 1.0 for length in rest))
+        self.assertEqual(config.PLAYER_ATTACK_SWORD_BACK, (None, None, None))
 
     def test_attack_timing_tables_match_hits(self):
         self.assertEqual(len(config.PLAYER_ATTACK_DURATIONS), config.PLAYER_ATTACK_HITS)

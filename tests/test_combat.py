@@ -24,6 +24,18 @@ class StrikeTest(unittest.TestCase):
         self.assertEqual(attack_tiles(Strike(3, 2, (1, 0), 2, 10), is_wall), [(4, 2)])
         self.assertEqual(attack_tiles(Strike(2, 2, (0, 1), 2, 10), is_wall), [(2, 3), (2, 4)])
 
+    def test_attack_tiles_width(self):
+        # 가로 3칸: 바라보는 방향 앞 1칸과 그 양옆. 줄마다 벽이면 그 줄만 막힌다.
+        is_wall = lambda c, r: (c, r) == (3, 3)
+        self.assertEqual(sorted(attack_tiles(Strike(2, 2, (1, 0), 1, 10, width=3), is_wall)), [(3, 1), (3, 2)])
+        self.assertEqual(sorted(attack_tiles(Strike(2, 2, (0, 1), 1, 10, width=3), lambda c, r: False)),
+                         [(1, 3), (2, 3), (3, 3)])
+
+    def test_player_hitbox_sizes(self):
+        # 1·2타 앞 1칸 × 가로 3칸, 3타 앞 2칸 × 가로 1칸 (2026-11-17 사용자 결정)
+        self.assertEqual(config.PLAYER_ATTACK_REACH, (1, 1, 2))
+        self.assertEqual(config.PLAYER_ATTACK_WIDTH, (3, 3, 1))
+
 
 class TrainingDummyTest(unittest.TestCase):
     def test_hit_flashes_shakes_and_pops_number(self):
