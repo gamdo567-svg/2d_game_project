@@ -8,7 +8,7 @@
 - 입력 기억: 행동을 지금 할 수 없을 때 누른 키를 PLAYER_INPUT_BUFFER_TIME 동안 기억했다가 할 수 있게 되면 실행한다.
 - 공격은 3단 콤보(SwordCombo). 공격 중 클릭하면 다음 타가 이어지고, 3타 뒤에는 잠시 공격만 할 수 없다.
 - 공격 그림은 검이 몸 밖으로 나가므로 96×64 캔버스, 타마다 8프레임이다 (2026-11-17 PixelLab).
-  측면·정면 그림이 있고(정면 2·3타는 예전 5프레임, 후면은 없어 측면), 왼쪽은 측면을 좌우 반전한다.
+  측면·정면 그림이 있고(정면 3타는 예전 5프레임, 후면은 없어 측면), 왼쪽은 측면을 좌우 반전한다.
 """
 from __future__ import annotations
 
@@ -366,14 +366,14 @@ class Player:
         """지금 타의 공격 그림(96×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.
 
         아래를 보면 정면, 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
-        후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 2·3타는 예전 5프레임 그림이다.
+        후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 3타는 예전 5프레임 그림이다.
         """
         width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
         scale = config.RENDER_SCALE
         view = attack_view(self.facing, self.combo.index)
         ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[self.combo.index] if view == "front" else None
         if ends is not None:
-            # 정면 2·3타는 예전 5프레임 그림: 같은 진행도에서 그 그림의 프레임 표로 고른다
+            # 정면은 타별 프레임 표로 고른다 (1·2타는 휘두르는 그림을 판정 시점에 맞춤, 3타는 예전 5프레임 그림)
             frame = frame_for_progress(self.combo.current.progress, ends)
             shift_x, shift_y = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT[self.combo.index][frame]
         else:
