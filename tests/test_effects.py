@@ -112,6 +112,29 @@ class SceneEffectTest(unittest.TestCase):
         self.assertTrue(effect.finished)
         self.assertNotIn(effect, scene.effects)  # 다 재생하면 사라짐
 
+    def test_stomp_effect_drawn_at_range_size(self):
+        # 발 구르기 이펙트는 ③ 범위(7×7칸) 크기로 그린다 (2026-11-17 사용자 요청)
+        from game.scenes.field_scene import FieldScene
+        from game.world.grid import Grid
+        from game.world.tile_map import TileMap
+        from game.effects.effect import SpriteEffect
+        from tests.test_golem import ROOM
+
+        class Rec:
+            def __init__(self):
+                self.calls = []
+
+            def draw_sheet_frame(self, *args):
+                self.calls.append(args)
+
+        tile_map = TileMap.from_text(ROOM)
+        scene = FieldScene(Grid(tile_map.cols, tile_map.rows, config.RENDER_TILE_SIZE), tile_map)
+        rec = Rec()
+        scene._draw_effect(rec, SpriteEffect(config.GOLEM_STOMP_EFFECT, 5.5, 4.5))
+        draw_w, draw_h = rec.calls[0][-2:]
+        size = config.GOLEM_STOMP["size"] * config.RENDER_TILE_SIZE
+        self.assertEqual((draw_w, draw_h), (size, size))
+
 
 if __name__ == "__main__":
     unittest.main()

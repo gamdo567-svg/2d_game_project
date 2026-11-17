@@ -133,8 +133,9 @@ class FieldScene:
         x = grid.origin_x + effect.x * grid.tile_size
         y = grid.origin_y + effect.y * grid.tile_size
         size = spec["frame_size"]
-        renderer.draw_sheet_frame(str(spec["path"]), effect.frame_index, spec["columns"], size, size,
-                                  x, y, size * config.RENDER_SCALE, size * config.RENDER_SCALE)
+        tiles = spec.get("draw_tiles")  # 범위 칸 수에 맞춰 그릴 때 (없으면 원본 × RENDER_SCALE)
+        draw = tiles * grid.tile_size if tiles else size * config.RENDER_SCALE
+        renderer.draw_sheet_frame(str(spec["path"]), effect.frame_index, spec["columns"], size, size, x, y, draw, draw)
 
     def _draw_hud(self, renderer) -> None:
         top = config.SCREEN_HEIGHT  # 화면에 고정 (카메라와 무관)

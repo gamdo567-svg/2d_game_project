@@ -86,11 +86,11 @@ class GolemAreaTest(unittest.TestCase):
         self.assertEqual(self.golem.front_area(4, 5, (2, 3)), {(c, r) for c in range(2, 7) for r in range(2, 6)})
         self.assertEqual(self.golem.front_area(4, 5, (2, 8)), {(c, r) for c in range(2, 7) for r in range(3, 7)})
 
-    def test_stomp_area_eight_by_eight(self):
-        # 8×8: 발 칸 (7, 4) 둘레로 한쪽 3칸·다른 쪽 4칸. 남는 한 줄은 아래(왼쪽), 주인공이 위(오른쪽)이면 그쪽
-        # (아래쪽 0행·위쪽 9행은 벽이라 제외)
-        self.assertEqual(self.golem.stomp_area((1, 1)), {(c, r) for c in range(3, 11) for r in range(1, 8)})
-        self.assertEqual(self.golem.stomp_area((12, 8)), {(c, r) for c in range(4, 12) for r in range(1, 9)})
+    def test_stomp_area_seven_by_seven(self):
+        # 7×7: 발 칸 (7, 4) 둘레로 3칸씩, 주인공 위치와 상관없이 대칭 (2026-11-17 사용자 요청)
+        area = {(c, r) for c in range(4, 11) for r in range(1, 8)}
+        self.assertEqual(self.golem.stomp_area((1, 1)), area)
+        self.assertEqual(self.golem.stomp_area((12, 8)), area)
 
     def test_laser_explodes_four_by_four_at_aim(self):
         self.golem.aim = (3.0, 5.0)  # 조준점을 가운데로 한 4×4

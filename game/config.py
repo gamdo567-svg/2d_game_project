@@ -246,8 +246,8 @@ GOLEM_STOMP_ANIM = {
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능
 # 2026-11-17 사용자 요청으로 예고 0.3 → 0.6 → 0.55초, 범위 가로 3 → 5 → 4 → 3 (가로 3 × 앞으로 5)
 GOLEM_KICK = {"windup": 0.55, "damage": 15, "width": 3, "depth": 5}  # ② 뒤로 들었다 앞차기: 패링 불가, 회피 무적 가능
-# 2026-11-17 사용자 요청으로 6×6 → 7×7 → 8×8 (몸 2×2 둘레로 3칸씩, 대칭. 몸이 3×3 이 된 뒤로는 한쪽 2칸·다른 쪽 3칸)
-GOLEM_STOMP = {"windup": 0.55, "damage": 30, "size": 8}  # ③ 한 발 내려찍기: 중심 6×6, 점프로만 피함
+# 2026-11-17 사용자 요청으로 6×6 → 7×7 → 8×8 → 7×7 (몸이 3×3 이 되고 범위 기준이 발 칸이 되어, 발 칸 둘레로 3칸씩 대칭)
+GOLEM_STOMP = {"windup": 0.55, "damage": 30, "size": 7}  # ③ 한 발 내려찍기: 발 칸 가운데 7×7 (대칭), 점프로만 피함
 # ④ 코어 레이저: 4초 조준(조준점이 발사 순간까지 주인공을 따라옴) 후 조준점에서 4×4 폭발 (벽 칸은 제외).
 #   일직선으로 관통하지 않는다 (2026-11-17 사용자 결정). 패링 불가, 회피 무적으로 피함
 GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
@@ -266,6 +266,8 @@ GOLEM_STOMP_EFFECT = {
     "frames": 30,
     "fps": 12,
     "shake": {"amplitude": 8, "duration": 0.45, "frequency": 18},
+    # 화면에 그리는 크기(칸). 없으면 frame_size × RENDER_SCALE. ③ 범위(7×7)에 맞춘다 (2026-11-17 사용자 요청)
+    "draw_tiles": GOLEM_STOMP["size"],
 }
 
 # 점프 그림자 원본 크기 (assets/images/player/shadow.png)
