@@ -7,9 +7,13 @@
   다음 칸 이동을 바로 시작한다 (끊김 없는 연속 이동).
 - 대각선 이동은 없다 (2026-11-03 사용자 결정).
 - 들어갈 수 있는 칸인지는 can_enter(col, row) 로 묻는다 (기본: 격자 안이면 됨). 벽 충돌은 이것으로 막는다.
+- 걷는 중 방향 바꾸기 (2026-11-17 사용자 결정, 조작감): 반대 방향은 그 자리에서 바로 되돌아가고,
+  옆 방향은 한 칸의 절반을 가기 전이면 그 자리에서 바로 꺾는다 (절반을 넘었으면 칸을 마친 뒤 꺾음).
+  그림은 지금 보이는 위치에서 이어지고, 걸리는 시간은 남은 거리에 맞춘다.
 """
 from __future__ import annotations
 
+import math
 from typing import Callable
 
 from game.world.grid import Grid
@@ -30,9 +34,12 @@ class GridMover:
         self.can_enter = can_enter or grid.in_bounds
         self._step_duration = 1.0 / speed  # 지금 진행 중인 이동에 걸리는 시간 (회피는 따로 정함)
 
-        self._from_col = col  # 이동 출발 칸
-        self._from_row = row
-        self._progress = 1.0  # 0.0 = 출발 칸, 1.0 = 도착 칸
+        self._from_col: float = col  # 그림 보간의 출발점 (방향을 바꾸면 그 순간 보이던 위치라 실수일 수 있음)
+        self._from_row: float = row
+        self._progress = 1.0  # 0.0 = 출발점, 1.0 = 도착 칸
+        self._dir = (0, 0)  # 지금 이동 방향
+        self._origin = (col, row)  # 지금 이동에서 떠나온 칸
+        self._dashing = False  # 회피 중에는 방향을 바꾸지 않는다
 
     @property
     def is_moving(self) -> bool:
@@ -43,7 +50,7 @@ class GridMover:
         """지금 진행 중인 한 칸 이동의 방향 (dx, dy). 멈춰 있으면 (0, 0)."""
         if not self.is_moving:
             return 0, 0
-        return self.col - self._from_col, self.row - self._from_row
+        return self._dir
 
     @property
     def visual_position(self) -> tuple[float, float]:
@@ -56,6 +63,8 @@ class GridMover:
 
     def update(self, dt: float, dx: int, dy: int) -> None:
         """dt 초만큼 이동을 진행한다. (dx, dy) 는 지금 누르고 있는 방향 (직선 한 방향)."""
+        if self.is_moving and not self._dashing and (dx, dy) not in ((0, 0), self._dir):
+            self._redirect(dx, dy)
         remaining = dt
         while True:
             if not self.is_moving:
@@ -69,7 +78,9 @@ class GridMover:
             remaining -= step_time
             self._progress = 1.0
             self._from_col, self._from_row = self.col, self.row
+            self._origin = (self.col, self.row)
             self._step_duration = 1.0 / self.speed
+            self._dashing = False
             if remaining <= 0.0:
                 return
 
@@ -82,16 +93,45 @@ class GridMover:
         if (dx == 0) == (dy == 0):
             raise ValueError("회피는 상하좌우 한 방향이어야 합니다.")
         tiles = 0
-        while tiles < max_tiles and self.grid.in_bounds(self.col + dx * (tiles + 1), self.row + dy * (tiles + 1))                 and self.can_enter(self.col + dx * (tiles + 1), self.row + dy * (tiles + 1)):
+        while tiles < max_tiles and self._enterable(self.col + dx * (tiles + 1), self.row + dy * (tiles + 1)):
             tiles += 1
         if tiles == 0:
             return 0
         self._from_col, self._from_row = self.visual_position
+        self._origin = (self.col, self.row)
         self.col += dx * tiles
         self.row += dy * tiles
+        self._dir = (dx, dy)
         self._progress = 0.0
         self._step_duration = duration
+        self._dashing = True
         return tiles
+
+    def _enterable(self, col: int, row: int) -> bool:
+        return self.grid.in_bounds(col, row) and self.can_enter(col, row)
+
+    def _redirect(self, dx: int, dy: int) -> None:
+        """걷는 중 방향 바꾸기: 반대 방향은 떠나온 칸으로 바로 되돌아가고, 옆 방향은 절반을 가기 전이면 바로 꺾는다."""
+        if dx != 0 and dy != 0:
+            return
+        if (dx, dy) == (-self._dir[0], -self._dir[1]):
+            target = self._origin
+            new_origin = (self.col, self.row)
+        elif self._progress < 0.5:
+            target = (self._origin[0] + dx, self._origin[1] + dy)
+            new_origin = self._origin
+        else:
+            return  # 절반을 넘었으면 지금 칸을 마친 뒤 꺾는다
+        if not self._enterable(*target):
+            return
+        vx, vy = self.visual_position
+        distance = math.hypot(target[0] - vx, target[1] - vy)
+        self._from_col, self._from_row = vx, vy
+        self.col, self.row = target
+        self._origin = new_origin
+        self._dir = (dx, dy)
+        self._progress = 0.0
+        self._step_duration = max(distance, 1e-6) / self.speed
 
     def _try_start(self, dx: int, dy: int) -> bool:
         """(dx, dy) 방향으로 한 칸 이동을 시작한다. 못 움직이면 False."""
@@ -99,10 +139,12 @@ class GridMover:
             raise ValueError("대각선 이동은 지원하지 않습니다.")
         if dx == 0 and dy == 0:
             return False
-        if not self.grid.in_bounds(self.col + dx, self.row + dy) or not self.can_enter(self.col + dx, self.row + dy):
+        if not self._enterable(self.col + dx, self.row + dy):
             return False  # 맵 밖이나 벽 칸으로는 들어가지 않는다
         self._from_col, self._from_row = self.col, self.row
+        self._origin = (self.col, self.row)
         self.col += dx
         self.row += dy
+        self._dir = (dx, dy)
         self._progress = 0.0
         return True

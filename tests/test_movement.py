@@ -101,3 +101,40 @@ class GridMoverTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TurnWhileWalkingTest(unittest.TestCase):
+    """걷는 중 방향 바꾸기 (조작감): 반대는 바로, 옆은 절반 전이면 바로."""
+
+    SPEED = 4.0
+
+    def setUp(self):
+        self.mover = GridMover(Grid(10, 10, 32), 5, 5, speed=self.SPEED)
+        self.mover.update(0.25 / 4, 1, 0)  # 오른쪽으로 한 칸의 1/4
+
+    def test_reverse_turns_back_immediately(self):
+        self.mover.update(1e-6, -1, 0)
+        self.assertEqual(self.mover.move_direction, (-1, 0))
+        self.assertEqual((self.mover.col, self.mover.row), (5, 5))  # 떠나온 칸으로
+        self.assertAlmostEqual(self.mover.visual_position[0], 5.25, places=3)  # 그림은 튀지 않음
+        self.mover.update(0.25 / 4 + 0.001, 0, 0)  # 남은 1/4칸만큼 시간
+        self.assertFalse(self.mover.is_moving)
+        self.assertEqual(self.mover.visual_position, (5, 5))
+
+    def test_side_turn_before_half_turns_immediately(self):
+        self.mover.update(1e-6, 0, 1)
+        self.assertEqual(self.mover.move_direction, (0, 1))
+        self.assertEqual((self.mover.col, self.mover.row), (5, 6))  # 떠나온 칸의 위 칸으로 바로 꺾음
+
+    def test_side_turn_after_half_waits_for_tile(self):
+        self.mover.update(0.25 / 2, 1, 0)  # 3/4 지점
+        self.mover.update(1e-6, 0, 1)
+        self.assertEqual(self.mover.move_direction, (1, 0))  # 아직 오른쪽
+        self.mover.update(0.25 / 4 + 0.01, 0, 1)
+        self.assertEqual((self.mover.col, self.mover.row), (6, 6))  # 칸을 마친 뒤 위로
+
+    def test_blocked_turn_keeps_going(self):
+        mover = GridMover(Grid(10, 10, 32), 5, 5, speed=self.SPEED, can_enter=lambda c, r: r != 6)
+        mover.update(0.25 / 4, 1, 0)
+        mover.update(1e-6, 0, 1)  # 위가 막혀 있으면 꺾지 않음
+        self.assertEqual(mover.move_direction, (1, 0))
