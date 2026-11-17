@@ -50,13 +50,14 @@ class PlayerTest(unittest.TestCase):
         self.assertEqual(self.player.state, IDLE)
 
     def test_stays_walk_between_tiles_while_key_held(self):
+        start_row = self.player.row
         self.input.press(Action.MOVE_UP)
         states = set()
         for _ in range(60):  # 1초, 여러 칸
             self.player.update(1 / 60, self.input)
             states.add(self.player.state)
         self.assertEqual(states, {WALK})
-        self.assertGreater(self.player.row, 9)
+        self.assertEqual(self.player.row, start_row + round(config.PLAYER_MOVE_SPEED))
 
     def test_facing_follows_movement(self):
         for action, facing in (

@@ -100,12 +100,22 @@ class GolemBehaviorTest(unittest.TestCase):
         self.assertEqual(self.golem.state, RECOVER)
 
     def test_mid_kick_and_far_laser(self):
-        self.make(None)
+        self.make(None, roll=0.0)
         self.advance(DT, (2, 4))  # 거리 4: 차기
         self.assertEqual(self.golem.pattern, KICK)
         self.make(None, roll=0.0)
         self.advance(DT, (14, 8))  # 멀다: 레이저
         self.assertEqual(self.golem.pattern, LASER)
+
+    def test_approaches_until_near(self):
+        # 주인공이 멀리 있으면 레이저를 한 번 쏜 뒤에는 쿨타임 동안 걸어서 다가와 가까운 패턴을 쓴다
+        self.make(SLAM, roll=0.0)
+        self.advance(DT, (14, 4))
+        self.assertEqual(self.golem.pattern, LASER)
+        self.advance(config.GOLEM_LASER["windup"] + config.GOLEM_RECOVER_TIME + config.GOLEM_REST_TIME + 0.05, (14, 4))
+        self.assertNotEqual(self.golem.pattern, LASER)  # 쿨타임: 다시 레이저를 쏘지 않고 걷는다
+        self.advance(6.0, (14, 4))
+        self.assertLessEqual(self.golem.distance_to((14, 4)), config.GOLEM_MID)
 
     def test_far_walks_toward_player(self):
         self.make(None, roll=0.9)

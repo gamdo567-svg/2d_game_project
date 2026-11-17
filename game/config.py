@@ -43,7 +43,7 @@ PLAYER_RENDER_HEIGHT = PLAYER_SPRITE_HEIGHT * RENDER_SCALE  # 96
 
 # ----- 플레이어 이동 -----
 # [임시값] PRE-PRD 2.1 [제안] 초기값 후보. 실제 플레이 후 조정한다.
-PLAYER_MOVE_SPEED = 6.0  # 칸/초 (한 칸 이동 시간 = 1 / 6초)
+PLAYER_MOVE_SPEED = 4.0  # 칸/초 (한 칸 이동 시간 = 0.25초). 2026-11-17 사용자 요청으로 6 → 4 (골렘 예고 중 걸어서 쉽게 빠져나가서)
 # 시작 위치 (칸 좌표). 맵 중앙 칸.
 PLAYER_START_COL = GRID_COLS // 2
 PLAYER_START_ROW = GRID_ROWS // 2
@@ -165,7 +165,10 @@ GOLEM_MOVE_SPEED = 1.5  # 칸/초
 GOLEM_REST_TIME = 1.5  # 초. 공격이 끝나고 다음 행동까지 쉼
 GOLEM_RECOVER_TIME = 0.6  # 초. 공격이 터진 뒤 자세를 되돌리는 시간 (때리기 좋은 틈)
 GOLEM_NEAR = 2  # 칸. 이 거리 안이면 ①·③
-GOLEM_MID = 5  # 칸. 이 거리 안이면 ②, 더 멀면 ④ 또는 다가감
+GOLEM_MID = 5  # 칸. 이 거리 안이면 ② 또는 다가감, 더 멀면 ④ 또는 다가감
+GOLEM_KICK_CHANCE = 0.5  # 중간 거리에서 ② 를 쓸 확률 (나머지는 다가감)
+GOLEM_LASER_CHANCE = 0.5  # 멀 때 ④ 를 쓸 확률 (쓸 수 있을 때만, 나머지는 다가감)
+GOLEM_LASER_COOLDOWN = 8.0  # 초. ④ 를 쓰고 나서 다시 쓸 수 있을 때까지 (레이저만 쏘며 제자리에 있지 않게)
 GOLEM_RESPAWN_TIME = 3.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남
 GOLEM_HIT_FLASH_TIME = 0.1
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).

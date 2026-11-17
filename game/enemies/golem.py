@@ -1,8 +1,8 @@
 """골렘: 첫 일반 몬스터 (몬스터형: 패링당하거나 맞아도 경직 없음). 2026-11-17 사용자 결정, 수치는 임시값.
 
 - 2×2칸을 차지한다. 주인공이 멀면 천천히 다가오고, 거리에 따라 패턴을 고른다.
-    가까우면(GOLEM_NEAR) ① 두 손 내려찍기 또는 ③ 한 발 내려찍기, 중간(GOLEM_MID)이면 ② 앞차기,
-    더 멀면 ④ 코어 레이저 또는 한 칸 다가감.
+    가까우면(GOLEM_NEAR) ① 두 손 내려찍기 또는 ③ 한 발 내려찍기, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감,
+    더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 3×5, 패링 불가·회피 무적 가능  ③ 중심 6×6, 점프로만 피함
     ④ 4초 동안 조준점이 주인공을 따라오다 그 방향으로 벽까지 일직선, 회피 무적 가능
@@ -57,6 +57,7 @@ class Golem:
         self.beam_tiles: frozenset[Tile] = frozenset()
         self.beam_left = 0.0
         self.flash_left = 0.0
+        self.laser_cooldown_left = 0.0
         self._move_from = (float(self.col), float(self.row))
         self._move_t = 1.0
 
@@ -123,6 +124,7 @@ class Golem:
         """can_place(col, row): 골렘의 왼쪽 아래 칸을 그 자리에 둘 수 있는지 (2×2 모두 비어 있는지)."""
         self.attacks = []
         self.flash_left = max(0.0, self.flash_left - dt)
+        self.laser_cooldown_left = max(0.0, self.laser_cooldown_left - dt)
         self.beam_left = max(0.0, self.beam_left - dt)
         if self.beam_left == 0.0:
             self.beam_tiles = frozenset()
@@ -166,11 +168,17 @@ class Golem:
         if dist <= config.GOLEM_NEAR:
             self._windup(self.rng.choice([SLAM, STOMP]), player_tile)
         elif dist <= config.GOLEM_MID:
-            self._windup(KICK, player_tile)
-        elif self.rng.random() < 0.5:
-            self._windup(LASER, player_tile)
-        elif not self._step_toward(player_tile, can_place):
-            self._windup(LASER, player_tile)
+            if self.rng.random() < config.GOLEM_KICK_CHANCE or not self._step_toward(player_tile, can_place):
+                self._windup(KICK, player_tile)
+        else:
+            laser_ready = self.laser_cooldown_left <= 0.0
+            if laser_ready and self.rng.random() < config.GOLEM_LASER_CHANCE:
+                self._windup(LASER, player_tile)
+            elif not self._step_toward(player_tile, can_place):
+                if laser_ready:
+                    self._windup(LASER, player_tile)
+                else:
+                    self._rest(0.5)  # 길이 막혀 있으면 잠깐 쉬고 다시 판단
 
     def _step_toward(self, player_tile: Tile, can_place: Callable[[int, int], bool]) -> bool:
         """주인공 쪽으로 한 칸 걷는다 (차이가 큰 축 먼저). 못 가면 False."""
@@ -297,6 +305,7 @@ class Golem:
         else:
             self.beam_tiles = self.laser_tiles()
             self.beam_left = spec["beam_time"]
+            self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
             attack = EnemyAttack(self.beam_tiles, spec["damage"], parryable=False, dodgeable=True, direction=self.facing)
         self.attacks.append(attack)
         self.state = RECOVER
