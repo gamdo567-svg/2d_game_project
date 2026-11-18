@@ -16,6 +16,16 @@
 
 ---
 
+## 2026-11-18 — 기절 공용 별 이펙트, 골렘 기절 준비 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: 기절 공용 별 이펙트를 만들어 골렘 기절에 붙였다 (D-043). 골렘 기절 자세용 ChatGPT 요청 묶음을 만들었다
+  (`assets/concepts/pixellab/golem_stun/chatgpt_kit/`). 발 구르기 후면 일어섬은 정면과 비교해 문제 없음을 확인 (사용자에게 비교 그림 보냄).
+- **현재 상태**: 테스트 통과. 실제 pico2d 창 캡처로 기절한 골렘 머리 위 별 확인 (`assets/concepts/vfx/stun/stun_ingame_capture.png`).
+- **다음 할 일**: 사용자가 result_south/east/north.png 를 주면 골렘 기절 동작(휘청 → 무릎 → 일어섬)을 만든다. 그다음 죽음 동작. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-18 — 골렘 후면 내려찍기 일어섬 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
