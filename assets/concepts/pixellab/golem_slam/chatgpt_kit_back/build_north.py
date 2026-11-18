@@ -6,6 +6,7 @@
   rise_* 에는 PixelLab 이 흰·하늘색 불꽃을 그려 넣어, 그 색(밝거나 푸른 픽셀)을 지우고 작은 점을 버린다.
   모두 게임 뒷모습 색으로 맞추고, 두 발(아래 6줄) 가운데·발 밑을 FOOT 에 맞춘다.
 - 밝기 분포를 원본 뒷모습에 맞춘다 (match_tone, 7~12장).
+- 7~12장 안을 원본 뒷모습 부위로 다시 짜 맞춘다 (parts/compose.py, 2026-11-18 사용자 요청: 질감 차이).
 - 끝 장(13)은 지금 그림의 끝 장(서 있는 자세, 들기 첫 장과 같음)을 그대로 써서 서 있는 그림으로 이어진다.
 
 순서: 7 내려찍기(키) / 8 rise_1 / 9 rise_2 / 10 일어서기(키) / 11 stand_1 / 12 stand_2 / 13 서기(지금 그림)
@@ -119,6 +120,11 @@ def main() -> None:
     sheet = Image.new("RGBA", (CANVAS[0] * len(frames), CANVAS[1]), (0, 0, 0, 0))
     for i, f in enumerate(frames):
         sheet.alpha_composite(f, (i * CANVAS[0], 0))
+    # 7~12장 안을 원본 뒷모습 부위(다리·어깨·머리·등)로 다시 짜 맞춘다 (실루엣은 그대로, parts/compose.py)
+    sys.path.insert(0, str(HERE / "parts"))
+    from compose import compose_sheet  # noqa: E402
+    sheet = compose_sheet(sheet)
+    frames = [sheet.crop((i * CANVAS[0], 0, (i + 1) * CANVAS[0], CANVAS[1])) for i in range(len(frames))]
     sheet.save(HERE.parent / "aligned" / "slam_north.png")
     bg = []
     for f in frames:
