@@ -1,14 +1,14 @@
 """등에 멘 칼 그림을 칼 그림에서 계산해 만든다 (2026-11-18 사용자 요청: 평소에는 검을 등에 매고 다님).
 
 입력: assets/images/player/weapons/<무기>.png (56×10, 칼끝 오른쪽, 한가운데가 손).
-1. 칼날 부분(가드 오른쪽)을 가죽 칼집으로 감싼다: 칼날보다 얇게(외곽선 + 가죽 한 줄 + 외곽선), 끝에 금속 마구리.
+1. 칼날 부분(가드 오른쪽)을 가죽 칼집으로 감싼다: 칼날과 같은 두께(칼이 들어갈 자리), 끝에 금속 마구리, 검은 외곽선.
    손잡이·가드는 칼 그림 그대로.
 2. SCALE 배 (지금은 원래 크기, nearest).
 3. 방향마다 기울여 64×64 캔버스에 놓는다. 캔버스 아래 가운데가 주인공 발 밑이고, 32×48 주인공 그림은
    캔버스 (16, 16)~(48, 64) 에 놓인다고 보고 자리를 정한다. 손잡이는 오른쪽 어깨 위로 (오른손으로 뽑기 쉽게).
    - front: 몸 뒤. 오른쪽 어깨(화면 왼쪽) 위로 손잡이, 칼집 끝은 몸 아래 오른쪽.
    - back:  등 위(몸 앞에 그림). 오른쪽 어깨(화면 오른쪽) 위로 손잡이, 칼집은 등을 가로질러 왼쪽 아래.
-   - side:  오른쪽을 볼 때, 몸 뒤. 머리 뒤로 손잡이, 칼집은 등 쪽 아래로. 왼쪽은 게임이 뒤집는다.
+   - side:  오른쪽을 볼 때, 몸 뒤. 칼집은 등에 붙어 거의 망토 뒤에 가려지고 끝만 살짝. 왼쪽은 게임이 뒤집는다.
 출력: assets/images/player/weapons/<무기>_back_<view>.png (64×64), back_sword_preview.png (서 있는 그림 위에 얹은 8배)
 실행: python build_back_sword.py
 """
@@ -34,7 +34,7 @@ CHAPE = (213, 153, 103, 255)  # 칼집 끝 금속 (가드와 같은 색)
 PLACES = {
     "front": ((7, 15), -55, True),
     "back": ((22, 19), -122, False),
-    "side": ((8, 16), -100, True),
+    "side": ((10, 14), -105, True),  # 등에 붙여 망토 뒤로 (밖으로 튀어나오면 화살통처럼 보임, 사용자 지적)
 }
 
 
@@ -48,8 +48,7 @@ def sheathed(sword: Image.Image) -> Image.Image:
     blade_cols = [x for x in range(guard_x + 1, w) if any(px[x, y][3] for y in range(h))]
     # 칼날 두께는 가드에서 3칸 떨어진 곳부터 잰다 (가드 기둥이 섞이면 칼집이 두꺼워짐)
     blade_rows = [y for y in range(h) if any(px[x, y][3] for x in blade_cols if x > guard_x + 3)]
-    # 칼날보다 얇게: 칼날 외곽선 안쪽 줄만 (가운데 한 줄 가죽 + 위아래 외곽선). 2026-11-18 사용자 지적: 두꺼우면 화살통처럼 보임
-    top, bottom = min(blade_rows) + 1, max(blade_rows) - 1
+    top, bottom = min(blade_rows), max(blade_rows)  # 칼날과 같은 두께 (칼이 들어갈 자리, 2026-11-18 사용자 요청)
     tip = max(blade_cols)
     out = sword.copy()
     opx = out.load()
@@ -61,8 +60,10 @@ def sheathed(sword: Image.Image) -> Image.Image:
                 opx[x, y] = OUTLINE
             elif x >= tip - 2:
                 opx[x, y] = CHAPE
+            elif x % 9 == 4:  # 가죽 띠
+                opx[x, y] = LEATHER[0]
             else:
-                opx[x, y] = LEATHER[2] if x % 9 != 4 else LEATHER[0]  # 가운데 한 줄, 가끔 가죽 띠
+                opx[x, y] = LEATHER[2] if y == top + 1 else LEATHER[0] if y == bottom - 1 else LEATHER[1]
     return out
 
 
