@@ -72,24 +72,36 @@ def shade(im):
             c = src[x, y]
             if not is_cape(c):
                 continue
-            step = BASE - 1  # 기본은 한 단계 어두운 갈색, 빛 받는 왼쪽 절반만 원래 갈색
+            # 명암 대비를 정면·측면에 맞춤 (같은 날 사용자: 정면·측면과 색감이 다름 → 어두운 픽셀 24% / 정면 45%, 밝은 픽셀 1% / 10%):
+            # 빛은 왼쪽 위. 가로 위치로 밝은 쪽(왼쪽 1/3)·가운데·그늘 쪽(오른쪽 1/3)을 나누고 가장자리·밑단·주름은 더 어둡게,
+            # 왼쪽 테두리·후드 왼쪽 위는 밝게.
             down, right, left, up = run(x, y, 0, 1), run(x, y, 1, 0), run(x, y, -1, 0), run(x, y, 0, -1)
             wide_l, wide_r = run(x, y, -1, 0, 30), run(x, y, 1, 0, 30)
+            fx = wide_l / (wide_l + wide_r)  # 0 = 왼쪽 끝, 1 = 오른쪽 끝
             below_dark = any(0 <= y + k < h and src[x, y + k][3] == 255 and lum(src[x, y + k]) < 30 for k in (1, 2))
-            if wide_l < wide_r:
-                step += 1  # 빛 받는 왼쪽 절반
+            above_dark = any(0 <= y - k < h and src[x, y - k][3] == 255 and lum(src[x, y - k]) < 30 for k in (1, 2))
+            step = BASE + 1 if fx < 0.22 else BASE if fx < 0.42 else BASE - 1 if fx < 0.62 else BASE - 2 if fx < 0.8 else BASE - 3
+            if right <= 2:
+                step -= 1  # 오른쪽 가장자리 그늘
+            if right == 1:
+                step -= 1
             if down <= 2 or below_dark:
                 step -= 1  # 밑단·다리 위 그늘
             if down == 1:
                 step -= 1
-            if right <= 2:
-                step -= 1  # 오른쪽 가장자리 그늘
+            if above_dark and up > 1:
+                step -= 1  # 후드 아래·어두운 줄 바로 밑 그늘
             if any(is_fold(src[x, y + k]) for k in (-2, -1, 1, 2) if 0 <= y + k < h):
                 step -= 1  # 주름 줄 위아래로 그늘을 이어 주름을 또렷하게
             if left == 1 and down > 2:
                 step += 1  # 왼쪽 가장자리 하이라이트
-            if up <= 2 and wide_l < wide_r:
-                step += 1  # 후드 왼쪽 위 하이라이트
+            if up <= 2 and fx < 0.45:
+                step += 1  # 후드·어깨 왼쪽 위 하이라이트
+            if up == 1 and fx < 0.3:
+                step += 1
+            step = max(0, min(len(RAMP) - 1, step))
+            dst[x, y] = RAMP[step] + (255,)
+            continue
             step = max(1, min(len(RAMP) - 1, step))
             dst[x, y] = RAMP[step] + (255,)
     return out
