@@ -1,7 +1,7 @@
 """등에 멘 칼 그림을 칼 그림에서 계산해 만든다 (2026-11-18 사용자 요청: 평소에는 검을 등에 매고 다님).
 
 입력: assets/images/player/weapons/<무기>.png (56×10, 칼끝 오른쪽, 한가운데가 손).
-1. 칼날 부분(가드 오른쪽)을 가죽 칼집으로 감싼다: 칼날과 같은 두께, 끝에 금속 마구리, 검은 외곽선.
+1. 칼날 부분(가드 오른쪽)을 가죽 칼집으로 감싼다: 칼날보다 얇게(외곽선 + 가죽 한 줄 + 외곽선), 끝에 금속 마구리.
    손잡이·가드는 칼 그림 그대로.
 2. SCALE 배 (지금은 원래 크기, nearest).
 3. 방향마다 기울여 64×64 캔버스에 놓는다. 캔버스 아래 가운데가 주인공 발 밑이고, 32×48 주인공 그림은
@@ -46,8 +46,10 @@ def sheathed(sword: Image.Image) -> Image.Image:
     hand = w // 2
     guard_x = max(range(hand - 4, hand + 5), key=lambda x: sum(1 for y in range(h) if px[x, y][3]))
     blade_cols = [x for x in range(guard_x + 1, w) if any(px[x, y][3] for y in range(h))]
-    blade_rows = [y for y in range(h) if any(px[x, y][3] for x in blade_cols)]
-    top, bottom = min(blade_rows), max(blade_rows)  # 칼날 외곽선 자리 그대로 (칼날과 같은 두께)
+    # 칼날 두께는 가드에서 3칸 떨어진 곳부터 잰다 (가드 기둥이 섞이면 칼집이 두꺼워짐)
+    blade_rows = [y for y in range(h) if any(px[x, y][3] for x in blade_cols if x > guard_x + 3)]
+    # 칼날보다 얇게: 칼날 외곽선 안쪽 줄만 (가운데 한 줄 가죽 + 위아래 외곽선). 2026-11-18 사용자 지적: 두꺼우면 화살통처럼 보임
+    top, bottom = min(blade_rows) + 1, max(blade_rows) - 1
     tip = max(blade_cols)
     out = sword.copy()
     opx = out.load()
@@ -57,14 +59,10 @@ def sheathed(sword: Image.Image) -> Image.Image:
         for y in range(top, bottom + 1):
             if y in (top, bottom) or x == tip:
                 opx[x, y] = OUTLINE
-            elif x >= tip - 3:
+            elif x >= tip - 2:
                 opx[x, y] = CHAPE
             else:
-                shade = 2 if y == top + 1 else 0 if y == bottom - 1 else 1
-                opx[x, y] = LEATHER[shade]
-        if x % 9 == 4 and x < tip - 4:  # 가죽 띠
-            for y in range(top + 1, bottom):
-                opx[x, y] = LEATHER[0]
+                opx[x, y] = LEATHER[2] if x % 9 != 4 else LEATHER[0]  # 가운데 한 줄, 가끔 가죽 띠
     return out
 
 
