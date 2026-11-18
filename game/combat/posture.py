@@ -24,9 +24,13 @@ class PostureGauge:
 
     def add_parried(self) -> bool:
         """패링당했다. 가득 차서 기절이 시작되면 True."""
+        return self.add(config.POSTURE_PARRIED_GAIN)
+
+    def add(self, amount: float) -> bool:
+        """게이지를 amount 만큼 채운다 (패링당함, 퍼펙트 회피당함 등). 가득 차서 기절이 시작되면 True."""
         if self.is_stunned:
             return False
-        self.value = min(1.0, self.value + config.POSTURE_PARRIED_GAIN)
+        self.value = min(1.0, self.value + amount)
         if self.value >= 1.0:
             self.stun_left = config.POSTURE_STUN_TIME
             return True

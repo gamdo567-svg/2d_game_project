@@ -34,6 +34,13 @@ def open_room(cols=16, rows=10):
 
 
 class PostureGaugeTest(unittest.TestCase):
+    def test_add_amount_and_stun(self):
+        g = PostureGauge(decays=False)
+        self.assertFalse(g.add(0.5))
+        self.assertTrue(g.add(0.5))  # 가득 차서 기절
+        self.assertFalse(g.add(0.5))  # 기절 중에는 더 차지 않음
+
+
     def test_fills_stuns_and_decays(self):
         g = PostureGauge()
         for _ in range(3):
@@ -417,6 +424,23 @@ class GolemVsPlayerTest(unittest.TestCase):
         self.run_until_release(seconds_before)
         self.tap(Action.DODGE)
         self.run_for(seconds_before + 0.4)
+
+    def test_perfect_dodge_fills_golem_gauge_and_leaves_afterimages(self):
+        # 2026-11-18 사용자 요청: 퍼펙트 회피당한 골렘은 패링 게이지가 차고, 주인공은 지나온 자리에 잔상이 남는다
+        self.dodge_before_release(KICK, 0.2)
+        self.assertGreater(self.player.perfect_text_left, 0.0)
+        self.assertAlmostEqual(self.golem.posture.value, config.POSTURE_PERFECT_DODGE_GAIN)
+        self.assertTrue(self.player.afterimages)
+        self.run_for(config.PLAYER_AFTERIMAGE_TIME + 0.05)
+        self.assertEqual(self.player.afterimages, [])  # 잠시 뒤 모두 사라짐
+
+    def test_normal_dodge_no_gauge_no_afterimages(self):
+        self.player.facing = Facing.LEFT
+        self.player.dodge_cooldown_left = 0.0
+        self.tap(Action.DODGE)  # 공격과 상관없는 회피
+        self.run_for(0.4)
+        self.assertEqual(self.player.afterimages, [])
+        self.assertEqual(self.golem.posture.value, 0.0)
 
     def test_perfect_dodge_resets_cooldown(self):
         self.dodge_before_release(KICK, 0.2)  # 노란색 공격이 터지기 0.2초 전, 범위 안에서 회피

@@ -80,6 +80,8 @@ class FieldScene:
                 result = self.player.receive_attack(attack)
                 # 막지 못한 빨강·노랑 공격은 레이저 스택, 맞은 것은 세지 않음 (2026-11-18 사용자 결정)
                 golem.on_attack_result(attack, result, self.player.last_perfect_dodge)
+                if self.player.last_perfect_dodge:
+                    golem.on_perfect_dodged()  # 퍼펙트 회피당하면 패링 게이지가 찬다 (2026-11-18 사용자 요청)
                 if result == PARRIED:
                     golem.on_parried()
                     # 패링 성공: 칼이 막은 자리에서 노란 불꽃 (2026-11-17 사용자 요청)

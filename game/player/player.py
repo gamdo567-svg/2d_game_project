@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import os
 
 from game import config
@@ -25,6 +27,22 @@ from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
 from game.player.state_machine import ATTACK, DODGE, FREE_STATES, HURT, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
 from game.world.grid import Grid
+
+
+@dataclass
+class Afterimage:
+    """퍼펙트 회피 잔상 하나 (그리기 전용): 그 순간의 그림 위치(칸, 실수)·방향·회피 그림 번호, 지난 시간."""
+    col: float
+    row: float
+    view: str
+    flip: bool
+    frame: int
+    age: float = 0.0
+
+
+def dodge_ghost_sheet_path(view: str) -> str:
+    """퍼펙트 회피 잔상 그림 (회피 그림을 하늘색으로 바꾼 것). 예: dodge_ghost/side.png"""
+    return str(config.PLAYER_IMAGE_DIR / "dodge_ghost" / f"{view}.png")
 
 
 def sprite_sheet_path(state: str, view: str) -> str:
@@ -120,6 +138,11 @@ class Player:
         )
         self.dodge = Dodge(config.PLAYER_DODGE_DURATION, config.PLAYER_DODGE_MOVE_FRAMES)
         self.dodge_tail_left = 0.0  # 회피가 끝난 뒤 멈춤 그림을 더 보여 줄 남은 시간 (그림만)
+        # 퍼펙트 회피 잔상 (2026-11-18 사용자 요청): 회피 중 모습 기록 → 퍼펙트가 되면 잔상으로
+        self._trail: list[Afterimage] = []
+        self._trail_clock = 0.0
+        self._afterimage_on = False
+        self.afterimages: list[Afterimage] = []
         self.hurt = TimedAction(config.PLAYER_HURT_TIME, 1)
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
@@ -175,6 +198,9 @@ class Player:
         self.combo.tick(dt)
         self.dodge_cooldown_left = max(0.0, self.dodge_cooldown_left - dt)
         self.dodge_tail_left = max(0.0, self.dodge_tail_left - dt)
+        for ghost in self.afterimages:
+            ghost.age += dt
+        self.afterimages = [g for g in self.afterimages if g.age < config.PLAYER_AFTERIMAGE_TIME]
         self.hit_flash_left = max(0.0, self.hit_flash_left - dt)
         self.perfect_text_left = max(0.0, self.perfect_text_left - dt)
         self._since_dodge += dt
@@ -244,6 +270,7 @@ class Player:
             self.dodge_tail_left = config.PLAYER_DODGE_TAIL_TIME
         if self.state != IDLE:
             self.dodge_tail_left = 0.0  # 걷기·공격 등 다른 행동을 시작하면 멈춤 그림은 바로 끊긴다
+        self._record_trail(dt)
         self._emit_strike()
         self._buffer = {a: t - dt for a, t in self._buffer.items() if t - dt > 0.0}
 
@@ -307,8 +334,29 @@ class Player:
             self._perfect_this_dodge = True
             self.dodge_cooldown_left = 0.0
             self.perfect_text_left = config.PLAYER_PERFECT_TEXT_TIME
+            # 잔상: 이번 회피에서 지나온 모습들을 남기고, 아직 회피 중이면 이어서 남긴다
+            self.afterimages = [Afterimage(g.col, g.row, g.view, g.flip, g.frame) for g in self._trail]
+            self._afterimage_on = True
             return True
         return False
+
+    def _record_trail(self, dt: float) -> None:
+        """회피로 움직이는 동안 PLAYER_AFTERIMAGE_INTERVAL 초마다 모습을 적어 둔다 (그리기 전용 기록).
+        도착한 뒤 멈춤 그림 동안은 적지 않는다 (제자리에 잔상이 겹쳐 뭉개짐)."""
+        frame = self.dodge_frame if self.state == DODGE else None
+        if frame is None:
+            self._afterimage_on = False
+            return
+        self._trail_clock -= dt
+        if self._trail_clock > 0.0:
+            return
+        self._trail_clock = config.PLAYER_AFTERIMAGE_INTERVAL
+        vcol, vrow = self.mover.visual_position
+        view, flip = sprite_view(self.facing)
+        ghost = Afterimage(vcol, vrow, view, flip, frame)
+        self._trail.append(ghost)
+        if self._afterimage_on:
+            self.afterimages.append(Afterimage(vcol, vrow, view, flip, frame))
 
     def _start_dodge(self, input_state: InputState) -> bool:
         """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음).
@@ -328,6 +376,9 @@ class Player:
         self._dodge_start_tile = start_tile
         self._since_dodge = 0.0
         self._perfect_this_dodge = False
+        self._trail = []
+        self._trail_clock = 0.0
+        self._afterimage_on = False
         self.fsm.trigger("dodge")
         return True
 
@@ -357,6 +408,7 @@ class Player:
             rise = (1.0 - self.perfect_text_left / config.PLAYER_PERFECT_TEXT_TIME) * self.grid.tile_size * 0.4
             renderer.draw_text((left + right) / 2 - 34, bottom + config.PLAYER_RENDER_HEIGHT + 12 + rise, "PERFECT",
                                config.COLOR_POSTURE)
+        self._draw_afterimages(renderer)
         if self.hit_flash_left > 0.0 and int(self.hit_flash_left / 0.05) % 2 == 0:
             return  # 맞은 직후 깜빡임: 0.05초마다 그렸다 안 그렸다
         view, flip = sprite_view(self.facing)
@@ -416,6 +468,16 @@ class Player:
             done = 1.0 - self.dodge_tail_left / config.PLAYER_DODGE_TAIL_TIME
             return config.PLAYER_DODGE_MOVE_FRAMES + min(tail - 1, int(done * tail))
         return None
+
+    def _draw_afterimages(self, renderer) -> None:
+        """퍼펙트 회피 잔상: 하늘색 회피 그림을 지나온 자리에, 오래된 것일수록 옅게."""
+        w, h = config.PLAYER_DODGE_SPRITE_WIDTH, config.PLAYER_DODGE_SPRITE_HEIGHT
+        for ghost in self.afterimages:
+            left, bottom, right, _ = self.grid.tile_to_pixel_rect(ghost.col, ghost.row)
+            fade = 1.0 - ghost.age / config.PLAYER_AFTERIMAGE_TIME
+            renderer.draw_sprite_frame(dodge_ghost_sheet_path(ghost.view), ghost.frame, w, h, (left + right) / 2, bottom,
+                                       w * config.RENDER_SCALE, h * config.RENDER_SCALE, flip_horizontal=ghost.flip,
+                                       opacity=config.PLAYER_AFTERIMAGE_OPACITY * fade)
 
     def _draw_dodge(self, renderer, center_x: float, bottom: float, view: str, flip: bool) -> None:
         w, h = config.PLAYER_DODGE_SPRITE_WIDTH, config.PLAYER_DODGE_SPRITE_HEIGHT

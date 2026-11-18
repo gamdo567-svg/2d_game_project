@@ -102,8 +102,10 @@ class Renderer:
         draw_width: int,
         draw_height: int,
         flip_horizontal: bool = False,
+        opacity: float = 1.0,
     ) -> bool:
         """가로로 이어 붙인 스프라이트 시트에서 frame_index 번째 프레임을 그린다. 그림을 못 읽으면 False.
+        opacity 가 1 보다 작으면 그만큼 비쳐 보이게 그린다 (잔상 등).
 
         (center_x, bottom) 은 그림의 아래 가운데 (발끝) 픽셀 좌표다.
         원본 프레임(frame_width × frame_height)을 draw_width × draw_height 로 확대해 그린다.
@@ -117,9 +119,13 @@ class Renderer:
         y = round(bottom) + draw_height / 2
         left = frame_index * frame_width
         flip = "h" if flip_horizontal else ""
+        if opacity < 1.0:
+            image.opacify(max(0.0, opacity))
         image.clip_composite_draw(
             left, 0, frame_width, frame_height, 0, flip, x, y, draw_width, draw_height
         )
+        if opacity < 1.0:
+            image.opacify(1.0)
         return True
 
     def draw_sheet_frame(

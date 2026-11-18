@@ -245,9 +245,16 @@ class Golem:
     def laser_charged(self) -> bool:
         return self.laser_stacks >= config.GOLEM_LASER_STACKS
 
+    def on_perfect_dodged(self) -> None:
+        """공격이 퍼펙트 회피당했다 (2026-11-18 사용자 요청): 패링당한 것처럼 게이지가 차고, 가득 차면 기절."""
+        self._add_posture(config.POSTURE_PERFECT_DODGE_GAIN)
+
     def on_parried(self) -> None:
         """① 내려찍기가 패링당했다: 게이지 25%, 가득 차면 기절 (경직은 없음)."""
-        if self.posture.add_parried():
+        self._add_posture(config.POSTURE_PARRIED_GAIN)
+
+    def _add_posture(self, amount: float) -> None:
+        if self.posture.add(amount):
             self.state = STUNNED
             self.stun_time = 0.0
             self.target_tiles = frozenset()

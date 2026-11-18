@@ -105,13 +105,18 @@ PLAYER_DODGE_COOLDOWN = 8.0  # 초 (회피가 끝난 뒤부터). 2026-11-17 사�
 # 다른 행동을 하면 바로 끊긴다.
 PLAYER_DODGE_SPRITE_WIDTH = 64
 PLAYER_DODGE_SPRITE_HEIGHT = 48
-PLAYER_DODGE_FRAMES = 6
+PLAYER_DODGE_FRAMES = 8
 PLAYER_DODGE_MOVE_FRAMES = 4
-PLAYER_DODGE_TAIL_TIME = 0.15  # 초
+PLAYER_DODGE_TAIL_TIME = 0.3  # 초 (2026-11-18 사용자: 대시 뒤 너무 빨리 풀림 → 0.15 → 0.3, 미끄러짐·멈춤·일어섬 4장)
 # 퍼펙트 회피 (2026-11-17 사용자 결정): 노란색 공격(패링 불가·회피 가능)이 터지기 이 시간 안에 그 범위 안에서 회피를 시작했으면
 # 성공 → 회피 대기 시간을 없앤다. 타이밍은 넉넉하게.
 PLAYER_PERFECT_DODGE_WINDOW = 0.4  # 초
 PLAYER_PERFECT_TEXT_TIME = 0.6  # 초. 머리 위 "PERFECT" 표시
+# 퍼펙트 회피 잔상 (2026-11-18 사용자 요청): 회피하며 지나온 자리에 하늘색 잔상이 남았다가 옅어지며 사라진다.
+# 회피 중 PLAYER_AFTERIMAGE_INTERVAL 초마다 모습을 적어 두었다가 퍼펙트가 되면 그 자리들에 그린다.
+PLAYER_AFTERIMAGE_INTERVAL = 0.05  # 초
+PLAYER_AFTERIMAGE_TIME = 0.45  # 초. 잔상이 사라질 때까지
+PLAYER_AFTERIMAGE_OPACITY = 0.7  # 처음 불투명도 (0~1), 사라질 때까지 0 으로 줄어든다
 
 # ----- 플레이어 공격 (검 3단 콤보) -----
 # [임시값] 2026-11-16 사용자 결정: 마우스 왼쪽 클릭, 제자리 공격, 공격 중 이동 불가,
@@ -217,6 +222,7 @@ PLAYER_HIT_FLASH_TIME = 0.15  # 초
 
 # ----- 패링 게이지 (PRE-PRD 2.2, 2026-11-17 사용자 결정) -----
 POSTURE_PARRIED_GAIN = 0.25  # 패링당하면 전체의 25% 참
+POSTURE_PERFECT_DODGE_GAIN = 0.25  # 퍼펙트 회피당한 쪽도 찬다 (2026-11-18 사용자 요청, 패링당한 것과 같은 양)
 POSTURE_PARRY_RELIEF = 0.5  # 패링에 성공하면 50% 줄어듦 (패링당해 차는 양의 2배)
 POSTURE_DECAY_PER_SECOND = 0.05  # [임시값] 시간이 지나면 초당 5%씩 줄어듦
 POSTURE_STUN_TIME = 5.0  # 초. 가득 차면 기절 (2026-11-18 사용자 요청으로 2 → 5)
