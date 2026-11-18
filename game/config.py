@@ -300,6 +300,10 @@ GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
 # 스프라이트 시트: frame_size × frame_size 원본 프레임을 columns 개씩 줄지어 놓은 그림 (왼쪽 위부터 오른쪽으로).
 # 프레임 가운데가 이펙트가 터지는 지점이고, RENDER_SCALE 로 nearest 확대해 그린다.
 EFFECT_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "effects"
+# 기절 공용 이펙트 (2026-11-18 사용자 요청: 주인공·적 공용). 머리 위 링을 따라 별 3개가 돌며 반복.
+#   생성 스크립트: assets/concepts/vfx/stun/build_stun_stars.py (64×40, 16프레임 가로 한 줄, 가운데가 링 가운데)
+STUN_STARS_EFFECT = {"path": EFFECT_IMAGE_DIR / "stun_stars.png", "frame_size": (64, 40), "frames": 16, "fps": 14}
+STUN_BAR_LIFT = 14  # 기절 중 체력 막대를 별 링 위로 올리는 양 (원본 픽셀)
 # ④ 레이저 그림. 충전은 PixelLab VFX Creator (2026-11-18 사용자 요청), 폭발은 아래 계산 그림.
 #   옮기는 스크립트: assets/concepts/vfx/laser/pixellab/pack_for_game.py. 두 겹을 코어에 겹쳐 그린다 (칸 가운데 = 코어):
 #   motes: 빛 알갱이가 끊임없이 빨려 드는 반복 그림. 지난 시간으로 motes_fps 에 맞춰 돌린다 (뚝뚝 끊기지 않게).

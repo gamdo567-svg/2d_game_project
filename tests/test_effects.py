@@ -239,3 +239,50 @@ class SceneEffectTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StunStarsTest(unittest.TestCase):
+    """기절 공용 이펙트 (2026-11-18): 반복 재생, 기절한 골렘 머리 위에 그림."""
+
+    def test_loop_frame_wraps(self):
+        from game.effects.effect import loop_frame
+        spec = config.STUN_STARS_EFFECT
+        self.assertEqual(loop_frame(spec, 0.0), 0)
+        self.assertEqual(loop_frame(spec, spec["frames"] / spec["fps"]), 0)  # 한 바퀴 돌면 처음으로
+        self.assertEqual(loop_frame(spec, 1.5 / spec["fps"]), 1)
+
+    def test_sheet_matches_spec(self):
+        from PIL import Image
+        spec = config.STUN_STARS_EFFECT
+        w, h = spec["frame_size"]
+        with Image.open(spec["path"]) as im:
+            self.assertEqual(im.size, (w * spec["frames"], h))
+
+    def test_stunned_golem_draws_stars(self):
+        from game.world.grid import Grid
+
+        class Rec:
+            def __init__(self):
+                self.paths = []
+
+            def draw_sheet_frame(self, path, *args):
+                self.paths.append(path)
+                return True
+
+            def draw_sprite_frame(self, *args, **kwargs):
+                return True
+
+            def __getattr__(self, name):
+                return lambda *a, **k: None
+
+        golem = Golem(6, 4, open_room())
+        for _ in range(4):
+            golem.on_parried()
+        golem.update(0.3, (1, 1), lambda c, r: True)
+        rec = Rec()
+        golem.draw(rec, Grid(16, 10, 64))
+        self.assertIn(str(config.STUN_STARS_EFFECT["path"]), rec.paths)
+        golem.update(config.POSTURE_STUN_TIME, (1, 1), lambda c, r: True)  # 기절이 풀리면 별 없음
+        rec = Rec()
+        golem.draw(rec, Grid(16, 10, 64))
+        self.assertNotIn(str(config.STUN_STARS_EFFECT["path"]), rec.paths)

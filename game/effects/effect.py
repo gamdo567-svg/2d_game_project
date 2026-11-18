@@ -2,11 +2,14 @@
 
 - SpriteEffect: 칸 좌표의 한 점에서 시트 이펙트를 한 번 재생한다. 몇 번째 프레임인지만 계산하고 그리기는 장면이 한다.
 - ScreenShake: 카메라에 더할 화면 픽셀 오프셋. 세기가 시간에 따라 0 으로 줄고, 끝나면 (0, 0).
+- loop_frame / draw_stun_stars: 반복 이펙트 (기절 별, 주인공·적 공용).
 """
 from __future__ import annotations
 
 import math
 from typing import Any
+
+from game import config
 
 
 class SpriteEffect:
@@ -87,3 +90,19 @@ class ScreenShake:
             return 0, 0
         t = self.elapsed * self.frequency * 2 * math.pi
         return round(k * math.sin(t)), round(k * 0.6 * math.cos(t * 1.37))
+
+
+def loop_frame(spec: dict[str, Any], elapsed: float) -> int:
+    """반복 재생하는 시트 이펙트의 지금 프레임 번호."""
+    return int(elapsed * spec["fps"]) % spec["frames"]
+
+
+def draw_stun_stars(renderer, center_x: float, center_y: float, scale: float, elapsed: float) -> None:
+    """기절 공용 이펙트: (center_x, center_y)(화면 픽셀, 머리 꼭대기 조금 위)를 링 가운데로 별이 돈다.
+
+    scale: 원본 픽셀 한 칸을 몇 화면 픽셀로 그릴지 (골렘은 RENDER_SCALE, 주인공은 더 작게).
+    """
+    spec = config.STUN_STARS_EFFECT
+    w, h = spec["frame_size"]
+    renderer.draw_sheet_frame(str(spec["path"]), loop_frame(spec, elapsed), spec["frames"], w, h,
+                              center_x, center_y, round(w * scale), round(h * scale))

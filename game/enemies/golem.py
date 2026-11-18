@@ -28,7 +28,7 @@ from game.combat.enemy_attack import HIT, PARRIED, EnemyAttack
 from game.physics.raycast import first_open_stop
 from game.combat.posture import PostureGauge
 from game.combat.training_dummy import DamagePopup
-from game.effects.effect import SpriteEffect
+from game.effects.effect import SpriteEffect, draw_stun_stars
 from game.world.grid import Grid
 
 SLAM, KICK, STOMP, LASER = "slam", "kick", "stomp", "laser"
@@ -98,6 +98,7 @@ class Golem:
         self.beam_tiles: frozenset[Tile] = frozenset()
         self.beam_left = 0.0
         self.flash_left = 0.0
+        self.stun_time = 0.0  # 기절한 뒤 지난 시간 (기절 별 이펙트 재생용)
         self.laser_stacks = 0  # 막지 못한 빨강·노랑 공격 수 (GOLEM_LASER_STACKS 면 다음은 레이저)
         self._move_from = (float(self.col), float(self.row))
         self._move_t = 1.0
@@ -233,6 +234,7 @@ class Golem:
         """① 내려찍기가 패링당했다: 게이지 25%, 가득 차면 기절 (경직은 없음)."""
         if self.posture.add_parried():
             self.state = STUNNED
+            self.stun_time = 0.0
             self.target_tiles = frozenset()
 
     # ----- 로직 -----
@@ -259,6 +261,7 @@ class Golem:
             return
         self.posture.update(dt)
         if self.state == STUNNED:
+            self.stun_time += dt
             if not self.posture.is_stunned:
                 self._rest()
             return
@@ -491,6 +494,11 @@ class Golem:
             # 그림이 없을 때(임시 도형): 조준선만
             ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
             renderer.draw_line(cx, core_y, ax, ay, self.warning_color())
+        if self.state == STUNNED:
+            # 기절: 머리 꼭대기에서 별이 돈다 (공용 이펙트). 막대는 링 위로 올린다
+            head_top = bar_top - 4 * s
+            draw_stun_stars(renderer, cx, head_top + 2 * s, s, self.stun_time)
+            bar_top += config.STUN_BAR_LIFT * s
         # 체력·패링 게이지 막대 (머리 위)
         renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)
         renderer.fill_rect(cx - 26 * s, bar_top, cx - 26 * s + 52 * s * self.hp / config.GOLEM_MAX_HP, bar_top + 3 * s,
@@ -498,8 +506,6 @@ class Golem:
         renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx + 26 * s, bar_top - 1 * s, config.COLOR_BAR_BACK)
         renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx - 26 * s + 52 * s * self.posture.value, bar_top - 1 * s,
                            config.COLOR_POSTURE)
-        if self.state == STUNNED:
-            renderer.draw_text(cx - 18 * s, bar_top + 10 * s, "STUN", config.COLOR_POSTURE)
         for popup in self.popups:
             rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
             renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
