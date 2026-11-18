@@ -17,6 +17,9 @@ import build_parry_front as pf  # noqa: E402
 import build_remake_preview as b  # noqa: E402
 
 SRC = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'result_hit1_back.png')
+# 화풍 맞추기 (같은 날 사용자: GPT 픽셀 그림체가 게임과 다름): 줄인 8장(잔상 없이, restyle_in/f1~8)을 PixelLab transfer_outfit 에
+# 게임 뒷모습(f0)을 참고로 넘겨 자세는 그대로 두고 게임 화풍으로 다시 그린 것(restyle_out/r1~8). 있으면 이것을 쓴다.
+RESTYLE = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'restyle_out')
 # 판정 장(8장 중 번호)의 잔상: (원 중심 x, y, 반지름, 시작 각도, 끝 각도, 두께). 칼은 오른쪽 위 → 왼쪽 아래
 SWOOSH = (4, (22, 20, 36, -20, 112, 8))
 
@@ -62,6 +65,9 @@ def main():
         big = Image.new('RGBA', (144, 144), (0, 0, 0, 0))
         big.alpha_composite(f, (40, 40))
         cell = big.crop((40 + cx - 34, 40 + foot - 58, 40 + cx + 34, 40 + foot + 10))
+        restyled = os.path.join(RESTYLE, f'r{k}.png')
+        if k > 0 and os.path.exists(restyled):
+            cell = pb.snap(Image.open(restyled).convert('RGBA'), palette)  # 같은 68 칸 자리로 돌려받음
         if k - 1 == SWOOSH[0]:
             cell.alpha_composite(bp.swoosh(cell.size, *SWOOSH[1]))  # 판정 장: 몸 위로 이어지는 잔상
         sheet.alpha_composite(cell, (k * 68, 0))
