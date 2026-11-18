@@ -22,6 +22,9 @@ SRC = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'result_hit1_back.png')
 RESTYLE = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'restyle_out')
 # 판정 장(8장 중 번호)의 잔상: (원 중심 x, y, 반지름, 시작 각도, 끝 각도, 두께). 칼은 오른쪽 위 → 왼쪽 아래
 SWOOSH = (4, (22, 20, 36, -20, 112, 8))
+# 좌우로 뒤집기 (같은 날 사용자: 칼을 꺼내 왼쪽으로 옮긴 뒤 왼쪽에서 오른쪽으로 베게 — 정면처럼 바로 내려치지 않게).
+# 뒷모습은 거의 좌우 대칭이라 몸·잔상을 통째로 뒤집는다. 칼 자리는 build_remake_preview.OVERRIDES 'backv2_1' 이 뒤집은 값.
+MIRROR = True
 
 
 def match_tones(cells, ref):
@@ -112,6 +115,8 @@ def main():
     for k, cell in enumerate(body):
         if k - 1 == SWOOSH[0]:
             cell.alpha_composite(bp.swoosh(cell.size, *SWOOSH[1]))  # 판정 장: 몸 위로 이어지는 잔상
+        if MIRROR and k > 0:
+            cell = cell.transpose(Image.FLIP_LEFT_RIGHT)
         sheet.alpha_composite(cell, (k * 68, 0))
     sheet.save(os.path.join(b.RAW, 'attack_back_v2_68.png'))
     prev = Image.new('RGBA', sheet.size, (128, 128, 128, 255))
