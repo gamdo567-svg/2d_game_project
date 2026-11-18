@@ -112,11 +112,11 @@ PLAYER_DODGE_TAIL_TIME = 0.3  # 초 (2026-11-18 사용자: 대시 뒤 너무 빨
 # 성공 → 회피 대기 시간을 없앤다. 타이밍은 넉넉하게.
 PLAYER_PERFECT_DODGE_WINDOW = 0.4  # 초
 PLAYER_PERFECT_TEXT_TIME = 0.6  # 초. 머리 위 "PERFECT" 표시
-# 퍼펙트 회피 잔상 (2026-11-18 사용자 요청): 회피하며 지나온 자리에 하늘색 잔상이 남았다가 옅어지며 사라진다.
+# 퍼펙트 회피 잔상 (2026-11-18 사용자 요청): 회피하며 지나온 자리에 그림자 잔상이 남았다가 옅어지며 사라진다.
 # 회피 중 PLAYER_AFTERIMAGE_INTERVAL 초마다 모습을 적어 두었다가 퍼펙트가 되면 그 자리들에 그린다.
 PLAYER_AFTERIMAGE_INTERVAL = 0.05  # 초
 PLAYER_AFTERIMAGE_TIME = 0.45  # 초. 잔상이 사라질 때까지
-PLAYER_AFTERIMAGE_OPACITY = 0.7  # 처음 불투명도 (0~1), 사라질 때까지 0 으로 줄어든다
+PLAYER_AFTERIMAGE_OPACITY = 0.8  # 처음 불투명도 (0~1), 사라질 때까지 0 으로 줄어든다
 
 # ----- 플레이어 공격 (검 3단 콤보) -----
 # [임시값] 2026-11-16 사용자 결정: 마우스 왼쪽 클릭, 제자리 공격, 공격 중 이동 불가,

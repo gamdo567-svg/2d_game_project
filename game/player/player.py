@@ -41,7 +41,7 @@ class Afterimage:
 
 
 def dodge_ghost_sheet_path(view: str) -> str:
-    """퍼펙트 회피 잔상 그림 (회피 그림을 하늘색으로 바꾼 것). 예: dodge_ghost/side.png"""
+    """퍼펙트 회피 잔상 그림 (회피 그림을 그림자처럼 바꾼 것). 예: dodge_ghost/side.png"""
     return str(config.PLAYER_IMAGE_DIR / "dodge_ghost" / f"{view}.png")
 
 
@@ -471,7 +471,7 @@ class Player:
         return None
 
     def _draw_afterimages(self, renderer) -> None:
-        """퍼펙트 회피 잔상: 하늘색 회피 그림을 지나온 자리에, 오래된 것일수록 옅게."""
+        """퍼펙트 회피 잔상: 그림자처럼 바꾼 회피 그림을 지나온 자리에, 오래된 것일수록 옅게."""
         w, h = config.PLAYER_DODGE_SPRITE_WIDTH, config.PLAYER_DODGE_SPRITE_HEIGHT
         for ghost in self.afterimages:
             left, bottom, right, _ = self.grid.tile_to_pixel_rect(ghost.col, ghost.row)
