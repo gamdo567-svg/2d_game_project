@@ -217,8 +217,10 @@ class Player:
         for action in BUFFERED_ACTIONS:
             if input_state.was_pressed(action):
                 self._buffer[action] = config.PLAYER_INPUT_BUFFER_TIME
-        # 공격 버튼을 누르고 있으면 계속 클릭하는 것처럼 콤보가 이어진다 (2026-11-18 사용자 요청). 쿨타임은 그대로.
-        if input_state.is_held(Action.ATTACK):
+        # 공격 버튼을 누르고 있으면 콤보가 이어진다 (2026-11-18 사용자 요청). 쿨타임은 그대로.
+        # 공격 중에는 보지 않고 한 타가 끝난 뒤에만 본다: 공격 중에도 보면 한 번 클릭한 짧은 순간(눌린 0.1초쯤)에
+        # 다음 타가 예약돼 한 번 눌러도 2타가 나갔다 (같은 날 사용자 지적).
+        if input_state.is_held(Action.ATTACK) and self.state != ATTACK:
             self._buffer[Action.ATTACK] = config.PLAYER_INPUT_BUFFER_TIME
         attack_waiting = False  # 걷던 칸을 마저 가는 중 (도착하면 공격)
         if self.state in FREE_STATES:

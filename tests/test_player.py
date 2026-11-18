@@ -415,6 +415,16 @@ class PlayerAttackTest(unittest.TestCase):
                 seen.append(self.player.combo.hit_number)
         self.assertEqual(seen[:4], [1, 2, 3, 1])
 
+    def test_single_click_held_briefly_plays_one_hit(self):
+        # 보통 클릭처럼 0.1초 눌렀다 떼면 1타만 나간다 (2026-11-18 사용자 지적: 한 번 눌렀는데 2타까지 나감)
+        self.input.press(Action.ATTACK)
+        self.run_for(0.1)
+        self.input.release(Action.ATTACK)
+        self.run_until_idle()
+        self.assertEqual(self.player.combo.hit_number, 1)
+        self.run_for(1.0)
+        self.assertNotEqual(self.player.state, ATTACK)
+
     def test_release_stops_combo(self):
         # 떼면 지금 타만 마치고 멈춘다
         self.input.press(Action.ATTACK)
