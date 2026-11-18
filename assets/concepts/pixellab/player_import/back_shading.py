@@ -6,7 +6,7 @@
 위아래로 그늘을 이어 주름을 또렷하게 한다. 색은 정면 그림이 쓰는 망토 색 단계(RAMP)에서 고른다.
 
 게임 그림을 고치면 다시 돌릴 때 두 번 어두워지므로, 명암을 넣기 전 그림을 back_shading/flat/ 에 두고 늘 그것에서 만든다.
-  python back_shading.py              후면 그림 전부 (flat 이 없으면 지금 게임 그림을 flat 으로 보관)
+  python back_shading.py              후면 공격 그림 전부 (flat 이 없으면 지금 게임 그림을 flat 으로 보관)
   python back_shading.py --refresh P  내보내기가 게임 그림 P 를 새로 썼을 때: P 를 flat 으로 보관하고 명암을 넣음
 """
 import os
@@ -19,9 +19,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..', '..', '..'))
 PLAYER = os.path.join(ROOT, 'assets', 'images', 'player')
 FLAT = os.path.join(HERE, 'back_shading', 'flat')
-# 후면 그림 (몸·손 레이어). 회피 잔상(dodge_ghost)은 그림자 한 색이라 제외.
-TARGETS = ['idle/back.png', 'walk/back.png', 'jump/back.png', 'dodge/back.png', 'parry/back.png', 'parry/back_hand.png',
-           'sword_attack/back_1.png', 'sword_attack/back_1_hand.png', 'sword_attack/back_2.png',
+# 후면 공격 그림 (몸·손 레이어)만. 서기·걷기·점프·회피·패링은 원래 그림 그대로 둔다
+# (같은 날 사용자: 기존 걷기나 다른 포즈는 명암이 없었으니 새로 넣지 말 것).
+TARGETS = ['sword_attack/back_1.png', 'sword_attack/back_1_hand.png', 'sword_attack/back_2.png',
            'sword_attack/back_2_hand.png', 'sword_attack/back_3.png', 'sword_attack/back_3_hand.png']
 # 정면 그림의 망토 색 단계 (어두움 → 밝음)
 RAMP = [(36, 23, 29), (60, 37, 43), (74, 49, 51), (92, 55, 54), (102, 64, 61), (118, 73, 67), (158, 105, 94)]
