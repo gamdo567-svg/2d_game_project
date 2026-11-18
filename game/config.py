@@ -294,6 +294,20 @@ GOLEM_KICK_ANIM = {
     "squash": 0.0,
     "squash_until": 0.0,
 }
+# 기절 동작 그림 (2026-11-18, assets/images/golem/stun_<방향>.png). 가로 한 줄 11장, 한 장 144×152, 발 밑 가운데 foot.
+#   핵심 자세(휘청·한쪽 무릎)는 ChatGPT 이미지, 사이는 PixelLab. 서쪽은 동쪽 좌우 반전 (build_golem_stun.py).
+#   기절하면 enter_time 동안 서기 → 휘청 → 무릎(0~6), 기절이 풀리기 exit_time 전까지 무릎(6)을 유지하고, 마지막에 일어섬(7~10).
+#   head_drop: 장마다 머리가 서 있을 때보다 내려간 원본 픽셀 (네 방향 평균). 별 이펙트·막대를 그만큼 내린다.
+GOLEM_STUN_ANIM = {
+    "frame_size": (144, 152),
+    "foot": (72, 140),
+    "enter_frames": (0, 1, 2, 3, 4, 5, 6),
+    "enter_time": 0.9,
+    "kneel_frame": 6,
+    "exit_frames": (7, 8, 9, 10),
+    "exit_time": 0.6,
+    "head_drop": (0, -2, 0, 2, 5, 11, 17, 8, 1, -2, 0),
+}
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
 # 2026-11-17 사용자 요청: 예고가 길어 걸어서 쉽게 빠져나가서 ① 0.8 → 0.35, ② 0.6 → 0.3, ③ 1.2 → 0.55초
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능

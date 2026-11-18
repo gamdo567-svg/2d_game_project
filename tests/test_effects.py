@@ -286,3 +286,59 @@ class StunStarsTest(unittest.TestCase):
         rec = Rec()
         golem.draw(rec, Grid(16, 10, 64))
         self.assertNotIn(str(config.STUN_STARS_EFFECT["path"]), rec.paths)
+
+
+class GolemStunAnimTest(unittest.TestCase):
+    """골렘 기절 동작 그림 (2026-11-18): 휘청 → 무릎 → 무릎 유지 → 풀리기 직전 일어섬."""
+
+    def stunned(self):
+        golem = Golem(6, 4, open_room())
+        for _ in range(4):
+            golem.on_parried()
+        return golem
+
+    def test_frames_follow_enter_kneel_exit(self):
+        anim = config.GOLEM_STUN_ANIM
+        golem = self.stunned()
+        step = lambda t: golem.update(t, (1, 1), lambda c, r: True)
+        self.assertEqual(golem.stun_frame, anim["enter_frames"][0])
+        step(anim["enter_time"] * 0.5)
+        self.assertIn(golem.stun_frame, anim["enter_frames"][1:-1])
+        step(anim["enter_time"])  # 들어가기 끝 → 무릎 유지
+        self.assertEqual(golem.stun_frame, anim["kneel_frame"])
+        step(golem.posture.stun_left - anim["exit_time"] - 0.05)
+        self.assertEqual(golem.stun_frame, anim["kneel_frame"])  # 풀리기 exit_time 전까지 무릎
+        step(golem.posture.stun_left - anim["exit_time"] * 0.1)  # 풀리기 직전: 일어섬
+        self.assertIn(golem.stun_frame, anim["exit_frames"][1:])
+        step(anim["exit_time"])
+        self.assertIsNone(golem.stun_frame)  # 풀리면 서 있는 그림
+
+    def test_draws_stun_sheet(self):
+        from game.world.grid import Grid
+
+        class Rec:
+            def __init__(self):
+                self.paths = []
+
+            def draw_sprite_frame(self, path, *args, **kwargs):
+                self.paths.append(path)
+                return True
+
+            def __getattr__(self, name):
+                return lambda *a, **k: None
+
+        golem = self.stunned()
+        golem.update(1.0, (1, 1), lambda c, r: True)
+        rec = Rec()
+        golem.draw(rec, Grid(16, 10, 64))
+        self.assertEqual(rec.paths[0], golem.attack_sprite_path("stun"))
+
+    def test_sheets_match_spec(self):
+        from PIL import Image
+        anim = config.GOLEM_STUN_ANIM
+        w, h = anim["frame_size"]
+        count = len(anim["head_drop"])
+        self.assertEqual(count, max(anim["exit_frames"]) + 1)
+        for view in ("south", "east", "north", "west"):
+            with Image.open(config.GOLEM_IMAGE_DIR / f"stun_{view}.png") as im:
+                self.assertEqual(im.size, (w * count, h), view)

@@ -168,6 +168,21 @@ class Golem:
         return int(self.walk_distance / anim["tiles_per_cycle"] * anim["frames"]) % anim["frames"]
 
     @property
+    def stun_frame(self) -> int | None:
+        """기절 동작 그림 번호 (기절 중에만): 휘청 → 무릎 → (풀리기 직전) 일어섬. 다른 때는 None."""
+        if self.state != STUNNED:
+            return None
+        anim = config.GOLEM_STUN_ANIM
+        left = self.posture.stun_left
+        if left <= anim["exit_time"]:
+            frames, p = anim["exit_frames"], 1.0 - left / anim["exit_time"]
+        elif self.stun_time < anim["enter_time"]:
+            frames, p = anim["enter_frames"], self.stun_time / anim["enter_time"]
+        else:
+            return anim["kneel_frame"]
+        return frames[min(len(frames) - 1, int(p * len(frames)))]
+
+    @property
     def stomp_frame(self) -> int | None:
         """③ 발 구르기 동작 그림 번호 (attack_frame 중 ③ 만)."""
         return self.attack_frame if self.pattern == STOMP else None
@@ -495,7 +510,10 @@ class Golem:
             ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
             renderer.draw_line(cx, core_y, ax, ay, self.warning_color())
         if self.state == STUNNED:
-            # 기절: 머리 꼭대기에서 별이 돈다 (공용 이펙트). 막대는 링 위로 올린다
+            # 기절: 머리 꼭대기에서 별이 돈다 (공용 이펙트). 막대는 링 위로 올린다.
+            # 무릎을 꿇으면 머리가 내려간 만큼 별·막대도 내린다
+            frame = self.stun_frame
+            bar_top -= config.GOLEM_STUN_ANIM["head_drop"][frame] * s if frame is not None else 0
             head_top = bar_top - 4 * s
             draw_stun_stars(renderer, cx, head_top + 2 * s, s, self.stun_time)
             bar_top += config.STUN_BAR_LIFT * s
@@ -519,6 +537,10 @@ class Golem:
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
+        frame = self.stun_frame
+        if frame is not None and self._draw_anim(renderer, self.attack_sprite_path("stun"), config.GOLEM_STUN_ANIM,
+                                                 frame, cx, bottom):
+            return True
         frame = self.attack_frame
         if frame is not None:
             name, anim = self.attack_anim
