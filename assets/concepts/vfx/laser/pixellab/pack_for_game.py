@@ -3,8 +3,7 @@
 - charge/part/part-charge_up.png (PixelLab 'Golem laser charge', 24장, 5열, 칸 87×86, manifest.json)
   → assets/images/effects/golem_laser_charge.png: 88×88 칸 24장 가로 한 줄, 칸 가운데 = 골렘 코어.
   PixelLab 캔버스에서 코어는 (47, 46), 조각 칸의 왼쪽 위는 발 기준점(45, 89) + offset(-41, -86) = (4, 3).
-- blast/golem-laser-blast.png ('Golem laser blast', 12장, 4열, 칸 182×95, 가운데 기준점 (91, 51))
-  → assets/images/effects/golem_laser_blast.png: 160×160 칸 12장 가로 한 줄, 칸 가운데 = 폭발 지점.
+- blast/ ('Golem laser blast') 는 비교용으로만 남긴다: 사용자가 예전 계산 그림 폭발이 낫다고 해 게임에는 쓰지 않음.
 원본 픽셀 크기는 게임 원본(칸 32픽셀)과 같아 늘리지 않는다. 게임은 RENDER_SCALE 로 키워 그린다.
 실행: python pack_for_game.py
 """
@@ -43,13 +42,8 @@ def main() -> None:
                          clip["sheets"][0]["columns"], clip["frames"])
     pack(charge, 88, core, GAME / "golem_laser_charge.png")
 
-    blast = frames_from(Image.open(HERE / "blast" / "golem-laser-blast.png"), 182, 95, 4, 12)
-    # 182×95 를 160×160 가운데에 맞춘다: 기준점 (91, 51) → (80, 80). 가로는 양쪽 11픽셀씩 잘린다 (투명).
-    sheet = Image.new("RGBA", (160 * len(blast), 160), (0, 0, 0, 0))
-    for i, f in enumerate(blast):
-        sheet.alpha_composite(f.convert("RGBA").crop((11, 0, 171, 95)), (i * 160, 80 - 51))
-    sheet.save(GAME / "golem_laser_blast.png")
-    print("ok", len(charge), len(blast))
+    # 폭발('Golem laser blast')은 비교 뒤 예전 계산 그림을 쓰기로 해(사용자 결정) 게임으로 옮기지 않는다.
+    print("ok", len(charge))
 
 
 if __name__ == "__main__":

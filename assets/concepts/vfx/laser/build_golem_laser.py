@@ -9,9 +9,9 @@
 3. golem_laser_blast.png   조준점 폭발. 160×160 칸 16장 (가로 한 줄), 가운데가 조준점.
    흰 섬광 → 퍼지는 충격 고리 → 흩어지는 불꽃·돌 파편 → 아무것도 남지 않음.
 
-출력: 레이저 단면만 assets/images/effects/golem_laser_beam.png 로 쓴다.
-  2026-11-18 사용자 요청으로 충전 구·폭발은 PixelLab 으로 다시 만들어 게임에 넣었다 (pixellab/pack_for_game.py).
-  이 스크립트의 충전 구·폭발(첫 시안)은 이 폴더 procedural_v1/ 에 남긴다. 미리보기 golem_laser_preview.gif
+출력: 레이저 단면·폭발을 assets/images/effects/ 에 쓴다.
+  충전 구는 2026-11-18 사용자 요청으로 PixelLab 그림을 쓴다 (pixellab/pack_for_game.py). 이 스크립트의 충전 구 시안은
+  procedural_v1/ 에 남긴다. 폭발은 PixelLab 판과 비교해 이 계산 그림이 낫다는 사용자 결정 (같은 날). 미리보기 golem_laser_preview.gif
 실행: python build_golem_laser.py
 """
 from __future__ import annotations
@@ -229,7 +229,7 @@ def main() -> None:
     sheet = Image.new("RGBA", (BS * BF, BS), (0, 0, 0, 0))
     for i, fr in enumerate(blast):
         sheet.alpha_composite(fr, (i * BS, 0))
-    sheet.save(OUT / "procedural_v1" / "golem_laser_blast.png")
+    sheet.save(GAME / "golem_laser_blast.png")
 
     # 미리보기: 어두운 바닥 위에 충전(빠르게) → 레이저 → 폭발, 2배
     golem = Image.open(ROOT / "images" / "golem" / "south.png").convert("RGBA")
