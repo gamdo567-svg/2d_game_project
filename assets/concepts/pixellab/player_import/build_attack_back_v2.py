@@ -29,7 +29,27 @@ MIRROR = True
 # 오른쪽 장은 뒤집지 않은 1·2번, 왼쪽 장은 뒤집은 4번. 머리 위 두 장은 PixelLab animate_image 가
 # 뒤집지 않은 4번(오른쪽 위) → 뒤집은 4번(왼쪽 위) 사이를 그린 것 (attack_back_kit/hit1_v2/overhead/o1, o2).
 OVERHEAD = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'overhead')
+RESTYLE2_IN = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'restyle2_in')
+RESTYLE2 = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'restyle2_out')
 ORDER = [('p', 1), ('p', 2), ('o', 1), ('o', 2), ('m', 4), ('m', 5), ('m', 7), ('m', 8)]
+
+
+def despeckle(im):
+    """몸 안의 외톨이 점 정리: 위아래·양옆 네 이웃 중 셋 이상이 같은 한 색인데 자기만 다른 픽셀을 그 색으로 (테두리·파랑은 그대로)."""
+    out = im.copy()
+    src, dst = im.load(), out.load()
+    for y in range(1, im.height - 1):
+        for x in range(1, im.width - 1):
+            p = src[x, y]
+            if p[3] < 255 or b.is_blue(p) or max(p[:3]) < 45:
+                continue
+            nb = [src[x + dx, y + dy] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+            if any(n[3] < 255 or max(n[:3]) < 45 for n in nb):
+                continue
+            for c in set(nb):
+                if c != p and nb.count(c) >= 3:
+                    dst[x, y] = c
+    return out
 
 
 def match_tones(cells, ref):
@@ -116,17 +136,25 @@ def main():
             cell = pb.snap(Image.open(restyled).convert('RGBA'), palette)  # 같은 68 칸 자리로 돌려받음
         body.append(cell)
     body = [body[0]] + match_tones(body[1:], body[0])
-    plain, flipped = [], []
-    for k, cell in enumerate(body):
-        if k - 1 == SWOOSH[0]:
-            arc = bp.swoosh(cell.size, *SWOOSH[1])  # 판정 장: 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머, 같은 날 사용자 지적)
-            arc.alpha_composite(cell)
-            cell = arc
-        plain.append(cell)
-        flipped.append(cell.transpose(Image.FLIP_LEFT_RIGHT) if MIRROR and k > 0 else cell)
+    plain = list(body)
+    flipped = [cell.transpose(Image.FLIP_LEFT_RIGHT) if MIRROR and k > 0 else cell for k, cell in enumerate(body)]
     # 장 순서 (ORDER): ('p', k) = 뒤집지 않은 k번째, ('m', k) = 뒤집은 k번째, ('o', n) = 머리 위로 넘기는 PixelLab 사이 장
     overhead = {n: pb.snap(Image.open(os.path.join(OVERHEAD, f'o{n}.png')).convert('RGBA'), palette) for n in (1, 2)}
     picked = [body[0]] + [plain[k] if src == 'p' else flipped[k] if src == 'm' else overhead[k] for src, k in ORDER]
+    # 망토 통일 (같은 날 사용자: 망토 화질이 프레임마다 다름): 8장을 한 번에 같은 참고 그림으로 다시 입힌 것(restyle2_out)이
+    # 있으면 그것을 쓰고, 8장 함께 색감을 맞춘 뒤 외톨이 점을 정리한다. 입력(잔상 없는 8장)은 restyle2_in 에 남긴다.
+    os.makedirs(RESTYLE2_IN, exist_ok=True)
+    for k, cell in enumerate(picked):
+        cell.save(os.path.join(RESTYLE2_IN, f'f{k}.png'))
+    if all(os.path.exists(os.path.join(RESTYLE2, f'r{k}.png')) for k in range(1, 9)):
+        redone = [pb.snap(Image.open(os.path.join(RESTYLE2, f'r{k}.png')).convert('RGBA'), palette) for k in range(1, 9)]
+        picked = [picked[0]] + [despeckle(c) for c in match_tones(redone, picked[0])]
+    # 판정 장: 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머). 잔상 자리는 뒤집기 전 기준이라 같이 뒤집는다.
+    cut = 1 + ORDER.index(('m', SWOOSH[0] + 1))
+    arc = bp.swoosh(picked[cut].size, *SWOOSH[1])
+    arc = arc.transpose(Image.FLIP_LEFT_RIGHT) if MIRROR else arc
+    arc.alpha_composite(picked[cut])
+    picked[cut] = arc
     sheet = Image.new('RGBA', (68 * 9, 68), (0, 0, 0, 0))
     for k, cell in enumerate(picked):
         sheet.alpha_composite(cell, (k * 68, 0))
