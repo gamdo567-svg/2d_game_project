@@ -1,0 +1,104 @@
+"""후면 2·3타 시트 (2026-11-18): 1타(build_attack_back_v2.py)와 같은 방법.
+
+ChatGPT 가 정면 2·3타 8장(미리 좌우로 뒤집어 준 것)을 "뒤에서 본 같은 순간"으로 그린 그림
+(attack_back_kit/hit2_v2/result_hit2_back.png, hit3_v2/result_hit3_back.png, 한 줄 8자세, 칼은 파란 단색)을
+배경 제거 → 8자세 자르기 → 게임 뒷모습 키에 맞춰 NEAREST 로 줄임 → 발 맞춤.
+8장은 한 번의 PixelLab transfer_outfit 으로 함께 화풍을 입힌 것(hitN_v2/restyle_out/r1~8)이 있으면 그것을 쓰고,
+8장 함께 색감 맞춤 → 외톨이 점 정리. 2타는 쳐올리는 장에 초승달 잔상을 몸 뒤에 깐다.
+망토 명암은 게임에 내보낼 때 back_shading.py 가 넣으므로 여기서는 명암 없는 서기 그림 색에 맞춘다.
+출력: remake_raw/attack_back_v3_68.png (0행 = 2타, 1행 = 3타, 칸 0 = 게임 뒷모습), restyle 입력은 hitN_v2/restyle_in/f0~8.
+"""
+import os
+import sys
+
+from PIL import Image
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import build_attack_back_pl as bp  # noqa: E402  (초승달 잔상)
+import build_attack_back_v2 as v2  # noqa: E402  (자르기·색감 맞춤·점 정리)
+import build_parry_back as pb  # noqa: E402
+import build_parry_front as pf  # noqa: E402
+import build_remake_preview as b  # noqa: E402
+
+KIT = os.path.join(HERE, 'attack_back_kit')
+HITS = {
+    2: {'dir': 'hit2_v2', 'src': 'result_hit2_back.png',
+        # 쳐올리는 장(8장 중 번호)의 잔상: (원 중심 x, y, 반지름, 시작 각도, 끝 각도, 두께). 오른쪽 아래 → 왼쪽 위
+        'swoosh': (5, (40, 30, 30, 70, 230, 7))},
+    3: {'dir': 'hit3_v2', 'src': 'result_hit3_back.png', 'swoosh': None},
+}
+OUT = 'attack_back_v3_68.png'
+
+
+def hood_width(im):
+    """후드 너비: 파랑(칼)을 뺀 몸 윗부분(맨 위에서 몸 키 30% 까지) 줄들 중 가장 넓은 너비."""
+    im = im.convert('RGBA')
+    px = im.load()
+    rows = [y for y in range(im.height) if any(px[x, y][3] > 128 and not b.is_blue(px[x, y]) for x in range(im.width))]
+    top, bottom = rows[0], rows[-1]
+    best = 0
+    for y in range(top, top + int((bottom - top) * 0.3) + 1):
+        xs = [x for x in range(im.width) if px[x, y][3] > 128 and not b.is_blue(px[x, y])]
+        if xs:
+            best = max(best, xs[-1] - xs[0] + 1)
+    return best
+
+
+def build(hit, ref, palette):
+    cfg = HITS[hit]
+    folder = os.path.join(KIT, cfg['dir'])
+    rfx, rfy = pb.feet(ref)
+    x0, y0, x1, y1 = ref.getchannel('A').getbbox()
+    cx, foot = (x0 + x1) // 2, y1 - 1
+    poses = v2.split_n(pb.remove_bg(Image.open(os.path.join(folder, cfg['src']))))
+    assert len(poses) == 8, (hit, len(poses))
+    # 크기: 첫 자세 키는 웅크림에 따라 달라 맞지 않았다 → 후드 너비(파랑 제외 윗부분 최대 너비)의 8장 가운데값으로 맞춘다
+    widths = sorted(hood_width(p) for p in poses)
+    scale = hood_width(ref) / widths[len(widths) // 2]
+    cells = [ref]
+    for p in poses:
+        small = pb.snap(p.resize((max(1, round(p.width * scale)), max(1, round(p.height * scale))), Image.NEAREST),
+                        palette)
+        fx, fy = pb.feet(small)
+        c = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+        c.alpha_composite(small, (round(rfx - fx), round(rfy - fy)))
+        cells.append(c)
+    body = []
+    for f in cells:
+        big = Image.new('RGBA', (144, 144), (0, 0, 0, 0))
+        big.alpha_composite(f, (40, 40))
+        body.append(big.crop((40 + cx - 34, 40 + foot - 58, 40 + cx + 34, 40 + foot + 10)))
+    restyle_in = os.path.join(folder, 'restyle_in')
+    os.makedirs(restyle_in, exist_ok=True)
+    for k, cell in enumerate(body):
+        cell.save(os.path.join(restyle_in, f'f{k}.png'))
+    restyle_out = os.path.join(folder, 'restyle_out')
+    if all(os.path.exists(os.path.join(restyle_out, f'r{k}.png')) for k in range(1, 9)):
+        body[1:] = [pb.snap(Image.open(os.path.join(restyle_out, f'r{k}.png')).convert('RGBA'), palette)
+                    for k in range(1, 9)]
+    body = [body[0]] + [v2.despeckle(c) for c in v2.match_tones(body[1:], body[0])]
+    if cfg['swoosh']:
+        k, arc_args = cfg['swoosh']
+        arc = bp.swoosh(body[k].size, *arc_args)  # 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머)
+        arc.alpha_composite(body[k])
+        body[k] = arc
+    print(hit, 'scale', round(scale, 3))
+    return body
+
+
+def main():
+    ref = Image.open(os.path.join(HERE, '..', 'kit', 'ref_back_nosword_64.png')).convert('RGBA')
+    palette = pf.game_palette()
+    sheet = Image.new('RGBA', (68 * 9, 68 * 2), (0, 0, 0, 0))
+    for row, hit in enumerate((2, 3)):
+        for k, cell in enumerate(build(hit, ref, palette)):
+            sheet.alpha_composite(cell, (k * 68, row * 68))
+    sheet.save(os.path.join(b.RAW, OUT))
+    prev = Image.new('RGBA', sheet.size, (128, 128, 128, 255))
+    prev.alpha_composite(sheet)
+    prev.resize((sheet.width * 4, sheet.height * 4), Image.NEAREST).save(os.path.join(KIT, 'hit23_v2_sheet_x4.png'))
+
+
+if __name__ == '__main__':
+    main()
