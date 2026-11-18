@@ -78,8 +78,8 @@ class FieldScene:
             golem.update(dt, player_tile, lambda c, r, g=golem: self._golem_can_place(g, c, r))
             for attack in golem.attacks:
                 result = self.player.receive_attack(attack)
-                # 막지 못한 빨강·노랑 공격은 레이저 스택 (2026-11-18 사용자 결정)
-                golem.on_attack_result(attack, result == PARRIED, self.player.last_perfect_dodge)
+                # 막지 못한 빨강·노랑 공격은 레이저 스택, 맞은 것은 세지 않음 (2026-11-18 사용자 결정)
+                golem.on_attack_result(attack, result, self.player.last_perfect_dodge)
                 if result == PARRIED:
                     golem.on_parried()
                     # 패링 성공: 칼이 막은 자리에서 노란 불꽃 (2026-11-17 사용자 요청)

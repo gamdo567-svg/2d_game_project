@@ -1,7 +1,7 @@
 """골렘 ④ 코어 레이저 이펙트 생성기 (2026-11-18 사용자 요청).
 
 세 장을 만든다 (색은 골렘 코어의 하얀·옅은 하늘색 계열, 사라질 때는 바이어 점무늬로 흩어짐):
-1. golem_laser_charge.png  충전 구. 64×64 칸, 가로 4 × 세로 12.
+1. golem_laser_charge.png  충전 구. 40×40 칸 (다 커도 지름 약 16픽셀: 코어 크기의 두 배 정도), 가로 4 × 세로 12.
    줄(세로) = 크기 단계 0~11 (작은 빛 → 다 큰 구, 마지막 단계는 꽉 차 번쩍임),
    칸(가로) = 빨려 드는 빛 알갱이 위치 4단계 (시간으로 돌려 반짝임).
    게임은 충전 진행도로 줄을, 지난 시간으로 칸을 고른다.
@@ -79,7 +79,7 @@ def ring(img, cx, cy, r_in, r_out, color, alpha=1.0):
 
 
 # ---------------------------------------------------------------- 1. 충전 구
-CS = 64
+CS = 40
 STAGES = 12
 PHASES = 4
 
@@ -89,26 +89,26 @@ def charge_frame(stage: int, phase: int) -> Image.Image:
     c = CS / 2
     p = stage / (STAGES - 1)
     full = stage == STAGES - 1
-    r = 2.0 + 16.0 * ease_out(p * 1.05)
+    r = 1.5 + 6.0 * ease_out(p * 1.05)
     rng = random.Random(stage * 7 + phase)
     # 빨려 드는 빛 알갱이: 바깥에서 가운데로 휘며 들어온다 (많아지고 빨라짐)
-    count = 8 + int(16 * p)
+    count = 6 + int(10 * p)
     for k in range(count):
         a0 = k * 2.399 + stage * 0.3
         t = ((phase / PHASES) + k * 0.37) % 1.0  # 0 = 바깥, 1 = 구에 닿음
-        dist = r + 3 + (30 - r) * (1 - t)
+        dist = r + 2 + (17 - r) * (1 - t)
         a = a0 + t * 0.9
         x, y = c + math.cos(a) * dist, c + math.sin(a) * dist
         col = P1 if t > 0.5 else G1
-        disk(img, x, y, 1.0, col)
+        put(img, x, y, col)
         tail = 2 if p > 0.4 else 1  # 들어오는 방향 반대로 꼬리
         for j in range(1, tail + 1):
             d2 = dist + j * 1.3
             put(img, c + math.cos(a - 0.08 * j) * d2, c + math.sin(a - 0.08 * j) * d2, G2)
     # 푸른 기운 (점무늬)
     glow = 0.35 + 0.25 * p + (0.15 if phase % 2 else 0.0)
-    disk(img, c, c, r + 3 + p * 2, G3, glow * 0.7)
-    disk(img, c, c, r + 1.5 + p, G2, glow)
+    disk(img, c, c, r + 2 + p, G3, glow * 0.6)
+    disk(img, c, c, r + 1, G2, glow)
     # 구: 테두리가 살짝 일렁인다
     wob = lambda a: 0.6 * math.sin(a * 5 + phase * 1.6 + stage)  # noqa: E731
     disk(img, c, c, r, G1, wobble=wob)
@@ -117,7 +117,7 @@ def charge_frame(stage: int, phase: int) -> Image.Image:
     disk(img, c, c, max(0.8, r * 0.38), W)
     if full:  # 다 컸다: 번쩍이며 가장자리까지 하얗게, 십자 빛줄기
         disk(img, c, c, r * 0.85 if phase % 2 else r * 0.7, W)
-        arm = r + 5 + (phase % 2) * 3
+        arm = r + 4 + (phase % 2) * 2
         for i in range(int(r), int(arm)):
             for col_x, col_y in ((c + i, c), (c - i, c), (c, c + i), (c, c - i)):
                 put(img, col_x, col_y, W if i < arm - 2 else P2)

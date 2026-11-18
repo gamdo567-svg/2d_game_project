@@ -179,13 +179,15 @@ class GolemBehaviorTest(unittest.TestCase):
         red = EnemyAttack(frozenset({(5, 4)}), 10, parryable=True)
         yellow = EnemyAttack(frozenset({(5, 4)}), 10, dodgeable=True)
         blue = EnemyAttack(frozenset({(5, 4)}), 10, jumpable=True)
-        self.golem.on_attack_result(red, parried=True, perfect_dodged=False)  # 막음
-        self.golem.on_attack_result(yellow, parried=False, perfect_dodged=True)  # 퍼펙트 회피
-        self.golem.on_attack_result(blue, parried=False, perfect_dodged=False)  # 하늘색은 세지 않음
+        self.golem.on_attack_result(red, PARRIED, perfect_dodged=False)  # 막음
+        self.golem.on_attack_result(yellow, AVOIDED, perfect_dodged=True)  # 퍼펙트 회피
+        self.golem.on_attack_result(blue, MISSED, perfect_dodged=False)  # 하늘색은 세지 않음
+        self.golem.on_attack_result(red, HIT, perfect_dodged=False)  # 맞은 것은 세지 않음
+        self.golem.on_attack_result(yellow, HIT, perfect_dodged=False)
         self.assertEqual(self.golem.laser_stacks, 0)
         for _ in range(2):
-            self.golem.on_attack_result(red, parried=False, perfect_dodged=False)
-            self.golem.on_attack_result(yellow, parried=False, perfect_dodged=False)
+            self.golem.on_attack_result(red, MISSED, perfect_dodged=False)  # 걸어서 피함
+            self.golem.on_attack_result(yellow, AVOIDED, perfect_dodged=False)  # 그냥 회피
         self.assertEqual(self.golem.laser_stacks, config.GOLEM_LASER_STACKS)
         self.advance(DT, (5, 4))  # 가까워도 레이저
         self.assertEqual(self.golem.pattern, LASER)
@@ -337,16 +339,19 @@ class GolemVsPlayerTest(unittest.TestCase):
         self.assertEqual(self.player.hp, config.PLAYER_MAX_HP)  # 공중이라 피함
 
     def test_unblocked_attacks_stack_in_scene(self):
-        # 장면: 빨강 ① 을 맞으면 한 스택, 패링하면 스택 없음 (2026-11-18 사용자 결정)
+        # 장면 (2026-11-18 사용자 결정): 빨강 ① 을 맞으면 스택 없음, 걸어서 범위 밖으로 피하면 한 스택 (패링은 GolemBehaviorTest)
         self.start_pattern(SLAM)
         self.run_until_release(0.0)
         self.run_for(0.05)
-        self.assertEqual(self.golem.laser_stacks, 1)
+        self.assertLess(self.player.hp, config.PLAYER_MAX_HP)
+        self.assertEqual(self.golem.laser_stacks, 0)
         self.run_for(config.PLAYER_HURT_TIME + 0.1)
         self.start_pattern(SLAM)
-        self.run_until_release(0.05)
-        self.tap(Action.PARRY)
-        self.run_for(0.1)
+        self.input.press(Action.MOVE_DOWN)  # 범위 밖으로 걸어 나감
+        self.run_until_release(0.0)
+        self.input.release(Action.MOVE_DOWN)
+        self.run_for(0.05)
+        self.assertNotIn((self.player.col, self.player.row), self.golem.beam_tiles | self.golem.target_tiles)
         self.assertEqual(self.golem.laser_stacks, 1)
 
     def test_laser_follows_walking_player_but_dodge_avoids(self):

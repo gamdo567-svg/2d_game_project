@@ -224,7 +224,7 @@ GOLEM_KICK_CHANCE = 0.5  # 중간 거리에서 ② 를 쓸 확률 (나머지는 
 # ④ 레이저를 패턴으로 고를지. 2026-11-17 시험을 위해 잠시 뺐다가 2026-11-18 사용자 요청으로 다시 넣음
 GOLEM_LASER_ENABLED = True
 # ④ 레이저 스택 (2026-11-18 사용자 결정): 빨강(패링 가능) 공격을 패링으로 막지 못하거나, 노랑(패링 불가) 공격을
-#   퍼펙트 회피로 피하지 못하면(걸어서 피해도) 한 스택. GOLEM_LASER_STACKS 만큼 쌓이면 다음 패턴은 레이저, 쏘면 0.
+#   퍼펙트 회피로 피하지 못하면(걸어서 피하거나 그냥 회피해도) 한 스택. 맞은 것은 세지 않는다 (2026-11-18 사용자 요청). GOLEM_LASER_STACKS 만큼 쌓이면 다음 패턴은 레이저, 쏘면 0.
 #   하늘색(점프로만 피함)·레이저 자신은 세지 않는다. 주인공이 GOLEM_LASER_FAR 칸보다 멀면 스택과 상관없이 바로 레이저.
 GOLEM_LASER_STACKS = 4
 GOLEM_LASER_FAR = 8  # 칸 (이보다 멀면)
@@ -301,11 +301,11 @@ GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
 # 프레임 가운데가 이펙트가 터지는 지점이고, RENDER_SCALE 로 nearest 확대해 그린다.
 EFFECT_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "effects"
 # ④ 레이저 그림 (2026-11-18 사용자 요청). 생성 스크립트: assets/concepts/vfx/laser/build_golem_laser.py
-#   충전 구: 64×64 칸, 줄 = 크기 단계(충전 진행도로 고름), 칸 = 빨려 드는 빛 위치(phase_fps 로 돌림). 골렘 코어에 그린다.
+#   충전 구: 40×40 칸 (2026-11-18 사용자 요청: 코어에 비해 너무 커서 다 커도 지름 약 16픽셀), 줄 = 크기 단계(충전 진행도로 고름), 칸 = 빨려 드는 빛 위치(phase_fps 로 돌림). 골렘 코어에 그린다.
 #   core: 방향별 코어 자리 (그림 가운데에서 오른쪽, 발 밑에서 위로 원본 픽셀). 서쪽은 동쪽을 뒤집은 그림.
 GOLEM_LASER_CHARGE = {
     "path": EFFECT_IMAGE_DIR / "golem_laser_charge.png",
-    "frame_size": 64, "stages": 12, "phases": 4, "phase_fps": 12,
+    "frame_size": 40, "stages": 12, "phases": 4, "phase_fps": 12,
     "core": {"south": (0, 45), "north": (0, 46), "east": (16, 51), "west": (-16, 51)},
 }
 # 하얀 레이저: 단면 그림을 코어에서 조준점까지 늘려 돌려 그린다. 굵기(화면 픽셀)는 beam_time 동안 0 으로 줄어든다.

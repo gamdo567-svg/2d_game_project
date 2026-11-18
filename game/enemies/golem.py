@@ -22,7 +22,7 @@ import random
 from collections.abc import Callable
 
 from game import config
-from game.combat.enemy_attack import EnemyAttack
+from game.combat.enemy_attack import HIT, PARRIED, EnemyAttack
 from game.combat.posture import PostureGauge
 from game.combat.training_dummy import DamagePopup
 from game.effects.effect import SpriteEffect
@@ -209,15 +209,16 @@ class Golem:
             self.beam_tiles = frozenset()
         return True
 
-    def on_attack_result(self, attack: EnemyAttack, parried: bool, perfect_dodged: bool) -> None:
-        """방금 터진 공격의 결과로 레이저 스택을 쌓는다 (2026-11-18 사용자 결정).
+    def on_attack_result(self, attack: EnemyAttack, result: str, perfect_dodged: bool) -> None:
+        """방금 터진 공격의 결과(HIT/PARRIED/AVOIDED/MISSED)로 레이저 스택을 쌓는다 (2026-11-18 사용자 결정).
 
-        빨강(패링 가능)은 패링으로, 노랑(패링 불가·회피 가능)은 퍼펙트 회피로 막아야 한다. 걸어서 피했거나 그냥
-        회피했거나 맞았으면 한 스택. 하늘색(점프로만 피함)과 레이저 자신은 세지 않는다.
+        빨강(패링 가능)은 패링으로, 노랑(패링 불가·회피 가능)은 퍼펙트 회피로 막아야 한다. 걸어서 범위 밖으로 피했거나
+        그냥 회피했으면 한 스택. 맞았으면(HIT) 이미 피해를 받았으니 쌓지 않는다 (2026-11-18 사용자 요청).
+        하늘색(점프로만 피함)과 레이저 자신은 세지 않는다.
         """
-        if self.pattern == LASER or attack.jumpable:
+        if self.pattern == LASER or attack.jumpable or result == HIT:
             return
-        blocked = parried if attack.parryable else perfect_dodged
+        blocked = result == PARRIED if attack.parryable else perfect_dodged
         if not blocked:
             self.laser_stacks = min(config.GOLEM_LASER_STACKS, self.laser_stacks + 1)
 
