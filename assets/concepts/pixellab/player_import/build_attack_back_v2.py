@@ -25,6 +25,11 @@ SWOOSH = (4, (22, 20, 36, -20, 112, 8))
 # 좌우로 뒤집기 (같은 날 사용자: 칼을 꺼내 왼쪽으로 옮긴 뒤 왼쪽에서 오른쪽으로 베게 — 정면처럼 바로 내려치지 않게).
 # 뒷모습은 거의 좌우 대칭이라 몸·잔상을 통째로 뒤집는다. 칼 자리는 build_remake_preview.OVERRIDES 'backv2_1' 이 뒤집은 값.
 MIRROR = True
+# 칼은 예전처럼 오른쪽 어깨에서 꺼내 → 오른쪽 위로 들고 → 머리 위를 넘어 → 왼쪽 위 → 왼쪽에서 오른쪽으로 벰 (같은 날 사용자 요청).
+# 오른쪽 장은 뒤집지 않은 1·2번, 왼쪽 장은 뒤집은 4번. 머리 위 두 장은 PixelLab animate_image 가
+# 뒤집지 않은 4번(오른쪽 위) → 뒤집은 4번(왼쪽 위) 사이를 그린 것 (attack_back_kit/hit1_v2/overhead/o1, o2).
+OVERHEAD = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'overhead')
+ORDER = [('p', 1), ('p', 2), ('o', 1), ('o', 2), ('m', 4), ('m', 5), ('m', 7), ('m', 8)]
 
 
 def match_tones(cells, ref):
@@ -111,14 +116,19 @@ def main():
             cell = pb.snap(Image.open(restyled).convert('RGBA'), palette)  # 같은 68 칸 자리로 돌려받음
         body.append(cell)
     body = [body[0]] + match_tones(body[1:], body[0])
-    sheet = Image.new('RGBA', (68 * 9, 68), (0, 0, 0, 0))
+    plain, flipped = [], []
     for k, cell in enumerate(body):
         if k - 1 == SWOOSH[0]:
             arc = bp.swoosh(cell.size, *SWOOSH[1])  # 판정 장: 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머, 같은 날 사용자 지적)
             arc.alpha_composite(cell)
             cell = arc
-        if MIRROR and k > 0:
-            cell = cell.transpose(Image.FLIP_LEFT_RIGHT)
+        plain.append(cell)
+        flipped.append(cell.transpose(Image.FLIP_LEFT_RIGHT) if MIRROR and k > 0 else cell)
+    # 장 순서 (ORDER): ('p', k) = 뒤집지 않은 k번째, ('m', k) = 뒤집은 k번째, ('o', n) = 머리 위로 넘기는 PixelLab 사이 장
+    overhead = {n: pb.snap(Image.open(os.path.join(OVERHEAD, f'o{n}.png')).convert('RGBA'), palette) for n in (1, 2)}
+    picked = [body[0]] + [plain[k] if src == 'p' else flipped[k] if src == 'm' else overhead[k] for src, k in ORDER]
+    sheet = Image.new('RGBA', (68 * 9, 68), (0, 0, 0, 0))
+    for k, cell in enumerate(picked):
         sheet.alpha_composite(cell, (k * 68, 0))
     sheet.save(os.path.join(b.RAW, 'attack_back_v2_68.png'))
     prev = Image.new('RGBA', sheet.size, (128, 128, 128, 255))
