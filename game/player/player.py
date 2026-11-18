@@ -217,6 +217,9 @@ class Player:
         for action in BUFFERED_ACTIONS:
             if input_state.was_pressed(action):
                 self._buffer[action] = config.PLAYER_INPUT_BUFFER_TIME
+        # 공격 버튼을 누르고 있으면 계속 클릭하는 것처럼 콤보가 이어진다 (2026-11-18 사용자 요청). 쿨타임은 그대로.
+        if input_state.is_held(Action.ATTACK):
+            self._buffer[Action.ATTACK] = config.PLAYER_INPUT_BUFFER_TIME
         attack_waiting = False  # 걷던 칸을 마저 가는 중 (도착하면 공격)
         if self.state in FREE_STATES:
             if self._buffered(Action.ATTACK) and self.combo.can_start and self.mover.is_moving:

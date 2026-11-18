@@ -405,6 +405,26 @@ class PlayerAttackTest(unittest.TestCase):
         self.step()
         self.input.release(action)
 
+    def test_holding_attack_continues_combo_and_restarts_after_cooldown(self):
+        # 공격 버튼을 누르고 있으면 1 → 2 → 3타로 이어지고, 쿨타임이 끝나면 다시 1타부터 (2026-11-18 사용자 요청)
+        self.input.press(Action.ATTACK)
+        seen = []
+        for _ in range(round((sum(config.PLAYER_ATTACK_DURATIONS) + config.PLAYER_ATTACK_COOLDOWN + 0.5) / self.DT)):
+            self.step()
+            if self.player.state == ATTACK and (not seen or seen[-1] != self.player.combo.hit_number):
+                seen.append(self.player.combo.hit_number)
+        self.assertEqual(seen[:4], [1, 2, 3, 1])
+
+    def test_release_stops_combo(self):
+        # 떼면 지금 타만 마치고 멈춘다
+        self.input.press(Action.ATTACK)
+        self.step()
+        self.input.release(Action.ATTACK)
+        self.run_until_idle()
+        self.assertEqual(self.player.combo.hit_number, 1)
+        self.run_for(1.0)
+        self.assertNotEqual(self.player.state, ATTACK)
+
     def test_cannot_cancel_before_hit(self):
         # 선딜 중에 누른 회피·점프·패링은 공격을 끊지 않는다 (기억 시간이 지나면 사라짐)
         self.click()
