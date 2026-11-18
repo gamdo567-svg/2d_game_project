@@ -16,6 +16,15 @@
 
 ---
 
+## 2026-11-18 — 후면 1타 방향·잔상 다듬기 (Claude Code)
+- 브랜치 / 마지막 커밋: `claude/golem-stomp-vfx` / 이 항목을 담은 커밋
+- 한 일: 후면 1타를 좌우로 뒤집어 칼을 왼쪽으로 옮긴 뒤 왼쪽 위 → 오른쪽 아래로 벰. 베는 순간 초승달 잔상을 몸 뒤로 옮기고, 가운데가 끊기던 것을 고침.
+- 현재 상태: `python -m unittest` 276개 통과. 게임 창 녹화로 확인 (`attack_back_kit/hit1_views_ingame_slow.gif`), 실제 모니터 플레이는 안 함.
+- 다음 작업자가 알아야 할 것: 후면 1타는 `build_attack_back_v2.py` → `export_to_game.py`. 잔상 순서는 `build_remake_preview.SMEAR_ON_TOP`/`KEEP_WHOLE_SMEAR`.
+- 남은 문제 / 다음 할 일: 사용자 확인 후 후면 2·3타도 같은 방법(정면 8장을 뒤에서 본 GPT 그림 → 화풍·색 맞춤)으로. 푸시 보류.
+
+---
+
 ## 2026-11-18 — 공격 버튼 누르고 있으면 콤보 이어짐 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 보류)
