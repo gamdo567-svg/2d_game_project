@@ -24,6 +24,7 @@
 - **현재 상태**: 테스트 245개 통과. 실제 pico2d 창 캡처로 들기 → 착지 → 일어섬 확인. 직접 조작해 본 확인은 아님.
 - **다음 작업자가 알아야 할 것**: 다시 만들려면 `golem_slam/chatgpt_kit_back/process_results.py` → `build_north.py` →
   `aligned/slam_north.png` 를 `assets/images/golem/` 로 복사.
+- **추가 (같은 날)**: 질감 차이 지적으로 7~12장을 원본 부위로 다시 짜 맞춤 (`parts/compose.py`, `build_north.py` 가 함께 돌림).
 - **남은 문제 / 다음 할 일**: 발 구르기 후면 일어섬 확인. 푸시·PR 은 사용자 결정 대기.
 
 ---
