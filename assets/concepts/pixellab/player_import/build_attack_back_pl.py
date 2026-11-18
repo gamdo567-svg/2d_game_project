@@ -21,8 +21,10 @@ KIT = os.path.join(HERE, 'attack_back_kit')
 # 타별 8장: (구간, 번호). a = 서기→들어 올림, b = 들어 올림→내려벤 끝, c = 끝→서기 (1타)
 # 1타 3차 (2026-11-18 사용자: 측면·정면처럼 — 칼을 왼쪽 아래에서 꺼내 오른쪽 위로 옮긴 뒤 오른쪽 위에서 내려벰, 박자도 측면과 같게):
 # d = 왼쪽 아래 → 오른쪽 어깨 위 (PixelLab 새로), b = 내려베기, c = 마무리. 8장 같은 간격, 5번째(판정)가 잔상 장.
+# 4차 (같은 날 사용자: 억지로 빠르게 옮겨 베는 느낌): 구간을 이어 붙이지 않고 PixelLab 이 1타 전체를 한 번에 이어 그림
+# (animate_image, 왼쪽 아래 자세에서 시작, 8장 = full_v3_1~8). 5번째(판정)는 칼이 몸 앞을 지나 안 보이는 장 → 잔상.
 PICK = {
-    1: ['d0', 'd2', 'd3', 'd4', 'b2', 'b3', 'b4', 'c1'],
+    1: ['full_v3_1', 'full_v3_2', 'full_v3_3', 'full_v3_4', 'full_v3_5', 'full_v3_6', 'full_v3_7', 'full_v3_8'],
 }
 # 휘두르는 장에 겹칠 GPT 잔상: 타 → (8장 중 번호 0부터, GPT 시트 칸)
 ARC = {1: (4, 4)}
@@ -48,7 +50,8 @@ def main():
     for hit, names in PICK.items():
         cells = [gpt_rows[hit][0]]
         for k, n in enumerate(names):
-            f = pb.snap(Image.open(os.path.join(KIT, 'pl_out', f'hit{hit}_{n[0]}_{n[1]}.png')).convert('RGBA'), palette)
+            name = n if '_' in n else f'{n[0]}_{n[1]}'  # 'd0' → d_0, 'full_v3_1' 그대로
+            f = pb.snap(Image.open(os.path.join(KIT, 'pl_out', f'hit{hit}_{name}.png')).convert('RGBA'), palette)
             if hit in ARC and ARC[hit][0] == k:
                 arc = blue_only(gpt_rows[hit][ARC[hit][1]])
                 arc.alpha_composite(f)  # 잔상은 몸 뒤
