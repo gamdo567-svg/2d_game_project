@@ -98,9 +98,26 @@ PIXELLAB_ART = {
 }
 
 
+# 측면 칼집을 한 줄 얇게 (2026-11-18 사용자 요청: 측면 검 굵기를 조금만 줄임). 칼집 부분(가드 아래 줄들)에서
+# 가운데 가죽 세로줄 하나를 빼고 오른쪽을 한 칸 당긴다: 폭 5 → 4픽셀 (반 픽셀은 못 줄여 가장 적게 줄인 것).
+THIN_COLUMNS = {"side_C.png": (12, range(18, 37))}
+
+
+def thin(art: Image.Image, name: str) -> Image.Image:
+    if name not in THIN_COLUMNS:
+        return art
+    col, rows = THIN_COLUMNS[name]
+    out = art.copy()
+    src, dst = art.load(), out.load()
+    for y in rows:
+        for x in range(col, art.width):
+            dst[x, y] = src[x + 1, y] if x + 1 < art.width else (0, 0, 0, 0)
+    return out
+
+
 def place_art(view: str) -> Image.Image:
     name, flip, (ax, ay), (tx, ty) = PIXELLAB_ART[view]
-    art = Image.open(HERE / "pixellab_sheath" / name).convert("RGBA")
+    art = thin(Image.open(HERE / "pixellab_sheath" / name).convert("RGBA"), name)
     if flip:
         art = art.transpose(Image.FLIP_LEFT_RIGHT)
         ax = art.width - 1 - ax
