@@ -163,6 +163,30 @@ class GolemBehaviorTest(unittest.TestCase):
         self.advance(DT, (2, 4))  # 거리 4: 차기
         self.assertEqual(self.golem.pattern, KICK)
 
+    def test_near_diagonal_only_picks_patterns_that_reach(self):
+        # 2026-11-18 사용자 지적: 닿지 않는 패턴을 쓰지 않는다. 대각선 (8,7): ①·② 앞 가로 3 칸에는 없고 ③ 7×7 에는 든다
+        self.make(SLAM)
+        self.advance(DT, (8, 7))
+        self.assertEqual(self.golem.pattern, STOMP)
+
+    def test_mid_offset_does_not_kick_but_walks(self):
+        self.make(None, roll=0.0)  # 차기 확률이 가장 높아도
+        self.advance(DT, (9, 8))  # 거리 3, 대각선: 앞차기 가로 3 칸 밖
+        self.assertNotEqual(self.golem.pattern, KICK)
+        self.assertEqual(self.golem.state, WALK)
+
+    def test_chosen_attack_always_covers_player(self):
+        # 둘레 모든 칸에서: 고른 ①·②·③ 의 예고 범위에 주인공 칸이 꼭 든다 (아니면 다가가거나 쉰다)
+        for pick in (SLAM, KICK, STOMP):
+            for c in range(1, 15):
+                for r in range(1, 9):
+                    if (c, r) in ((6, 4), (6, 5)):
+                        continue
+                    self.make(pick, roll=0.0)
+                    self.advance(DT, (c, r))
+                    if self.golem.state == WINDUP and self.golem.pattern != LASER:
+                        self.assertIn((c, r), self.golem.target_tiles, (pick, c, r, self.golem.pattern))
+
     def test_very_far_fires_laser_right_away(self):
         # 2026-11-18 사용자 결정: GOLEM_LASER_FAR 칸보다 멀면 스택과 상관없이 바로 레이저
         self.make(None, roll=0.9)

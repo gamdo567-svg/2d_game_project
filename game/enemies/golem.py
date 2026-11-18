@@ -1,7 +1,8 @@
 """골렘: 첫 일반 몬스터 (몬스터형: 패링당하거나 맞아도 경직 없음). 2026-11-17 사용자 결정, 수치는 임시값.
 
 - 1×2칸(발 칸과 그 위 한 칸)을 차지한다 (2026-11-17 사용자 요청으로 2×2 → 3×3 → 1×2). 주인공이 멀면 천천히 다가오고, 거리에 따라 패턴을 고른다.
-    가까우면(GOLEM_NEAR) ① 두 손 내려찍기·② 앞차기·③ 한 발 내려찍기 중 하나, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감,
+    가까우면(GOLEM_NEAR) ① 두 손 내려찍기·② 앞차기·③ 한 발 내려찍기 중 하나, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감.
+    ①·②·③ 은 주인공 칸이 실제 범위에 들 때만 고르고, 닿는 것이 없으면 다가간다 (2026-11-18 사용자 지적),
     더 멀면 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
     ④ 코어 레이저는 레이저 스택(막지 못한 빨강·노랑 공격 수)이 GOLEM_LASER_STACKS 만큼 쌓였거나
     주인공이 GOLEM_LASER_FAR 칸보다 멀면 쓴다 (2026-11-18 사용자 결정). 쏘면 스택은 0.
@@ -283,13 +284,29 @@ class Golem:
         dist = self.distance_to(player_tile)
         if config.GOLEM_LASER_ENABLED and (self.laser_charged or dist > config.GOLEM_LASER_FAR):
             self._windup(LASER, player_tile)
-        elif dist <= config.GOLEM_NEAR:
-            self._windup(self.rng.choice([SLAM, KICK, STOMP]), player_tile)
-        elif dist <= config.GOLEM_MID:
-            if self.rng.random() < config.GOLEM_KICK_CHANCE or not self._step_toward(player_tile, can_place):
-                self._windup(KICK, player_tile)
+        elif dist <= config.GOLEM_NEAR and (near := [p for p in (SLAM, KICK, STOMP) if self.reaches(p, player_tile)]):
+            self._windup(self.rng.choice(near), player_tile)
+        elif (dist <= config.GOLEM_MID and self.reaches(KICK, player_tile)
+              and self.rng.random() < config.GOLEM_KICK_CHANCE):
+            self._windup(KICK, player_tile)
         elif not self._step_toward(player_tile, can_place):
-            self._rest(0.5)  # 길이 막혀 있으면 잠깐 쉬고 다시 판단
+            if self.reaches(KICK, player_tile):
+                self._windup(KICK, player_tile)  # 길이 막혔지만 차기는 닿는다
+            else:
+                self._rest(0.5)  # 길이 막혀 있으면 잠깐 쉬고 다시 판단
+
+    def reaches(self, pattern: str, player_tile: Tile) -> bool:
+        """지금 이 패턴을 쓰면 주인공 칸이 범위 안에 드는지 (2026-11-18 사용자 지적: 닿지도 않는 거리에서 차기를 함).
+        거리만 보지 않고 실제 범위(①·② 바라볼 쪽 앞, ③ 발 칸 둘레)를 계산해 본다."""
+        facing = self.facing
+        self._face(player_tile)
+        if pattern == STOMP:
+            tiles = self.stomp_area(player_tile)
+        else:
+            spec = PATTERNS[pattern]
+            tiles = self.front_area(spec["width"], spec["depth"], player_tile)
+        self.facing = facing
+        return player_tile in tiles
 
     def _step_toward(self, player_tile: Tile, can_place: Callable[[int, int], bool]) -> bool:
         """주인공 쪽으로 한 칸 걷는다 (차이가 큰 축 먼저). 못 가면 False."""
