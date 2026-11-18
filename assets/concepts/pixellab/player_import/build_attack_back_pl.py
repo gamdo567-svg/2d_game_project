@@ -42,6 +42,33 @@ SWOOSH = {1: [(4, 22, 20, 36, -20, 112, 8), (5, 22, 20, 36, 30, 112, 4)]}
 MIRROR = set()  # 3차에서 되돌림: 측면·정면처럼 오른쪽 위에서 내려벤다 (사용자 설명)
 
 
+# 8차 (같은 날 사용자: 손 피부색이 달라졌고 자세가 어정쩡함)
+# - 뒷모습에는 살이 보일 곳이 없다: PixelLab 이 그린 맨손 살색은 정면처럼 장갑(어두운 갈색)으로 바꾼다.
+# - 들어 올리는 동안은 정면처럼 꼿꼿이 선다: 그 장들의 다리(LEG_ROW 아래)를 게임 뒷모습 서기 다리로 바꾼다.
+SKIN_MIN = 140  # 이보다 밝은 붉은 기 도는 색(살색)
+GLOVE = [(52, 32, 30), (80, 52, 46)]  # 장갑 어두운 곳 / 밝은 곳 (게임 팔레트에서 가까운 색으로 맞춤)
+STAND_LEGS = {1: [0, 1, 2, 3]}  # 타 → 다리를 서기 다리로 바꿀 장 (8장 중 번호)
+LEG_ROW = 50  # 68 칸에서 이 줄부터 아래 (망토 끝 아래 = 다리)
+
+
+def glove_hands(f, palette):
+    glove = [min(palette, key=lambda p: sum((p[i] - g[i]) ** 2 for i in range(3))) for g in GLOVE]
+    px = f.load()
+    for y in range(f.height):
+        for x in range(f.width):
+            r, g, bb, a = px[x, y]
+            if a and r >= SKIN_MIN and r > bb + 30 and not b.is_blue(px[x, y]):
+                px[x, y] = glove[1 if r > 200 else 0] + (255,)
+    return f
+
+
+def stand_legs(f, idle):
+    out = f.copy()
+    out.paste((0, 0, 0, 0), (0, LEG_ROW, out.width, out.height))
+    out.alpha_composite(idle.crop((0, LEG_ROW, idle.width, idle.height)), (0, LEG_ROW))
+    return out
+
+
 def blue_only(cell):
     out = Image.new('RGBA', cell.size, (0, 0, 0, 0))
     src, dst = cell.load(), out.load()
@@ -82,6 +109,9 @@ def main():
         for k, n in enumerate(names):
             name = n if '_' in n else f'{n[0]}_{n[1]}'  # 'd0' → d_0, 'e_0'·'full_v3_1' 그대로
             f = pb.snap(Image.open(os.path.join(KIT, 'pl_out', f'hit{hit}_{name}.png')).convert('RGBA'), palette)
+            f = glove_hands(f, palette)
+            if k in STAND_LEGS.get(hit, []):
+                f = stand_legs(f, gpt_rows[hit][0])
             if hit in ARC and ARC[hit][0] == k:
                 arc = blue_only(gpt_rows[hit][ARC[hit][1]])
                 arc.alpha_composite(f)  # 잔상은 몸 뒤
