@@ -1,0 +1,56 @@
+"""PixelLab VFX Creator 로 만든 골렘 레이저 이펙트를 게임 시트로 옮긴다 (2026-11-18 사용자 요청: PixelLab 으로).
+
+- charge/part/part-charge_up.png (PixelLab 'Golem laser charge', 24장, 5열, 칸 87×86, manifest.json)
+  → assets/images/effects/golem_laser_charge.png: 88×88 칸 24장 가로 한 줄, 칸 가운데 = 골렘 코어.
+  PixelLab 캔버스에서 코어는 (47, 46), 조각 칸의 왼쪽 위는 발 기준점(45, 89) + offset(-41, -86) = (4, 3).
+- blast/golem-laser-blast.png ('Golem laser blast', 12장, 4열, 칸 182×95, 가운데 기준점 (91, 51))
+  → assets/images/effects/golem_laser_blast.png: 160×160 칸 12장 가로 한 줄, 칸 가운데 = 폭발 지점.
+원본 픽셀 크기는 게임 원본(칸 32픽셀)과 같아 늘리지 않는다. 게임은 RENDER_SCALE 로 키워 그린다.
+실행: python pack_for_game.py
+"""
+import json
+from pathlib import Path
+
+from PIL import Image
+
+HERE = Path(__file__).resolve().parent
+GAME = HERE.parents[3] / "images" / "effects"
+
+
+def frames_from(sheet: Image.Image, w: int, h: int, cols: int, count: int) -> list[Image.Image]:
+    return [sheet.crop(((i % cols) * w, (i // cols) * h, (i % cols + 1) * w, (i // cols + 1) * h)) for i in range(count)]
+
+
+def pack(frames, size, center_in_frame, out):
+    sheet = Image.new("RGBA", (size * len(frames), size), (0, 0, 0, 0))
+    cx, cy = center_in_frame
+    for i, f in enumerate(frames):
+        cell = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        cell.alpha_composite(f.convert("RGBA"), (size // 2 - cx, size // 2 - cy))
+        sheet.alpha_composite(cell, (i * size, 0))
+    sheet.save(out)
+    return sheet
+
+
+def main() -> None:
+    m = json.loads((HERE / "charge" / "part" / "manifest.json").read_text(encoding="utf-8"))
+    clip = m["clips"][0]
+    fw, fh = clip["frame"]["w"], clip["frame"]["h"]
+    left = m["anchor"]["x"] + clip["offset"]["x"]
+    top = m["anchor"]["y"] + clip["offset"]["y"]
+    core = (47 - left, 46 - top)  # 조각 칸 안의 코어 자리
+    charge = frames_from(Image.open(HERE / "charge" / "part" / "part-charge_up.png"), fw, fh,
+                         clip["sheets"][0]["columns"], clip["frames"])
+    pack(charge, 88, core, GAME / "golem_laser_charge.png")
+
+    blast = frames_from(Image.open(HERE / "blast" / "golem-laser-blast.png"), 182, 95, 4, 12)
+    # 182×95 를 160×160 가운데에 맞춘다: 기준점 (91, 51) → (80, 80). 가로는 양쪽 11픽셀씩 잘린다 (투명).
+    sheet = Image.new("RGBA", (160 * len(blast), 160), (0, 0, 0, 0))
+    for i, f in enumerate(blast):
+        sheet.alpha_composite(f.convert("RGBA").crop((11, 0, 171, 95)), (i * 160, 80 - 51))
+    sheet.save(GAME / "golem_laser_blast.png")
+    print("ok", len(charge), len(blast))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "golem-laser-blast 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 1.png",
+   "frame": {
+    "x": 182,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 2.png",
+   "frame": {
+    "x": 364,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 3.png",
+   "frame": {
+    "x": 546,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 4.png",
+   "frame": {
+    "x": 0,
+    "y": 95,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 5.png",
+   "frame": {
+    "x": 182,
+    "y": 95,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 6.png",
+   "frame": {
+    "x": 364,
+    "y": 95,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 7.png",
+   "frame": {
+    "x": 546,
+    "y": 95,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 8.png",
+   "frame": {
+    "x": 0,
+    "y": 190,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 9.png",
+   "frame": {
+    "x": 182,
+    "y": 190,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 10.png",
+   "frame": {
+    "x": 364,
+    "y": 190,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  },
+  {
+   "filename": "golem-laser-blast 11.png",
+   "frame": {
+    "x": 546,
+    "y": 190,
+    "w": 182,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 182,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 182,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5368421052631579
+   },
+   "duration": 63
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "golem-laser-blast.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 728,
+   "h": 285
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 91,
+   "y": 51
+  },
+  "frameTags": [
+   {
+    "name": "golem-laser-blast",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

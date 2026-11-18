@@ -1,0 +1,45 @@
+{
+ "app": "PixelLab VFX Creator",
+ "name": "Golem laser charge",
+ "fps": 24,
+ "frame_ms": 42,
+ "frames": 24,
+ "loop": false,
+ "canvas": {
+  "w": 94,
+  "h": 92
+ },
+ "anchor": {
+  "kind": "feet",
+  "x": 45,
+  "y": 89
+ },
+ "clips": [
+  {
+   "name": "part-charge_up",
+   "title": "the charge up part",
+   "part": "charge_up",
+   "depth": "front",
+   "loop": false,
+   "start_frame": 0,
+   "frames": 24,
+   "frame": {
+    "w": 87,
+    "h": 86
+   },
+   "sheets": [
+    {
+     "file": "part-charge_up.png",
+     "first_frame": 0,
+     "frames": 24,
+     "columns": 5,
+     "rows": 5
+    }
+   ],
+   "offset": {
+    "x": -41,
+    "y": -86
+   }
+  }
+ ]
+}
