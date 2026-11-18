@@ -95,7 +95,7 @@ SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
 # 입력을 기억해 두는 행동 (PLAYER_INPUT_BUFFER_TIME)
 BUFFERED_ACTIONS = (Action.ATTACK, Action.PARRY, Action.DODGE, Action.JUMP)
 # 전용 그림이 아직 없는 상태 -> 대신 쓸 그림 상태. 패링은 공격 모션과 함께 만들 때까지 서 있는 그림(첫 프레임).
-SPRITE_FALLBACK = {PARRY: IDLE, DODGE: WALK, HURT: IDLE}
+SPRITE_FALLBACK = {PARRY: IDLE, HURT: IDLE}
 # 대신 쓰는 그림을 자기 애니메이션 프레임으로 재생하는 상태 (나머지는 첫 프레임에 멈춤)
 ANIMATED_FALLBACK = {DODGE}
 # 좌우가 비대칭인 상태: 왼쪽을 볼 때 측면을 뒤집지 않고 전용 그림(side_left)을 쓴다.
@@ -118,7 +118,8 @@ class Player:
             config.PLAYER_ATTACK_DURATIONS, config.PLAYER_ATTACK_FRAME_ENDS,
             config.PLAYER_ATTACK_COMBO_WINDOW, config.PLAYER_ATTACK_COOLDOWN,
         )
-        self.dodge = Dodge(config.PLAYER_DODGE_DURATION, config.PLAYER_WALK_FRAMES)
+        self.dodge = Dodge(config.PLAYER_DODGE_DURATION, config.PLAYER_DODGE_MOVE_FRAMES)
+        self.dodge_tail_left = 0.0  # 회피가 끝난 뒤 멈춤 그림을 더 보여 줄 남은 시간 (그림만)
         self.hurt = TimedAction(config.PLAYER_HURT_TIME, 1)
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
@@ -173,6 +174,7 @@ class Player:
         self._input = input_state
         self.combo.tick(dt)
         self.dodge_cooldown_left = max(0.0, self.dodge_cooldown_left - dt)
+        self.dodge_tail_left = max(0.0, self.dodge_tail_left - dt)
         self.hit_flash_left = max(0.0, self.hit_flash_left - dt)
         self.perfect_text_left = max(0.0, self.perfect_text_left - dt)
         self._since_dodge += dt
@@ -239,6 +241,9 @@ class Player:
         elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
             self.fsm.trigger("end_dodge")
             self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
+            self.dodge_tail_left = config.PLAYER_DODGE_TAIL_TIME
+        if self.state != IDLE:
+            self.dodge_tail_left = 0.0  # 걷기·공격 등 다른 행동을 시작하면 멈춤 그림은 바로 끊긴다
         self._emit_strike()
         self._buffer = {a: t - dt for a, t in self._buffer.items() if t - dt > 0.0}
 
@@ -375,6 +380,10 @@ class Player:
         if self.state == PARRY and self._draw_parry(renderer, center_x, bottom):
             return
 
+        if self.state == DODGE or (self.state == IDLE and self.dodge_tail_left > 0.0):
+            self._draw_dodge(renderer, center_x, bottom, view, flip)
+            return
+
         # 그림의 발끝(아래 가운데)을 칸의 아래 가운데에 맞춘다. 점프 중에는 lift 만큼 띄운다.
         sprite_state = SPRITE_FALLBACK.get(self.state, self.state)
         if self.facing == Facing.LEFT and sprite_state in LEFT_SHEET_STATES:
@@ -396,6 +405,22 @@ class Player:
             height * config.RENDER_SCALE,
             flip_horizontal=flip,
         )
+
+    @property
+    def dodge_frame(self) -> int | None:
+        """회피 그림 번호. 이동 중에는 진행도로 앞 장들, 끝난 뒤에는 남은 멈춤 시간으로 뒤 장들. 아니면 None."""
+        if self.state == DODGE:
+            return self.dodge.frame_index
+        if self.state == IDLE and self.dodge_tail_left > 0.0:
+            tail = config.PLAYER_DODGE_FRAMES - config.PLAYER_DODGE_MOVE_FRAMES
+            done = 1.0 - self.dodge_tail_left / config.PLAYER_DODGE_TAIL_TIME
+            return config.PLAYER_DODGE_MOVE_FRAMES + min(tail - 1, int(done * tail))
+        return None
+
+    def _draw_dodge(self, renderer, center_x: float, bottom: float, view: str, flip: bool) -> None:
+        w, h = config.PLAYER_DODGE_SPRITE_WIDTH, config.PLAYER_DODGE_SPRITE_HEIGHT
+        renderer.draw_sprite_frame(sprite_sheet_path(DODGE, view), self.dodge_frame, w, h, center_x, bottom,
+                                   w * config.RENDER_SCALE, h * config.RENDER_SCALE, flip_horizontal=flip)
 
     def _draw_attack(self, renderer, center_x: float, bottom: float) -> None:
         """지금 타의 공격 그림(96×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.

@@ -137,23 +137,47 @@ class DodgeTest(unittest.TestCase):
         self.tap(Action.ATTACK)
         self.assertEqual(self.player.state, ATTACK)  # 회피 뒤에는 바로 공격 가능
 
-    def test_draws_walk_frames(self):
+    def drawn(self):
+        calls = []
+
+        class Rec:
+            def __getattr__(self, name):
+                return lambda *a, **k: calls.append((name, a))
+
+        self.player.draw(Rec())
+        return calls[0][1]
+
+    def test_draws_dodge_frames_then_stop_pose(self):
+        # 2026-11-18 회피 그림: 이동 중에는 앞 장들(웅크림 → 돌진), 도착한 뒤 멈춤 그림을 잠깐 더 보여 준다
         self.face(Facing.RIGHT)
         self.tap(Action.DODGE)
         frames = set()
-        for _ in range(round(config.PLAYER_DODGE_DURATION / DT) - 2):
-            calls = []
-
-            class Rec:
-                def __getattr__(self, name):
-                    return lambda *a, **k: calls.append((name, a))
-
-            self.player.draw(Rec())
-            name, args = calls[0]
-            self.assertEqual(args[0], sprite_sheet_path(WALK, "side"))
+        while self.player.state == DODGE:
+            args = self.drawn()
+            self.assertEqual(args[0], sprite_sheet_path(DODGE, "side"))
             frames.add(args[1])
             self.step()
-        self.assertEqual(frames, set(range(config.PLAYER_WALK_FRAMES)))
+        self.assertEqual(frames, set(range(config.PLAYER_DODGE_MOVE_FRAMES)))
+        tail = set()
+        for _ in range(round(config.PLAYER_DODGE_TAIL_TIME / DT) - 1):
+            args = self.drawn()
+            self.assertEqual(args[0], sprite_sheet_path(DODGE, "side"))
+            tail.add(args[1])
+            self.step()
+        self.assertEqual(tail, set(range(config.PLAYER_DODGE_MOVE_FRAMES, config.PLAYER_DODGE_FRAMES)))
+        self.run_for(0.1)
+        self.assertEqual(self.drawn()[0], sprite_sheet_path(IDLE, "side"))  # 끝나면 서 있는 그림
+
+    def test_stop_pose_cut_by_moving(self):
+        self.face(Facing.RIGHT)
+        self.tap(Action.DODGE)
+        while self.player.state == DODGE:
+            self.step()
+        self.assertGreater(self.player.dodge_tail_left, 0.0)
+        self.input.press(Action.MOVE_RIGHT)  # 바로 걸으면 멈춤 그림은 끊긴다
+        self.step()
+        self.assertEqual(self.player.dodge_tail_left, 0.0)
+        self.assertNotEqual(self.drawn()[0], sprite_sheet_path(DODGE, "side"))
 
 
 if __name__ == "__main__":

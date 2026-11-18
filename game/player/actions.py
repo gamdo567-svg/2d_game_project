@@ -48,7 +48,7 @@ class TimedAction:
 class Dodge(TimedAction):
     """회피: duration 초 동안 미끄러지듯 이동한다 (이동 자체는 GridMover.dash). 그동안 무적.
 
-    그림은 아직 없어 걷기 그림 frame_count 장을 회피 시간 동안 한 번 재생한다.
+    그림(player/dodge/<view>.png)의 앞 frame_count 장을 회피 시간 동안 한 번 재생한다 (뒤 장들은 끝난 뒤 멈춤 그림).
     """
 
 

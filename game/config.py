@@ -98,6 +98,16 @@ PLAYER_INPUT_BUFFER_TIME = 0.15  # 초
 PLAYER_DODGE_DISTANCE = 2  # 칸 (2026-11-17 사용자 요청으로 3 → 2)
 PLAYER_DODGE_DURATION = 0.25  # 초
 PLAYER_DODGE_COOLDOWN = 8.0  # 초 (회피가 끝난 뒤부터). 2026-11-17 사용자 요청으로 1 → 8
+# 회피 그림 (2026-11-18): 핵심 자세는 ChatGPT, 사이는 PixelLab (assets/concepts/pixellab/player_import/dodge_kit/).
+# 돌진 자세가 서 있는 그림보다 넓어 64×48 칸, 발 밑 가운데가 칸 아래 가운데. 왼쪽은 측면을 뒤집음.
+# 0.25초 이동 동안 앞 PLAYER_DODGE_MOVE_FRAMES 장(웅크림 → 박차기 → 돌진), 도착한 뒤 나머지(미끄러짐 → 멈춤)를
+# PLAYER_DODGE_TAIL_TIME 동안 더 보여 준다 (사용자 결정: 너무 빨라 스쳐 지나가서). 그림만이라 그동안 움직이거나
+# 다른 행동을 하면 바로 끊긴다.
+PLAYER_DODGE_SPRITE_WIDTH = 64
+PLAYER_DODGE_SPRITE_HEIGHT = 48
+PLAYER_DODGE_FRAMES = 6
+PLAYER_DODGE_MOVE_FRAMES = 4
+PLAYER_DODGE_TAIL_TIME = 0.15  # 초
 # 퍼펙트 회피 (2026-11-17 사용자 결정): 노란색 공격(패링 불가·회피 가능)이 터지기 이 시간 안에 그 범위 안에서 회피를 시작했으면
 # 성공 → 회피 대기 시간을 없앤다. 타이밍은 넉넉하게.
 PLAYER_PERFECT_DODGE_WINDOW = 0.4  # 초

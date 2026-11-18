@@ -7,7 +7,7 @@ from game import config
 from game.player.player import (LEFT_SHEET_STATES, SHADOW_PATH, SPRITE_FALLBACK, attack_hand_sheet_path,
                                attack_sheet_path, sprite_sheet_path, weapon_sheet_path,
                                weapon_view_art_path)
-from game.player.state_machine import ATTACK, IDLE, JUMP, STATES, WALK
+from game.player.state_machine import DODGE, ATTACK, IDLE, JUMP, STATES, WALK
 
 VIEWS = ("front", "back", "side")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -68,6 +68,7 @@ FRAMES = {
     IDLE: config.PLAYER_IDLE_FRAMES,
     WALK: config.PLAYER_WALK_FRAMES,
     JUMP: config.PLAYER_JUMP_FRAMES,
+    DODGE: config.PLAYER_DODGE_FRAMES,  # 2026-11-18 회피 그림 (64×48)
 }
 # 공중 프레임(도약 ~ 내려옴): 발이 바닥 줄에 닿지 않아도 된다 (2026-11-17 PixelLab 점프)
 AIRBORNE_FRAMES = {(JUMP, i) for i in range(config.PLAYER_JUMP_TAKEOFF_FRAMES,
@@ -82,11 +83,13 @@ def views_of(state):
 
 
 def frame_width(state):
-    return config.PLAYER_JUMP_SPRITE_WIDTH if state == JUMP else config.PLAYER_SPRITE_WIDTH
+    return {JUMP: config.PLAYER_JUMP_SPRITE_WIDTH, DODGE: config.PLAYER_DODGE_SPRITE_WIDTH}.get(
+        state, config.PLAYER_SPRITE_WIDTH)
 
 
 def frame_height(state):
-    return config.PLAYER_JUMP_SPRITE_HEIGHT if state == JUMP else config.PLAYER_SPRITE_HEIGHT
+    return {JUMP: config.PLAYER_JUMP_SPRITE_HEIGHT, DODGE: config.PLAYER_DODGE_SPRITE_HEIGHT}.get(
+        state, config.PLAYER_SPRITE_HEIGHT)
 
 
 def frames_of(state, view):
