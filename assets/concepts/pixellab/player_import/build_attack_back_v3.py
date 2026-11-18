@@ -22,6 +22,7 @@ import build_parry_front as pf  # noqa: E402
 import build_remake_preview as b  # noqa: E402
 
 KIT = os.path.join(HERE, 'attack_back_kit')
+GAME = os.path.normpath(os.path.join(HERE, '..', '..', '..', 'images', 'player'))
 HITS = {
     2: {'dir': 'hit2_v2', 'src': 'result_hit2_back.png',
         # 쳐올리는 장(8장 중 번호)의 잔상: (원 중심 x, y, 반지름, 시작 각도, 끝 각도, 두께). 오른쪽 아래 → 왼쪽 위
@@ -29,6 +30,40 @@ HITS = {
     3: {'dir': 'hit3_v2', 'src': 'result_hit3_back.png', 'swoosh': None},
 }
 OUT = 'attack_back_v3_68.png'
+
+
+def body_feet(im):
+    """발 맞춤 기준: (후드 가로 가운데, 몸 가장 아래 줄).
+
+    칼의 검은 테두리가 발 높이에서 몸 옆을 지나면 발 가운데가 칼 쪽으로 끌려 그림이 옆으로 밀렸다 (2타·3타 첫 장).
+    가로는 칼이 닿지 않는 후드(몸 위 25%)의 가운데로, 세로는 갈색 픽셀(빨강이 파랑보다 확실히 큰)의 가장 아래로 잡는다.
+    """
+    px = im.load()
+    body = [(x, y) for y in range(im.height) for x in range(im.width)
+            if px[x, y][3] > 128 and not b.is_blue(px[x, y])]
+    top = min(y for _, y in body)
+    brown = [y for x, y in body if px[x, y][0] > px[x, y][2] + 5]
+    bottom = max(brown)
+    hood = [x for x, y in body if y <= top + (bottom - top) * 0.25]
+    return (min(hood) + max(hood)) / 2, bottom
+
+
+def no_blue(im):
+    im = im.convert('RGBA').copy()
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            if px[x, y][3] and b.is_blue(px[x, y]):
+                px[x, y] = (0, 0, 0, 0)
+    return im
+
+
+def body_h(im):
+    """칼(파랑) 빼고 몸 키."""
+    im = im.convert('RGBA')
+    px = im.load()
+    rows = [y for y in range(im.height) if any(px[x, y][3] > 128 and not b.is_blue(px[x, y]) for x in range(im.width))]
+    return rows[-1] - rows[0] + 1
 
 
 def v2_sheet():
@@ -52,19 +87,22 @@ def hood_width(im):
 def build(hit, ref, palette):
     cfg = HITS[hit]
     folder = os.path.join(KIT, cfg['dir'])
-    rfx, rfy = pb.feet(ref)
+    rfx, rfy = body_feet(ref)
     x0, y0, x1, y1 = ref.getchannel('A').getbbox()
     cx, foot = (x0 + x1) // 2, y1 - 1
     poses = v2.split_n(pb.remove_bg(Image.open(os.path.join(folder, cfg['src']))))
     assert len(poses) == 8, (hit, len(poses))
-    # 크기: 첫 자세 키는 웅크림에 따라 달라 맞지 않았다 → 후드 너비(파랑 제외 윗부분 최대 너비)의 8장 가운데값으로 맞춘다
-    widths = sorted(hood_width(p) for p in poses)
-    scale = hood_width(ref) / widths[len(widths) // 2]
+    # 크기 (같은 날 사용자: 1타와 약간 다름 → 재 보니 2타가 약 15%, 3타가 약 8% 작았다. 후드 너비로 맞추면 ChatGPT 가 후드를
+    # 넓게 그려 작아짐): 같은 타 정면 그림의 장마다 키(칼 빼고)에 맞추는 배율들의 가운데값으로 맞춘다.
+    front = Image.open(os.path.join(GAME, 'sword_attack', f'front_{hit}.png')).convert('RGBA')
+    fw = front.width // 8
+    ratios = sorted(body_h(front.crop((k * fw, 0, (k + 1) * fw, front.height))) / body_h(p) for k, p in enumerate(poses))
+    scale = ratios[len(ratios) // 2]
     cells = [ref]
     for p in poses:
         small = pb.snap(p.resize((max(1, round(p.width * scale)), max(1, round(p.height * scale))), Image.NEAREST),
                         palette)
-        fx, fy = pb.feet(small)
+        fx, fy = body_feet(small)  # 발 찾기에서 칼은 뺀다 (줄인 칼 가장자리의 푸르스름한 점을 발로 잡아 옆으로 밀렸음)
         c = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
         c.alpha_composite(small, (round(rfx - fx), round(rfy - fy)))
         cells.append(c)
