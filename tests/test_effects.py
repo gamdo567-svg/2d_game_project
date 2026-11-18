@@ -79,8 +79,26 @@ class GolemStompEffectTest(unittest.TestCase):
         self.assertEqual(golem.effects, [])  # 한 프레임만 전달
 
     def test_other_patterns_have_no_effect(self):
-        for pattern in (KICK, LASER):
-            self.assertEqual(self.release(pattern).effects, [], pattern)
+        self.assertEqual(self.release(KICK).effects, [])
+
+    def test_laser_blast_at_aim(self):
+        # ④ 레이저 (2026-11-18): 조준점에서 폭발 이펙트 (인물 위, 화면 흔들림)
+        golem = self.release(LASER)
+        (effect,) = golem.effects
+        self.assertIs(effect.spec, config.GOLEM_LASER_BLAST_EFFECT)
+        self.assertEqual((effect.x, effect.y), golem.aim)
+        self.assertTrue(effect.spec["on_top"])
+        self.assertIsNotNone(effect.shake)
+
+    def test_laser_effect_sheets_match_spec(self):
+        from PIL import Image
+        charge = config.GOLEM_LASER_CHARGE
+        with Image.open(charge["path"]) as im:
+            self.assertEqual(im.size, (charge["frame_size"] * charge["phases"], charge["frame_size"] * charge["stages"]))
+        blast = config.GOLEM_LASER_BLAST_EFFECT
+        with Image.open(blast["path"]) as im:
+            self.assertEqual(im.size, (blast["frame_size"] * blast["frames"], blast["frame_size"]))
+        self.assertTrue(config.GOLEM_LASER_BEAM["path"].exists())
 
     def test_slam_starts_effect_at_front_area_center(self):
         golem = Golem(6, 4, open_room())

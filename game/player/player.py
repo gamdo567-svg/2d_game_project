@@ -130,6 +130,7 @@ class Player:
         self._since_dodge = float("inf")
         self._perfect_this_dodge = False
         self.perfect_text_left = 0.0
+        self.last_perfect_dodge = False  # 마지막으로 받은 공격을 퍼펙트 회피했는지
         self.dodge_cooldown_left = 0.0  # 회피를 다시 쓸 수 있을 때까지 남은 시간
         # 상태별 애니메이션. 점프·패링·회피는 행동 진행도에 맞춰 프레임을 고른다.
         self.animations: dict[str, LoopAnimation | Jump | Parry | SwordCombo | Dodge] = {
@@ -273,7 +274,7 @@ class Player:
         퍼펙트 회피: 노란색 공격(패링 불가·회피 가능)이 터지기 PLAYER_PERFECT_DODGE_WINDOW 초 안에
         그 범위 안에서 회피를 시작했으면 회피 대기 시간을 없앤다 (회피 한 번에 한 번).
         """
-        self._check_perfect_dodge(attack)
+        self.last_perfect_dodge = self._check_perfect_dodge(attack)
         if (self.col, self.row) not in attack.tiles:
             return MISSED
         if attack.jumpable and self.state == JUMP and self.jump.is_airborne:
@@ -292,7 +293,8 @@ class Player:
         self.fsm.trigger("hurt")
         return HIT
 
-    def _check_perfect_dodge(self, attack: EnemyAttack) -> None:
+    def _check_perfect_dodge(self, attack: EnemyAttack) -> bool:
+        """퍼펙트 회피였으면 True (골렘 레이저 스택에서도 씀)."""
         yellow = not attack.parryable and attack.dodgeable
         if (yellow and self._dodge_start_tile in attack.tiles
                 and self._since_dodge <= config.PLAYER_PERFECT_DODGE_WINDOW):
@@ -300,6 +302,8 @@ class Player:
             self._perfect_this_dodge = True
             self.dodge_cooldown_left = 0.0
             self.perfect_text_left = config.PLAYER_PERFECT_TEXT_TIME
+            return True
+        return False
 
     def _start_dodge(self, input_state: InputState) -> bool:
         """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음).

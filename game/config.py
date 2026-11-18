@@ -219,12 +219,15 @@ GOLEM_MOVE_SPEED = 1.5  # 칸/초
 GOLEM_REST_TIME = 1.5  # 초. 공격이 끝나고 다음 행동까지 쉼
 GOLEM_RECOVER_TIME = 0.6  # 초. 공격이 터진 뒤 자세를 되돌리는 시간 (때리기 좋은 틈)
 GOLEM_NEAR = 2  # 칸. 이 거리 안이면 ①·②·③ 중 하나 (2026-11-17 사용자 요청으로 ② 추가)
-GOLEM_MID = 5  # 칸. 이 거리 안이면 ② 또는 다가감, 더 멀면 ④ 또는 다가감
+GOLEM_MID = 5  # 칸. 이 거리 안이면 ② 또는 다가감, 더 멀면 다가감
 GOLEM_KICK_CHANCE = 0.5  # 중간 거리에서 ② 를 쓸 확률 (나머지는 다가감)
-# ④ 레이저를 패턴으로 고를지. 2026-11-17 사용자 요청: 시험을 위해 잠시 뺌 (나중에 다시 넣음, 코드는 그대로)
-GOLEM_LASER_ENABLED = False
-GOLEM_LASER_CHANCE = 0.5  # 멀 때 ④ 를 쓸 확률 (쓸 수 있을 때만, 나머지는 다가감)
-GOLEM_LASER_COOLDOWN = 8.0  # 초. ④ 를 쓰고 나서 다시 쓸 수 있을 때까지 (레이저만 쏘며 제자리에 있지 않게)
+# ④ 레이저를 패턴으로 고를지. 2026-11-17 시험을 위해 잠시 뺐다가 2026-11-18 사용자 요청으로 다시 넣음
+GOLEM_LASER_ENABLED = True
+# ④ 레이저 스택 (2026-11-18 사용자 결정): 빨강(패링 가능) 공격을 패링으로 막지 못하거나, 노랑(패링 불가) 공격을
+#   퍼펙트 회피로 피하지 못하면(걸어서 피해도) 한 스택. GOLEM_LASER_STACKS 만큼 쌓이면 다음 패턴은 레이저, 쏘면 0.
+#   하늘색(점프로만 피함)·레이저 자신은 세지 않는다. 주인공이 GOLEM_LASER_FAR 칸보다 멀면 스택과 상관없이 바로 레이저.
+GOLEM_LASER_STACKS = 4
+GOLEM_LASER_FAR = 8  # 칸 (이보다 멀면)
 GOLEM_RESPAWN_TIME = 3.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남
 GOLEM_HIT_FLASH_TIME = 0.1
 # 골렘 그림 (2026-11-17, PixelLab 생성 그림 assets/images/golem/<south|north|east|west>.png, 원본 96×96, 투명 배경).
@@ -297,6 +300,27 @@ GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
 # 스프라이트 시트: frame_size × frame_size 원본 프레임을 columns 개씩 줄지어 놓은 그림 (왼쪽 위부터 오른쪽으로).
 # 프레임 가운데가 이펙트가 터지는 지점이고, RENDER_SCALE 로 nearest 확대해 그린다.
 EFFECT_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "effects"
+# ④ 레이저 그림 (2026-11-18 사용자 요청). 생성 스크립트: assets/concepts/vfx/laser/build_golem_laser.py
+#   충전 구: 64×64 칸, 줄 = 크기 단계(충전 진행도로 고름), 칸 = 빨려 드는 빛 위치(phase_fps 로 돌림). 골렘 코어에 그린다.
+#   core: 방향별 코어 자리 (그림 가운데에서 오른쪽, 발 밑에서 위로 원본 픽셀). 서쪽은 동쪽을 뒤집은 그림.
+GOLEM_LASER_CHARGE = {
+    "path": EFFECT_IMAGE_DIR / "golem_laser_charge.png",
+    "frame_size": 64, "stages": 12, "phases": 4, "phase_fps": 12,
+    "core": {"south": (0, 45), "north": (0, 46), "east": (16, 51), "west": (-16, 51)},
+}
+# 하얀 레이저: 단면 그림을 코어에서 조준점까지 늘려 돌려 그린다. 굵기(화면 픽셀)는 beam_time 동안 0 으로 줄어든다.
+GOLEM_LASER_BEAM = {"path": EFFECT_IMAGE_DIR / "golem_laser_beam.png", "thickness": 28}
+# 조준점 폭발: 흰 섬광 → 충격 고리 → 불꽃·돌 파편, 끝나면 아무것도 남지 않음. 인물 위에 그림, 화면 흔들림.
+GOLEM_LASER_BLAST_EFFECT = {
+    "path": EFFECT_IMAGE_DIR / "golem_laser_blast.png",
+    "frame_size": 160,
+    "columns": 16,
+    "frames": 16,
+    "fps": 18,
+    "shake": {"amplitude": 10, "duration": 0.4, "frequency": 20},
+    "draw_tiles": 5,  # 4×4 폭발 칸보다 조금 크게 (고리가 범위 둘레까지 퍼짐)
+    "on_top": True,
+}
 # 화면 흔들림: 카메라에 더하는 화면 픽셀 오프셋. amplitude(픽셀)에서 duration(초) 동안 0 으로 줄고 frequency(번/초)로 떨림
 # ③ 발 구르기 (2026-11-17 사용자 요청): 바닥이 거미줄로 갈라지고 둘레 바닥 판이 솟았다 가라앉으며 돌이 튐, 화면 흔들림.
 #   생성 스크립트: assets/concepts/vfx/stomp/build_golem_stomp.py (288×288, 30프레임, 12fps = 2.5초)

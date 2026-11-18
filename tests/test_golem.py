@@ -2,7 +2,7 @@
 import unittest
 
 from game import config
-from game.combat.enemy_attack import AVOIDED, HIT, MISSED, PARRIED
+from game.combat.enemy_attack import AVOIDED, HIT, MISSED, PARRIED, EnemyAttack
 from game.combat.posture import PostureGauge
 from game.enemies.golem import DEAD, KICK, LASER, RECOVER, SLAM, STOMP, STUNNED, WALK, WINDUP, Golem
 from game.input.input_state import Action, InputState
@@ -128,12 +128,6 @@ class WarningColorTest(unittest.TestCase):
 
 
 class GolemBehaviorTest(unittest.TestCase):
-    def enable_laser(self):
-        # 레이저는 지금 빠져 있어(GOLEM_LASER_ENABLED) 레이저 시험에서만 켠다
-        original = config.GOLEM_LASER_ENABLED
-        config.GOLEM_LASER_ENABLED = True
-        self.addCleanup(setattr, config, "GOLEM_LASER_ENABLED", original)
-
     def make(self, pick, roll=0.0):
         self.golem = Golem(6, 4, open_room(), FixedRng(pick, roll))
         self.golem.state_left = 0.0  # 쉬지 않고 바로 판단
@@ -164,33 +158,46 @@ class GolemBehaviorTest(unittest.TestCase):
             seen.add(self.golem.pattern)
         self.assertEqual(seen, {SLAM, KICK, STOMP})
 
-    def test_laser_disabled_for_now(self):
-        # 2026-11-17 사용자 요청: 시험을 위해 레이저를 잠시 뺌. 멀어도 레이저 대신 다가간다
-        self.assertFalse(config.GOLEM_LASER_ENABLED)
-        self.make(None, roll=0.0)
-        self.advance(DT, (14, 8))
-        self.assertNotEqual(self.golem.pattern, LASER)
-        self.assertEqual(self.golem.state, WALK)
-
-    def test_mid_kick_and_far_laser(self):
-        self.enable_laser()
+    def test_mid_kick(self):
         self.make(None, roll=0.0)
         self.advance(DT, (2, 4))  # 거리 4: 차기
         self.assertEqual(self.golem.pattern, KICK)
-        self.make(None, roll=0.0)
-        self.advance(DT, (14, 8))  # 멀다: 레이저
+
+    def test_very_far_fires_laser_right_away(self):
+        # 2026-11-18 사용자 결정: GOLEM_LASER_FAR 칸보다 멀면 스택과 상관없이 바로 레이저
+        self.make(None, roll=0.9)
+        self.advance(DT, (6 + config.GOLEM_LASER_FAR + 1, 4))
         self.assertEqual(self.golem.pattern, LASER)
 
-    def test_approaches_until_near(self):
-        # 주인공이 멀리 있으면 레이저를 한 번 쏜 뒤에는 쿨타임 동안 걸어서 다가와 가까운 패턴을 쓴다
-        self.enable_laser()
-        self.make(SLAM, roll=0.0)
-        self.advance(DT, (14, 4))
+    def test_far_but_not_very_far_walks(self):
+        self.make(None, roll=0.9)
+        self.advance(DT, (6 + config.GOLEM_LASER_FAR, 4))  # 딱 GOLEM_LASER_FAR 칸: 다가감
+        self.assertEqual(self.golem.state, WALK)
+
+    def test_stacks_trigger_laser_and_reset(self):
+        self.make(SLAM)
+        red = EnemyAttack(frozenset({(5, 4)}), 10, parryable=True)
+        yellow = EnemyAttack(frozenset({(5, 4)}), 10, dodgeable=True)
+        blue = EnemyAttack(frozenset({(5, 4)}), 10, jumpable=True)
+        self.golem.on_attack_result(red, parried=True, perfect_dodged=False)  # 막음
+        self.golem.on_attack_result(yellow, parried=False, perfect_dodged=True)  # 퍼펙트 회피
+        self.golem.on_attack_result(blue, parried=False, perfect_dodged=False)  # 하늘색은 세지 않음
+        self.assertEqual(self.golem.laser_stacks, 0)
+        for _ in range(2):
+            self.golem.on_attack_result(red, parried=False, perfect_dodged=False)
+            self.golem.on_attack_result(yellow, parried=False, perfect_dodged=False)
+        self.assertEqual(self.golem.laser_stacks, config.GOLEM_LASER_STACKS)
+        self.advance(DT, (5, 4))  # 가까워도 레이저
         self.assertEqual(self.golem.pattern, LASER)
-        self.advance(config.GOLEM_LASER["windup"] + config.GOLEM_RECOVER_TIME + config.GOLEM_REST_TIME + 0.05, (14, 4))
-        self.assertNotEqual(self.golem.pattern, LASER)  # 쿨타임: 다시 레이저를 쏘지 않고 걷는다
-        self.advance(6.0, (14, 4))
-        self.assertLessEqual(self.golem.distance_to((14, 4)), config.GOLEM_MID)
+        self.advance(config.GOLEM_LASER["windup"] + DT, (5, 4))
+        self.assertEqual(self.golem.laser_stacks, 0)
+        self.advance(config.GOLEM_RECOVER_TIME + config.GOLEM_REST_TIME, (5, 4))
+        self.assertNotEqual(self.golem.pattern, LASER)  # 스택이 비어 다시 가까운 패턴
+
+    def test_approaches_until_near(self):
+        self.make(SLAM, roll=0.9)
+        self.advance(8.0, (13, 4))
+        self.assertLessEqual(self.golem.distance_to((13, 4)), config.GOLEM_NEAR)
 
     def test_far_walks_toward_player(self):
         self.make(None, roll=0.9)
@@ -199,8 +206,8 @@ class GolemBehaviorTest(unittest.TestCase):
         self.assertEqual((self.golem.col, self.golem.row), (7, 4))
 
     def test_laser_aim_follows_player_until_fire(self):
-        self.enable_laser()
         self.make(None, roll=0.0)
+        self.golem.laser_stacks = config.GOLEM_LASER_STACKS
         self.advance(DT, (14, 8))
         self.advance(0.5, (14, 1))
         self.assertEqual(self.golem.aim, (14.5, 1.5))  # 주인공 칸 가운데를 그대로 따라옴
@@ -328,6 +335,19 @@ class GolemVsPlayerTest(unittest.TestCase):
         self.assertEqual(self.player.state, JUMP)
         self.run_for(config.PLAYER_JUMP_DURATION / 2)
         self.assertEqual(self.player.hp, config.PLAYER_MAX_HP)  # 공중이라 피함
+
+    def test_unblocked_attacks_stack_in_scene(self):
+        # 장면: 빨강 ① 을 맞으면 한 스택, 패링하면 스택 없음 (2026-11-18 사용자 결정)
+        self.start_pattern(SLAM)
+        self.run_until_release(0.0)
+        self.run_for(0.05)
+        self.assertEqual(self.golem.laser_stacks, 1)
+        self.run_for(config.PLAYER_HURT_TIME + 0.1)
+        self.start_pattern(SLAM)
+        self.run_until_release(0.05)
+        self.tap(Action.PARRY)
+        self.run_for(0.1)
+        self.assertEqual(self.golem.laser_stacks, 1)
 
     def test_laser_follows_walking_player_but_dodge_avoids(self):
         self.start_pattern(LASER)

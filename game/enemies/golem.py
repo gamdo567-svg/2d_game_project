@@ -2,7 +2,9 @@
 
 - 1×2칸(발 칸과 그 위 한 칸)을 차지한다 (2026-11-17 사용자 요청으로 2×2 → 3×3 → 1×2). 주인공이 멀면 천천히 다가오고, 거리에 따라 패턴을 고른다.
     가까우면(GOLEM_NEAR) ① 두 손 내려찍기·② 앞차기·③ 한 발 내려찍기 중 하나, 중간(GOLEM_MID)이면 ② 앞차기 또는 다가감,
-    더 멀면 ④ 코어 레이저(GOLEM_LASER_COOLDOWN 에 한 번) 또는 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
+    더 멀면 다가감. 걸을 때는 쉬지 않고 이어서 걷는다.
+    ④ 코어 레이저는 레이저 스택(막지 못한 빨강·노랑 공격 수)이 GOLEM_LASER_STACKS 만큼 쌓였거나
+    주인공이 GOLEM_LASER_FAR 칸보다 멀면 쓴다 (2026-11-18 사용자 결정). 쏘면 스택은 0.
 - 패턴마다 예고(windup) → 터짐(EnemyAttack 을 attacks 에 넣음) → 자세 되돌림(recover) → 쉼(rest).
     ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 4, 패링 불가·회피 무적 가능  ③ 중심 7×7, 점프로만 피함
     범위의 기준은 발 칸(몸 맨 아래 줄 가운데)이고, 그 칸 바로 앞부터 늘린다 (2026-11-17 사용자 결정). ①·② 가로 3 은 대칭,
@@ -93,7 +95,7 @@ class Golem:
         self.beam_tiles: frozenset[Tile] = frozenset()
         self.beam_left = 0.0
         self.flash_left = 0.0
-        self.laser_cooldown_left = 0.0
+        self.laser_stacks = 0  # 막지 못한 빨강·노랑 공격 수 (GOLEM_LASER_STACKS 면 다음은 레이저)
         self._move_from = (float(self.col), float(self.row))
         self._move_t = 1.0
         self.walk_distance = 0.0
@@ -207,6 +209,22 @@ class Golem:
             self.beam_tiles = frozenset()
         return True
 
+    def on_attack_result(self, attack: EnemyAttack, parried: bool, perfect_dodged: bool) -> None:
+        """방금 터진 공격의 결과로 레이저 스택을 쌓는다 (2026-11-18 사용자 결정).
+
+        빨강(패링 가능)은 패링으로, 노랑(패링 불가·회피 가능)은 퍼펙트 회피로 막아야 한다. 걸어서 피했거나 그냥
+        회피했거나 맞았으면 한 스택. 하늘색(점프로만 피함)과 레이저 자신은 세지 않는다.
+        """
+        if self.pattern == LASER or attack.jumpable:
+            return
+        blocked = parried if attack.parryable else perfect_dodged
+        if not blocked:
+            self.laser_stacks = min(config.GOLEM_LASER_STACKS, self.laser_stacks + 1)
+
+    @property
+    def laser_charged(self) -> bool:
+        return self.laser_stacks >= config.GOLEM_LASER_STACKS
+
     def on_parried(self) -> None:
         """① 내려찍기가 패링당했다: 게이지 25%, 가득 차면 기절 (경직은 없음)."""
         if self.posture.add_parried():
@@ -219,7 +237,6 @@ class Golem:
         self.attacks = []
         self.effects = []
         self.flash_left = max(0.0, self.flash_left - dt)
-        self.laser_cooldown_left = max(0.0, self.laser_cooldown_left - dt)
         self.beam_left = max(0.0, self.beam_left - dt)
         if self.beam_left == 0.0:
             self.beam_tiles = frozenset()
@@ -263,20 +280,15 @@ class Golem:
 
     def _decide(self, player_tile: Tile, can_place: Callable[[int, int], bool]) -> None:
         dist = self.distance_to(player_tile)
-        if dist <= config.GOLEM_NEAR:
+        if config.GOLEM_LASER_ENABLED and (self.laser_charged or dist > config.GOLEM_LASER_FAR):
+            self._windup(LASER, player_tile)
+        elif dist <= config.GOLEM_NEAR:
             self._windup(self.rng.choice([SLAM, KICK, STOMP]), player_tile)
         elif dist <= config.GOLEM_MID:
             if self.rng.random() < config.GOLEM_KICK_CHANCE or not self._step_toward(player_tile, can_place):
                 self._windup(KICK, player_tile)
-        else:
-            laser_ready = config.GOLEM_LASER_ENABLED and self.laser_cooldown_left <= 0.0
-            if laser_ready and self.rng.random() < config.GOLEM_LASER_CHANCE:
-                self._windup(LASER, player_tile)
-            elif not self._step_toward(player_tile, can_place):
-                if laser_ready:
-                    self._windup(LASER, player_tile)
-                else:
-                    self._rest(0.5)  # 길이 막혀 있으면 잠깐 쉬고 다시 판단
+        elif not self._step_toward(player_tile, can_place):
+            self._rest(0.5)  # 길이 막혀 있으면 잠깐 쉬고 다시 판단
 
     def _step_toward(self, player_tile: Tile, can_place: Callable[[int, int], bool]) -> bool:
         """주인공 쪽으로 한 칸 걷는다 (차이가 큰 축 먼저). 못 가면 False."""
@@ -383,7 +395,9 @@ class Golem:
         if self.pattern == LASER:
             tiles = self.beam_tiles = self.laser_tiles()  # 폭발 칸 (잠깐 보여 줌)
             self.beam_left = spec["beam_time"]
-            self.laser_cooldown_left = config.GOLEM_LASER_COOLDOWN
+            self.laser_stacks = 0
+            # 조준점 폭발 (흰 섬광·충격 고리·불꽃, 화면 흔들림)
+            self.effects.append(SpriteEffect(config.GOLEM_LASER_BLAST_EFFECT, self.aim[0], self.aim[1]))
         self.attacks.append(EnemyAttack(tiles, spec["damage"], direction=self.facing, **PATTERN_RULES[self.pattern]))
         if self.pattern == STOMP:
             # 발 구르기: 발 칸 가운데에서 바닥이 갈라지는 이펙트 + 화면 흔들림
@@ -443,8 +457,10 @@ class Golem:
         else:
             core_y = self._draw_shapes(renderer, cx, bottom)
             bar_top = bottom + 66 * s
-        if self.state == WINDUP and self.pattern == LASER:
-            # 조준선: 레이저도 패링 불가 공격이라 노란색 (발사가 가까울수록 진하게)
+        if self._draw_laser(renderer, grid, cx, bottom):
+            pass
+        elif self.state == WINDUP and self.pattern == LASER:
+            # 그림이 없을 때(임시 도형): 조준선만
             ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
             renderer.draw_line(cx, core_y, ax, ay, self.warning_color())
         # 체력·패링 게이지 막대 (머리 위)
@@ -482,6 +498,39 @@ class Golem:
             self.sprite_path(), 0, size, size,
             cx, bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s, size * s, size * s,
         ))
+
+    @property
+    def laser_charge_frame(self) -> int | None:
+        """충전 구 그림 번호 (④ 예고 중에만): 줄 = 충전 진행도로 고른 크기 단계, 칸 = 지난 시간으로 돌린 빛 알갱이."""
+        if not (self.state == WINDUP and self.pattern == LASER):
+            return None
+        spec = config.GOLEM_LASER_CHARGE
+        elapsed = config.GOLEM_LASER["windup"] - max(0.0, self.state_left)
+        stage = min(spec["stages"] - 1, int(self.windup_progress * spec["stages"]))
+        phase = int(elapsed * spec["phase_fps"]) % spec["phases"]
+        return stage * spec["phases"] + phase
+
+    def _draw_laser(self, renderer, grid: Grid, cx: float, bottom: float) -> bool:
+        """④ 충전 구(코어)·조준선, 발사 직후 하얀 레이저 (코어 → 조준점). 그린 것이 있으면 True."""
+        spec, s = config.GOLEM_LASER_CHARGE, config.RENDER_SCALE
+        ox, oy = spec["core"][self.view]
+        core_x, core_y = cx + ox * s, bottom + oy * s
+        ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
+        frame = self.laser_charge_frame
+        if frame is not None:
+            renderer.draw_line(core_x, core_y, ax, ay, self.warning_color())  # 조준선 (노랑, 발사가 가까울수록 진하게)
+            size = spec["frame_size"]
+            return bool(renderer.draw_sheet_frame(str(spec["path"]), frame, spec["phases"], size, size,
+                                                  core_x, core_y, size * s, size * s))
+        if self.beam_left > 0.0:
+            beam = config.GOLEM_LASER_BEAM
+            thickness = max(2, round(beam["thickness"] * self.beam_left / config.GOLEM_LASER["beam_time"]))
+            length = math.hypot(ax - core_x, ay - core_y)
+            angle = math.degrees(math.atan2(ay - core_y, ax - core_x))
+            renderer.draw_image_rotated(str(beam["path"]), (core_x + ax) / 2, (core_y + ay) / 2,
+                                        round(length), thickness, angle)
+            return True
+        return False
 
     def attack_sprite_path(self, name: str) -> str:
         return str(config.GOLEM_IMAGE_DIR / f"{name}_{self.view}.png")
