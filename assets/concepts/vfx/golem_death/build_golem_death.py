@@ -7,7 +7,7 @@
   2. 무너짐 (0.5~1.6초): 돌덩이가 따로따로 떨어진다. 바깥쪽 돌은 바깥으로 튕기고, 위쪽 돌일수록 늦게 떨어져
      아래에서부터 무너지는 느낌. 중력·바닥 튕김·마찰·조금씩 기울어짐. 바닥은 돌마다 조금 앞뒤로 달라 돌무더기가 된다.
   3. 돌무더기 (1.6~2.7초): 가만히 있음.
-  4. 사라짐 (2.7~3.7초): 베이어 디더로 점점 듬성듬성해지며 사라진다.
+  4. 사라짐 (2.7~3.7초): 돌무더기 전체가 고르게 투명해지며 사라진다 (2026-11-18 디더에서 바꿈).
 같은 결과가 나오도록 난수 시드를 고정한다. 서쪽은 동쪽을 좌우 반전.
 출력: assets/images/golem/death_<dir>.png (가로 한 줄 FRAMES 장, 한 장 CANVAS), golem_death_preview.gif
 실행: python build_golem_death.py
@@ -35,7 +35,6 @@ SEED_MIN = 40  # 이보다 작은 돌덩이는 옆 돌에 붙인다
 GLOW = [(250, 254, 254), (238, 248, 254), (217, 232, 245), (212, 222, 226), (191, 213, 233), (175, 201, 226),
         (160, 180, 196)]
 OFF = [(78, 82, 92), (74, 78, 88), (70, 74, 84), (68, 72, 80), (64, 68, 78), (60, 64, 74), (58, 62, 70)]
-BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 
 
 def is_outline(c) -> bool:
@@ -184,12 +183,10 @@ def render(view_img: Image.Image, seed: int) -> list[Image.Image]:
             canvas.alpha_composite(img, (x, y))
         fade_k = f - (n_off + n_fall + n_rest)
         if fade_k >= 0:
-            alpha = 1.0 - (fade_k + 1) / round(T_FADE * FPS)
-            px = canvas.load()
-            for y in range(CANVAS[1]):
-                for x in range(CANVAS[0]):
-                    if px[x, y][3] and (BAYER[y % 4][x % 4] + 0.5) / 16 >= alpha:
-                        px[x, y] = (0, 0, 0, 0)
+            # 돌무더기 전체가 고르게 투명해진다 (2026-11-18 사용자 요청: 디더로 듬성듬성 사라지면 노이즈처럼 보임)
+            alpha = 1.0 - (fade_k + 1) / (round(T_FADE * FPS) + 1)
+            a = canvas.getchannel("A").point(lambda v: round(v * alpha))
+            canvas.putalpha(a)
         frames.append(canvas)
     return frames
 
