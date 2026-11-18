@@ -10,6 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
+| T-047 | 골렘 죽음 동작 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 코어·눈 꺼짐 → 돌덩이별로 무너짐 → 사라짐, 4방향 계산 그림 (D-047) |
 | T-046 | 회피 대기 5초, 걷다가 공격 시 재빨리 가지 않기 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 걷던 칸은 평소 속도로 마저 간 뒤 공격 (D-046) |
 | T-045 | 퍼펙트 회피 잔상·상대 패링 게이지, 회피 뒤 일어섬 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 게이지 25%, 하늘색 잔상 0.45초, 회피 그림 8장·도착 뒤 0.3초 (D-045) |
 | T-044 | 주인공 회피 동작 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | ChatGPT 핵심 자세 + PixelLab 사이, 6장(이동 4 + 멈춤 2, 0.15초) (D-044) |
