@@ -93,8 +93,9 @@ def place(item: Image.Image, guard: tuple[int, int], angle: float) -> Image.Imag
 PIXELLAB_ART = {
     "front": ("diag_C.png", False, (16, 16), (8, 16)),
     "back": ("diag_C.png", True, (16, 16), (21, 19)),
-    # 측면은 사선 그림(diag_C)을 세운 것을 밑그림으로 다시 그린 side_C (같은 칼로 보이게, 2026-11-18 사용자 지적)
-    "side": ("side_C.png", False, (12, 15), (7, 15)),
+    # 측면은 비스듬히 멘 모양 side_E: 손잡이는 어깨 뒤(후드에 가려짐), 칼집 끝은 등 뒤 아래로 (2026-11-18 사용자 지적:
+    # 세로로 세우면 칼이 머리 뒤에 붙은 것처럼 보임). 얇게 줄인 side_C 를 기울인 것을 밑그림으로 PixelLab 이 다시 그림.
+    "side": ("side_E.png", False, (17, 20), (10, 19)),
 }
 
 
@@ -115,9 +116,36 @@ def thin(art: Image.Image, name: str) -> Image.Image:
     return out
 
 
+# 색 맞춤: side_E 는 칼집 가죽이 정면·후면(diag_C)보다 밝아, 외곽선과 가드 아래 칼집 색을 diag_C 의 색으로 바꾼다 (모양 그대로).
+RECOLOR = {"side_E.png": {
+    "all": {(56, 36, 32): (40, 26, 26)},
+    "below": (21, {(139, 95, 65): (92, 60, 48), (92, 60, 48): (74, 48, 40), (165, 101, 63): (139, 95, 65)}),
+}}
+
+
+def recolor(art: Image.Image, name: str) -> Image.Image:
+    if name not in RECOLOR:
+        return art
+    rule = RECOLOR[name]
+    row, below = rule["below"]
+    out = art.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            c = px[x, y]
+            if not c[3]:
+                continue
+            rgb = c[:3]
+            if y > row and rgb in below:
+                rgb = below[rgb]
+            rgb = rule["all"].get(rgb, rgb)
+            px[x, y] = rgb + (255,)
+    return out
+
+
 def place_art(view: str) -> Image.Image:
     name, flip, (ax, ay), (tx, ty) = PIXELLAB_ART[view]
-    art = thin(Image.open(HERE / "pixellab_sheath" / name).convert("RGBA"), name)
+    art = recolor(thin(Image.open(HERE / "pixellab_sheath" / name).convert("RGBA"), name), name)
     if flip:
         art = art.transpose(Image.FLIP_LEFT_RIGHT)
         ax = art.width - 1 - ax
