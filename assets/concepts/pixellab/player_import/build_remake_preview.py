@@ -62,6 +62,17 @@ OVERRIDES = {
     ('parry_back', 1): (42, 39, 90, True), ('parry_back', 2): (36, 38, 105, True),
     ('parry_back', 3): (32, 38, 126, True), ('parry_back', 4): (32, 38, 126, True),
     ('parry_back', 5): (42, 39, 90, True),
+    # 후면 공격 (2026-11-18, ChatGPT 8자세 attack_back_gpt_68.png): 칼은 늘 몸 뒤(가려짐). 보이는 칼날 끝에서 칼 길이(24)만큼
+    # 몸 쪽이 손 (estimate_back_swords.py 로 어림 후 눈으로 맞춤). 칼이 안 보이는 장은 다섯째 값(칼 길이 비율) 0 = 그리지 않음.
+    ('backgpt1', 1): (34, 30, -90, True, 0), ('backgpt1', 2): (28, 41, 41, True), ('backgpt1', 3): (32, 34, 50, True),
+    ('backgpt1', 4): (34, 30, -90, True, 0), ('backgpt1', 5): (36, 43, -157, True), ('backgpt1', 6): (38, 37, -147, True),
+    ('backgpt1', 7): (36, 28, -129, True), ('backgpt1', 8): (34, 30, -90, True, 0),
+    ('backgpt2', 1): (34, 30, -90, True, 0), ('backgpt2', 2): (36, 39, -143, True), ('backgpt2', 3): (29, 46, -152, True),
+    ('backgpt2', 4): (42, 34, 60, True), ('backgpt2', 5): (35, 27, 88, True), ('backgpt2', 6): (33, 31, 64, True),
+    ('backgpt2', 7): (36, 37, 77, True), ('backgpt2', 8): (34, 30, -90, True, 0),
+    ('backgpt3', 1): (34, 30, -90, True, 0), ('backgpt3', 2): (40, 40, 90, True), ('backgpt3', 3): (40, 40, 90, True),
+    ('backgpt3', 4): (37, 30, 87, True), ('backgpt3', 5): (35, 26, 90, True), ('backgpt3', 6): (35, 26, 90, True),
+    ('backgpt3', 7): (35, 32, 92, True), ('backgpt3', 8): (34, 30, -90, True, 0),
     # 후면은 두 손이 몸 앞(보는 사람 반대쪽)이라 칼이 몸에 가려진다: 머리 위로 든 때만 몸 위에 그린다
     ('back1', 1): (45, 43, 0, True), ('back1', 2): (44, 38, 54, True),
     ('back1', 3): (42, 28, 134, False), ('back1', 4): (36, 25, 60, False),
@@ -82,10 +93,15 @@ FRAME_PICK = {
     'parry_side': [1, 2, 3, 4, 5],
     'parry_front': [1, 2, 3, 4, 5],  # 패링: 당김, 쳐올림, 막기, 막기, 당김(복귀)
     'parry_back': [1, 2, 3, 4, 5],
+    'backgpt1': [1, 2, 3, 4, 5, 6, 7, 8],
+    'backgpt2': [1, 2, 3, 4, 5, 6, 7, 8],
+    'backgpt3': [1, 2, 3, 4, 5, 6, 7, 8],
     'attack1': [1, 2, 3, 4, 5, 6, 7, 8],
     'attack2': [1, 2, 3, 4, 5, 6, 7, 7],
     'attack3': [1, 2, 3, 4, 5, 6, 7, 8],
 }
+# 파란 덩어리를 모두 휘두른 잔상으로 보는 프레임 (칼은 몸에 가려 안 보이고 잔상만 있음, 2026-11-18 후면 1·2타)
+FORCE_SMEAR = {('backgpt1', 4), ('backgpt2', 4)}
 # 칼·잔상이 몸과 얼굴을 가로질러 지운 자리가 지저분하게 남는 프레임은 깨끗한 프레임의 그림을 빌려 쓴다
 # (2026-11-17 사용자 지적: 얼굴 그림자가 프레임마다 다르고 픽셀이 묻어 있음).
 # 1타 5·6번은 몸 자세가 7번과 거의 같아 몸 전체를 7번으로 (칼 각도와 잔상은 그 프레임 것).
@@ -514,6 +530,9 @@ def build_layers(name, frames):
     for col, frame, (found, smear, blue), sword in zip(picks, frames, infos, swords):
         hx, hy, angle = sword[:3]
         behind = sword[3] if len(sword) > 3 else False
+        extra = tuple(sword[4:5])  # 칼 길이 비율 (0 = 그리지 않음)
+        if (name, col) in FORCE_SMEAR:
+            smear = set(blue)
         if (name, col) in BODY_DONOR:
             body = process_body(name, raw_frames[BODY_DONOR[(name, col)] - 1])
         else:
@@ -525,10 +544,10 @@ def build_layers(name, frames):
         smear = {p for p in smear if not near_sword(p, hx, hy, angle)}
         # 작은 조각과 가는 줄(원본 칼의 가장자리)은 지우고, 넓은 덩어리만 잔상으로
         smear = {p for comp in components(smear)
-                 if len(comp) >= SMEAR_MIN and axis(comp)[3] > 1.6 for p in comp}
+                 if len(comp) >= SMEAR_MIN and (axis(comp)[3] > 1.6 or (name, col) in FORCE_SMEAR) for p in comp}
         if name in NO_SMEAR:
             smear = set()
-        if behind:
+        if behind and extra != (0,):
             # 칼이 몸 뒤: 칼이 지나가는 자리의 몸 쪽 검은 테두리(원본 칼 외곽선)를 지워 칼이 보이게 한다.
             blade = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
             paste_sword(blade, hx, hy, angle, grip=False)  # 칼날 자리만 (손잡이 자리는 얼굴 그림자라 두기)
@@ -555,18 +574,19 @@ def build_layers(name, frames):
             # PixelLab 이 그린 칼을 떼어 무기 레이어(art)로, 나머지는 몸으로. 칼이 덮던 다리 자리는 칼이 그대로 덮는다.
             sheet, art = split_blade(originals[col - 1])
             hand = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
-        layers.append({'body': sheet, 'hand': hand, 'sword': (hx, hy, angle, bool(behind)), 'art': art})
+        layers.append({'body': sheet, 'hand': hand, 'sword': (hx, hy, angle, bool(behind)) + extra, 'art': art})
     return layers, swords, infos
 
 
 def compose(layer, pad=PAD):
     """게임과 같은 순서로 합친다: 칼이 뒤면 칼 → 몸, 아니면 몸 → 칼 → 손."""
-    hx, hy, angle, behind = layer['sword']
+    hx, hy, angle, behind, *rest = layer['sword']
+    hidden = bool(rest) and rest[0] <= 0
     out = Image.new('RGBA', (CELL + pad * 2, CELL), (0, 0, 0, 0))
-    if behind:
+    if behind and not hidden:
         paste_sword(out, hx + pad, hy, angle)
     out.alpha_composite(layer['body'], (pad, 0))
-    if not behind:
+    if not behind and not hidden:
         paste_sword(out, hx + pad, hy, angle)
         out.alpha_composite(layer['hand'], (pad, 0))
     return out
@@ -575,7 +595,8 @@ def compose(layer, pad=PAD):
 def build(name, frames):
     """프레임 목록 → (합친 그림 목록, 칼 표, 자동으로 찾은 프레임)."""
     layers, swords, infos = build_layers(name, frames)
-    table = [(round(s[0], 1), round(s[1], 1), round(s[2]), bool(s[3]) if len(s) > 3 else False) for s in swords]
+    table = [(round(s[0], 1), round(s[1], 1), round(s[2]), bool(s[3]) if len(s) > 3 else False) + tuple(s[4:5])
+             for s in swords]
     return [compose(l) for l in layers], table, [i[0] is not None for i in infos]
 
 

@@ -55,7 +55,9 @@ VIEW_ATTACKS = {
     # 정면 1·2·3타 PixelLab (2타 v9, 3타 찌르기는 끝 자세 지정, attack_front_final_68.png 2·3행). 후면은 보류 (2026-11-17 사용자 결정).
     'front': [(1, 'front1', 'attack_front_final_68.png', 0), (2, 'front2', 'attack_front_final_68.png', 1),
               (3, 'front3', 'attack_front_final_68.png', 2)],
-    'back': [],
+    # 후면은 ChatGPT 8자세 (2026-11-18, build_attack_back.py 가 시트를 만든다)
+    'back': [(1, 'backgpt1', 'attack_back_gpt_68.png', 0), (2, 'backgpt2', 'attack_back_gpt_68.png', 1),
+             (3, 'backgpt3', 'attack_back_gpt_68.png', 2)],
 }
 
 
@@ -86,8 +88,8 @@ def export_parry():
         for i, layer in enumerate(layers):
             body.alpha_composite(layer['body'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
             hand.alpha_composite(layer['hand'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
-            hx, hy, angle, behind = layer['sword']
-            table.append((round(hx + dx), round(hy + dy), round(angle), behind))
+            hx, hy, angle, behind, *rest = layer['sword']
+            table.append((round(hx + dx), round(hy + dy), round(angle), behind) + tuple(rest))
         body.save(os.path.join(OUT, 'parry', f'{view}.png'))
         hand.save(os.path.join(OUT, 'parry', f'{view}_hand.png'))
         tables[view] = table
@@ -114,8 +116,8 @@ def export_attacks(view='side'):
             if layer.get('art') is not None:
                 art.alpha_composite(layer['art'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
                 art_frames.append(i)
-            hx, hy, angle, behind = layer['sword']
-            table.append((round(hx + dx), round(hy + dy), round(angle), behind))
+            hx, hy, angle, behind, *rest = layer['sword']
+            table.append((round(hx + dx), round(hy + dy), round(angle), behind) + tuple(rest))
         body.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}.png'))
         hand.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}_hand.png'))
         if art_frames:
@@ -266,11 +268,11 @@ def main():
             if t is None:
                 print('    None,')
                 continue
-            rows = [f'({x}, {y}, {a}, {bh})' for x, y, a, bh in t]
+            rows = ['(' + ', '.join(str(v) for v in e) + ')' for e in t]
             print('    (' + ', '.join(rows[:4]) + ',' + chr(10) + '     ' + ', '.join(rows[4:]) + '),')
         print(')')
     for view, t in export_parry().items():
-        print(f'PLAYER_PARRY_SWORD[{view!r}] = (' + ', '.join(f'({x}, {y}, {a}, {bh})' for x, y, a, bh in t) + ')')
+        print(f'PLAYER_PARRY_SWORD[{view!r}] = (' + ', '.join('(' + ', '.join(str(v) for v in e) + ')' for e in t) + ')')
     export_jump()
 
 
