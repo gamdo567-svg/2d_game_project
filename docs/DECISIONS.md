@@ -675,8 +675,12 @@
   - 반복 이펙트는 `effect.loop_frame`, 그리기는 `effect.draw_stun_stars(renderer, x, y, scale, elapsed)`.
     쓰는 쪽이 머리 꼭대기 위치·배율·기절한 뒤 지난 시간을 넘긴다 (골렘은 RENDER_SCALE, 주인공은 더 작게 쓸 예정).
   - 골렘은 기절 중 "STUN" 글자 대신 이 이펙트를 그리고, 체력·패링 막대를 `STUN_BAR_LIFT` 만큼 링 위로 올린다.
-  - 골렘 기절 자세(휘청 → 한쪽 무릎)는 ChatGPT 핵심 자세 + PixelLab 사이 동작으로 만들 예정
-    (`golem_stun/chatgpt_kit/README.txt`, 사용자 결과 대기).
+  - 골렘 기절 동작 (같은 날 사용자 확인 후 적용): 핵심 자세(휘청·한쪽 무릎)는 ChatGPT, 사이(서기→휘청, 휘청→무릎,
+    무릎→서기)는 PixelLab. `golem_stun/build_golem_stun.py` 가 PixelLab 이 머리 위에 그려 넣은 기절 소용돌이를 지우고
+    (효과 색을 뺀 가장 큰 덩어리의 실루엣 안만 남김, 몸에 붙은 장은 뺌) 발 밑을 맞춰 `images/golem/stun_<방향>.png`
+    (144×152 × 11, 서쪽은 동쪽 반전)을 만든다.
+    `GOLEM_STUN_ANIM`: 기절하면 0.9초 동안 휘청 → 무릎(0~6), 풀리기 0.6초 전까지 무릎(6) 유지, 마지막에 일어섬(7~10).
+    `Golem.stun_frame` 이 고르고, 별·막대는 `head_drop`(장마다 머리가 내려간 원본 픽셀, 네 방향 평균)만큼 내린다.
 
 ## D-044 주인공 회피 그림 (핵심 자세 ChatGPT + 사이 PixelLab), 도착 뒤 멈춤 그림
 
