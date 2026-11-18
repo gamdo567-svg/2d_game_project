@@ -739,3 +739,18 @@
   - `GOLEM_DEATH_ANIM`, `Golem.death_frame`: 죽은 순간 바라보던 방향 그림을 죽은 뒤 지난 시간으로 고르고, 다 보여 주면 그리지 않는다.
     죽어 있는 동안 막대·글자는 그리지 않고, 몸 칸도 없다(돌무더기는 지나갈 수 있음).
   - 다시 나타나는 시간(시험용) `GOLEM_RESPAWN_TIME` 3 → 5초 (동작이 끝난 뒤).
+
+## D-048 주인공 후면 공격 (ChatGPT 8자세, 칼은 몸 뒤)
+
+- 상태: 확정 (사용자 결정, 2026-11-18)
+- 날짜: 2026-11-18
+- 결정
+  - 사용자가 ChatGPT 로 타마다 8자세(2줄 × 4, 칼·잔상 파란 단색)를 받았다 (`assets/concepts/pixellab/player_import/attack_back_kit/`).
+    8장이라 PixelLab 사이 동작 없이 그대로 쓴다.
+  - `build_attack_back.py`: 배경 제거 → 8자세 자르기 → 첫 자세 키를 게임 뒷모습에 맞춰 NEAREST 로 줄임 → 색 맞춤 → 발 맞춤 →
+    `remake_raw/attack_back_gpt_68.png` (칸 0 = 게임 뒷모습). `export_to_game.py` 의 `VIEW_ATTACKS['back']` 이 몸·손 시트와 칼 표를 뽑는다.
+  - 칼 자리: `estimate_back_swords.py` 가 보이는 칼날 조각의 끝에서 칼 길이(24)만큼 몸 쪽을 손으로 어림, 눈으로 맞춰
+    `build_remake_preview.OVERRIDES` 의 `backgpt1~3`. 칼은 모두 몸 뒤. 칼이 완전히 가려지는 장은 다섯째 값(칼 길이 비율) 0 →
+    `Player._draw_sword` 가 그리지 않는다. 칼이 안 보이고 잔상만 있는 장(1·2타 4번째)은 `FORCE_SMEAR` 로 파란 덩어리를 모두 잔상으로.
+  - 박자: 1·3타는 같은 간격, 2타는 올려베는 잔상 장(4번째)이 판정 시점(0.25)에 나오게 `PLAYER_ATTACK_FRAME_ENDS_BACK`.
+    프레임 표는 `player.ATTACK_FRAME_ENDS` (정면·후면)로 일반화했다.

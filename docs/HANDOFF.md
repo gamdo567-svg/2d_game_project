@@ -16,6 +16,17 @@
 
 ---
 
+## 2026-11-18 — 주인공 후면 공격 1·2·3타 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: 위를 보고 공격하면 후면 그림 (ChatGPT 8자세, D-048, PRE-PRD 2.2). 칼은 몸 뒤, 가려지면 안 그림.
+- **현재 상태**: 전체 테스트 통과. 실제 pico2d 창 녹화로 1·2·3타 확인 (`attack_back_kit/back_attack_ingame*.gif`). 직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: 그림을 바꾸려면 result_hit<N>.png → `build_attack_back.py` → (칼 자리 OVERRIDES `backgpt*`,
+  미리보기 `attack_back_kit/preview_back.py`) → `export_to_game.py` → 출력된 `PLAYER_ATTACK_SWORD_BACK` 을 config 에.
+- **남은 문제 / 다음 할 일**: 몇 장에서 칼 손잡이 금색 점이 몸 가장자리에 살짝 보임. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-18 — 골렘 죽음 동작 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 보류)

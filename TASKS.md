@@ -7,6 +7,7 @@
 
 | ID | 작업 | 상태 | 담당 | 브랜치 | 비고 |
 |---|---|---|---|---|---|
+| T-048 | 주인공 후면 공격 1·2·3타 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | ChatGPT 8자세, 칼은 몸 뒤·가려지면 안 그림, 2타 프레임 표 (D-048) |
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
