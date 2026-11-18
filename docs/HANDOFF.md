@@ -20,7 +20,7 @@
 
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
 - **한 일**: ④ 레이저를 다시 켰다. 막지 못한 빨강·노랑 공격 4스택 또는 주인공이 8칸보다 멀면 발사 (D-040, PRE-PRD 2.4).
-  코어 충전 구(점점 커짐) → 하얀 레이저 → 조준점 4×4 폭발 이펙트를 코드로 그렸다 (`assets/concepts/vfx/laser/`).
+  맞은 공격은 스택에 세지 않는다 (사용자 요청). 코어 충전 구(점점 커짐, 다 커도 코어의 두 배 정도) → 하얀 레이저 → 조준점 4×4 폭발 이펙트를 코드로 그렸다 (`assets/concepts/vfx/laser/`).
 - **현재 상태**: 테스트 245개 통과. 실제 pico2d 창 캡처로 충전 → 발사 → 폭발 확인 (`assets/concepts/vfx/laser/golem_laser_ingame_capture.png`).
   직접 조작해 본 확인은 아님.
 - **다음 작업자가 알아야 할 것**: 스택 수는 화면에 표시하지 않는다 (요청 범위 밖). 수치는 `GOLEM_LASER_STACKS`, `GOLEM_LASER_FAR`.
