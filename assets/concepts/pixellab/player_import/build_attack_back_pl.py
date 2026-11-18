@@ -25,8 +25,11 @@ KIT = os.path.join(HERE, 'attack_back_kit')
 # (animate_image, 왼쪽 아래 자세에서 시작, 8장 = full_v3_1~8). 5번째(판정)는 칼이 몸 앞을 지나 안 보이는 장 → 잔상.
 # 6차 (같은 날 사용자: 칼을 꺼내 옮기는 앞부분이 부자연스럽고 정면과 박자가 다름): 정면처럼 칼을 오른쪽 어깨 위로 든 자세에서
 # 시작해 조금 더 들며 버티다가 5번째(0.5)에 내려벤다. 왼쪽 아래에서 꺼내 휘돌리는 1·2번째는 뺌.
+# 7차 (같은 날 사용자: 정면처럼 칼을 왼쪽에서 오른쪽으로 자연스럽게 옮긴 뒤 베야 함): 정면 첫 장처럼 칼을 왼쪽에 세운 자세
+# (오른쪽 위 자세 full_v3_4 를 좌우로 뒤집음 = left_raised)에서 머리 위를 지나 오른쪽 위로 옮기는 4장(e_0~3, PixelLab 시작·끝 지정)
+# → 5번째(0.5) 내려베기 → 마무리.
 PICK = {
-    1: ['full_v3_3', 'full_v3_3', 'full_v3_4', 'full_v3_4', 'full_v3_5', 'full_v3_6', 'full_v3_7', 'full_v3_8'],
+    1: ['e_0', 'e_1', 'e_2', 'e_3', 'full_v3_5', 'full_v3_6', 'full_v3_7', 'full_v3_8'],
 }
 # 휘두르는 장에 겹칠 GPT 잔상: 타 → (8장 중 번호 0부터, GPT 시트 칸). 1타는 아래 SWOOSH 로 대신 (5차)
 ARC = {}
@@ -77,7 +80,7 @@ def main():
     for hit, names in PICK.items():
         cells = [gpt_rows[hit][0]]
         for k, n in enumerate(names):
-            name = n if '_' in n else f'{n[0]}_{n[1]}'  # 'd0' → d_0, 'full_v3_1' 그대로
+            name = n if '_' in n else f'{n[0]}_{n[1]}'  # 'd0' → d_0, 'e_0'·'full_v3_1' 그대로
             f = pb.snap(Image.open(os.path.join(KIT, 'pl_out', f'hit{hit}_{name}.png')).convert('RGBA'), palette)
             if hit in ARC and ARC[hit][0] == k:
                 arc = blue_only(gpt_rows[hit][ARC[hit][1]])
