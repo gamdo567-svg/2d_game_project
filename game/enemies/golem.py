@@ -502,14 +502,11 @@ class Golem:
 
     @property
     def laser_charge_frame(self) -> int | None:
-        """충전 구 그림 번호 (④ 예고 중에만): 줄 = 충전 진행도로 고른 크기 단계, 칸 = 지난 시간으로 돌린 빛 알갱이."""
+        """충전 그림 번호 (④ 예고 중에만): 충전 진행도로 고른다 (빛이 모이며 구가 커짐)."""
         if not (self.state == WINDUP and self.pattern == LASER):
             return None
-        spec = config.GOLEM_LASER_CHARGE
-        elapsed = config.GOLEM_LASER["windup"] - max(0.0, self.state_left)
-        stage = min(spec["stages"] - 1, int(self.windup_progress * spec["stages"]))
-        phase = int(elapsed * spec["phase_fps"]) % spec["phases"]
-        return stage * spec["phases"] + phase
+        frames = config.GOLEM_LASER_CHARGE["frames"]
+        return min(frames - 1, int(self.windup_progress * frames))
 
     def _draw_laser(self, renderer, grid: Grid, cx: float, bottom: float) -> bool:
         """④ 충전 구(코어)·조준선, 발사 직후 하얀 레이저 (코어 → 조준점). 그린 것이 있으면 True."""
@@ -521,7 +518,7 @@ class Golem:
         if frame is not None:
             renderer.draw_line(core_x, core_y, ax, ay, self.warning_color())  # 조준선 (노랑, 발사가 가까울수록 진하게)
             size = spec["frame_size"]
-            return bool(renderer.draw_sheet_frame(str(spec["path"]), frame, spec["phases"], size, size,
+            return bool(renderer.draw_sheet_frame(str(spec["path"]), frame, spec["frames"], size, size,
                                                   core_x, core_y, size * s, size * s))
         if self.beam_left > 0.0:
             beam = config.GOLEM_LASER_BEAM

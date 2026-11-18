@@ -94,7 +94,7 @@ class GolemStompEffectTest(unittest.TestCase):
         from PIL import Image
         charge = config.GOLEM_LASER_CHARGE
         with Image.open(charge["path"]) as im:
-            self.assertEqual(im.size, (charge["frame_size"] * charge["phases"], charge["frame_size"] * charge["stages"]))
+            self.assertEqual(im.size, (charge["frame_size"] * charge["frames"], charge["frame_size"]))
         blast = config.GOLEM_LASER_BLAST_EFFECT
         with Image.open(blast["path"]) as im:
             self.assertEqual(im.size, (blast["frame_size"] * blast["frames"], blast["frame_size"]))
