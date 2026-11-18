@@ -761,6 +761,8 @@
     8장 같은 간격(정면과 같은 0.5 에 벰), 그림에 내디딤이 있어 `PLAYER_ATTACK_FRAME_SHIFTS_BACK` 은 0. 2·3타는 아직 GPT 1차 그림.
   - (같은 날 사용자: GPT 픽셀 그림체가 게임과 달라 통일성이 없음) 줄인 8장을 PixelLab `transfer_outfit` 에 게임 뒷모습을 참고로 넘겨
     자세·칼 자리는 그대로 두고 게임 화풍으로 다시 입혔다 (`hit1_v2/restyle_in` → `restyle_out`, `build_attack_back_v2.RESTYLE`).
+  - (같은 날 사용자: 여전히 색감과 분위기가 다름) `build_attack_back_v2.match_tones`: 8장 몸 색(파랑 제외)을 밝기 분위수로
+    게임 뒷모습 서기 그림의 색에 대응시켜, 쓰는 색과 명암 분포를 서기 그림과 같게 했다 (평균 색 (74,51,52) → (78,49,49)).
 
 ## D-049 등에 멘 칼
 
