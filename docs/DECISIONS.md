@@ -629,3 +629,5 @@
     (내 이펙트 'Golem laser charge', 'Golem laser blast'). 충전은 골렘 앞모습 위에서 charge_up 조각을 코어에 두고 골렘 코어 색으로,
     폭발은 flash_burst·shockwave_ring·spark_burst·debris_burst(돌 색). `assets/concepts/vfx/laser/pixellab/pack_for_game.py` 가
     충전 88×88 24장(칸 가운데 = 코어, 충전 진행도로 고름)과 폭발 160×160 12장(16fps)으로 옮긴다. 레이저 단면은 계산 그림 그대로.
+  - (같은 날 사용자 결정) 비교해 보니 충전은 PixelLab 그림이, 폭발은 예전 계산 그림이 낫다: 폭발은 `build_golem_laser.py`
+    (160×160 16장 18fps, 5칸 크기)로 되돌렸다. PixelLab 폭발은 `pixellab/blast/` 에 비교용으로만 남긴다.
