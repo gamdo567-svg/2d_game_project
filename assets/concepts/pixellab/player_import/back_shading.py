@@ -1,4 +1,4 @@
-"""후면(뒷모습) 망토 명암 넣기 (2026-11-18 사용자: 후면은 정면·측면보다 망토 주름이 적고 색이 밝아 보임).
+"""[쓰지 않음] 후면(뒷모습) 망토 명암 넣기 (2026-11-18 사용자: 후면은 정면·측면보다 망토 주름이 적고 색이 밝아 보임).
 
 뒷모습은 망토가 몸을 덮어 어두운 부분이 적고, 망토 절반이 중간 갈색 한 색이라 밝고 밋밋해 보였다
 (아주 어두운 픽셀 14% / 정면 33%, 몸 색 11 / 22, 하이라이트 없음). 자세·모양은 그대로 두고 망토 색만 바꾼다:
@@ -19,10 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..', '..', '..'))
 PLAYER = os.path.join(ROOT, 'assets', 'images', 'player')
 FLAT = os.path.join(HERE, 'back_shading', 'flat')
-# 후면 공격 그림 (몸·손 레이어)만. 서기·걷기·점프·회피·패링은 원래 그림 그대로 둔다
-# (같은 날 사용자: 기존 걷기나 다른 포즈는 명암이 없었으니 새로 넣지 말 것).
-TARGETS = ['sword_attack/back_1.png', 'sword_attack/back_1_hand.png', 'sword_attack/back_2.png',
-           'sword_attack/back_2_hand.png', 'sword_attack/back_3.png', 'sword_attack/back_3_hand.png']
+# 쓰지 않음 (같은 날 사용자: 후면에 명암을 넣지 말 것). 원래 후면 그림에는 명암이 없어 공격에서도 뺐다. 기록용으로 남긴다.
+TARGETS = []
 # 정면 그림의 망토 색 단계 (어두움 → 밝음)
 RAMP = [(36, 23, 29), (60, 37, 43), (74, 49, 51), (92, 55, 54), (102, 64, 61), (118, 73, 67), (158, 105, 94)]
 BASE = 4  # RAMP 에서 망토 기본색 자리
