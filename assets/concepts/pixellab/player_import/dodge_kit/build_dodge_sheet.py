@@ -19,9 +19,13 @@ import build_parry_front as pf  # noqa: E402
 # 2차(2026-11-18 사용자 지적: 망토 이상·화질 뭉개짐): 또렷하게 줄인 핵심 자세로 사이를 다시 채운 pl_out2/ 를 쓴다.
 # 일어서는 구간은 몸이 늘어나 빼고, 끝나면 바로 서 있는 그림으로 돌아간다.
 OUT_DIR = 'pl_out2'
-PICK = {v: ['a0', 'a2', 'a4', 'b1', 'b3', 'b4'] for v in ('front', 'side')}
-# 후면 b1~b3 은 PixelLab 이 머리 위에 흰 연기를 덮어 지우면 후드가 깨진다: 앞 구간을 더 쓰고 멈춤 자세를 한 장 더 둔다
-PICK['back'] = ['a0', 'a2', 'a3', 'a4', 'b4', 'b4']
+# 3차(2026-11-18 사용자: 더 다듬기): 정면 b1·b2 는 망토가 날개처럼 양옆으로 뻗어 빼고, 후면은 같은 장 두 번을 없앤다.
+# 후면 b1~b3 은 PixelLab 이 머리 위에 흰 연기를 덮어 지우면 후드가 깨져 앞 구간만 쓴다.
+PICK = {
+    'front': ['a0', 'a1', 'a3', 'a4', 'b3', 'b4'],
+    'side': ['a0', 'a2', 'a4', 'b1', 'b3', 'b4'],
+    'back': ['a0', 'a1', 'a2', 'a3', 'a4', 'b4'],
+}
 FAR = 70  # 게임 색과 이보다 멀면 지움 (RGB 거리)
 MIN_PART = 40  # 몸(가장 큰 덩어리)과 떨어진 이보다 작은 덩어리는 지움 (흰 섬광이 색 맞춤으로 남은 조각)
 
@@ -54,7 +58,7 @@ def clean(im, palette):
                                 seen.add((na, nb))
                                 q.append((na, nb))
                 parts.append(part)
-    body = max(parts, key=len)
+    body = max(parts, key=len)  # noqa: (아래에서 외톨이 픽셀·테두리 정리)
     bx0, bx1 = min(a for a, _ in body) - 2, max(a for a, _ in body) + 2
     by0, by1 = min(b for _, b in body) - 2, max(b for _, b in body) + 2
     for part in parts:
@@ -64,6 +68,24 @@ def clean(im, palette):
         if len(part) < MIN_PART or not inside:  # 작거나 몸 둘레 밖에 떨어진 조각 (섬광·빛줄기가 남은 것)
             for a, b in part:
                 px[a, b] = (0, 0, 0, 0)
+    return outline(im, palette)
+
+
+def outline(im, palette):
+    """외톨이 픽셀(이웃이 1개 이하)을 지우고, 실루엣 가장자리(투명과 맞닿은 픽셀)를 게임 그림처럼 가장 어두운 색 한 줄로.
+    PixelLab 사이 동작의 끊긴 테두리·흩어진 점을 원본(GPT 핵심 자세·게임 그림)처럼 깔끔하게 (2026-11-18 사용자: 다듬기)."""
+    ink = min(palette, key=lambda c: sum(c)) + (255,)
+    px = im.load()
+    w, h = im.size
+    solid = lambda x, y: 0 <= x < w and 0 <= y < h and px[x, y][3] > 0  # noqa: E731
+    for y in range(h):
+        for x in range(w):
+            if solid(x, y) and sum(solid(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)) - 1 <= 1:
+                px[x, y] = (0, 0, 0, 0)
+    edge = [(x, y) for y in range(h) for x in range(w) if solid(x, y)
+            and not all(solid(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
+    for x, y in edge:
+        px[x, y] = ink
     return im
 
 
