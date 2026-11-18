@@ -90,11 +90,24 @@ class GolemStompEffectTest(unittest.TestCase):
         self.assertTrue(effect.spec["on_top"])
         self.assertIsNotNone(effect.shake)
 
+    def test_laser_charge_motes_run_by_time_orb_by_progress(self):
+        # 빛 알갱이는 실제 시간으로 돌고(1/fps 마다 다음 장), 구는 충전 진행도로 커진다
+        golem = Golem(6, 4, open_room())
+        golem._windup(LASER, (2, 4))
+        spec = config.GOLEM_LASER_CHARGE
+        self.assertEqual(golem.laser_charge_frames, (0, 0))
+        golem.update(1.0 / spec["motes_fps"] + 0.001, (2, 4), lambda c, r: True)
+        self.assertEqual(golem.laser_charge_frames[0], 1)
+        golem.update(config.GOLEM_LASER["windup"] - 0.1, (2, 4), lambda c, r: True)
+        self.assertEqual(golem.laser_charge_frames[1], spec["orb_frames"] - 1)
+
     def test_laser_effect_sheets_match_spec(self):
         from PIL import Image
         charge = config.GOLEM_LASER_CHARGE
-        with Image.open(charge["path"]) as im:
-            self.assertEqual(im.size, (charge["frame_size"] * charge["frames"], charge["frame_size"]))
+        with Image.open(charge["motes_path"]) as im:
+            self.assertEqual(im.size, (charge["motes_size"] * charge["motes_frames"], charge["motes_size"]))
+        with Image.open(charge["orb_path"]) as im:
+            self.assertEqual(im.size, (charge["orb_size"] * charge["orb_frames"], charge["orb_size"]))
         blast = config.GOLEM_LASER_BLAST_EFFECT
         with Image.open(blast["path"]) as im:
             self.assertEqual(im.size, (blast["frame_size"] * blast["frames"], blast["frame_size"]))

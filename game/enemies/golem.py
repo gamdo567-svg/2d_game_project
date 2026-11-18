@@ -501,12 +501,16 @@ class Golem:
         ))
 
     @property
-    def laser_charge_frame(self) -> int | None:
-        """충전 그림 번호 (④ 예고 중에만): 충전 진행도로 고른다 (빛이 모이며 구가 커짐)."""
+    def laser_charge_frames(self) -> tuple[int, int] | None:
+        """충전 그림 번호 (빛 알갱이, 구). ④ 예고 중에만. 빛 알갱이는 지난 시간으로 실제 속도로 돌고,
+        구는 충전 진행도로 커진다 (2026-11-18 사용자 요청: 빛이 뚝뚝 끊기지 않고 자연스럽게 모이게)."""
         if not (self.state == WINDUP and self.pattern == LASER):
             return None
-        frames = config.GOLEM_LASER_CHARGE["frames"]
-        return min(frames - 1, int(self.windup_progress * frames))
+        spec = config.GOLEM_LASER_CHARGE
+        elapsed = config.GOLEM_LASER["windup"] - max(0.0, self.state_left)
+        motes = int(elapsed * spec["motes_fps"]) % spec["motes_frames"]
+        orb = min(spec["orb_frames"] - 1, int(self.windup_progress * spec["orb_frames"]))
+        return motes, orb
 
     def _draw_laser(self, renderer, grid: Grid, cx: float, bottom: float) -> bool:
         """④ 충전 구(코어)·조준선, 발사 직후 하얀 레이저 (코어 → 조준점). 그린 것이 있으면 True."""
@@ -514,12 +518,16 @@ class Golem:
         ox, oy = spec["core"][self.view]
         core_x, core_y = cx + ox * s, bottom + oy * s
         ax, ay = grid.tile_to_pixel(self.aim[0] - 0.5, self.aim[1] - 0.5)
-        frame = self.laser_charge_frame
-        if frame is not None:
+        frames = self.laser_charge_frames
+        if frames is not None:
             renderer.draw_line(core_x, core_y, ax, ay, self.warning_color())  # 조준선 (노랑, 발사가 가까울수록 진하게)
-            size = spec["frame_size"]
-            return bool(renderer.draw_sheet_frame(str(spec["path"]), frame, spec["frames"], size, size,
-                                                  core_x, core_y, size * s, size * s))
+            motes, orb = frames
+            m, o = spec["motes_size"], spec["orb_size"]
+            drawn = renderer.draw_sheet_frame(str(spec["motes_path"]), motes, spec["motes_frames"], m, m,
+                                              core_x, core_y, m * s, m * s)
+            drawn = renderer.draw_sheet_frame(str(spec["orb_path"]), orb, spec["orb_frames"], o, o,
+                                              core_x, core_y, o * s, o * s) or drawn
+            return bool(drawn)
         if self.beam_left > 0.0:
             beam = config.GOLEM_LASER_BEAM
             thickness = max(2, round(beam["thickness"] * self.beam_left / config.GOLEM_LASER["beam_time"]))
