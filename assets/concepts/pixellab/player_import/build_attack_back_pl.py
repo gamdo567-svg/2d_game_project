@@ -26,8 +26,12 @@ KIT = os.path.join(HERE, 'attack_back_kit')
 PICK = {
     1: ['full_v3_1', 'full_v3_2', 'full_v3_3', 'full_v3_4', 'full_v3_5', 'full_v3_6', 'full_v3_7', 'full_v3_8'],
 }
-# 휘두르는 장에 겹칠 GPT 잔상: 타 → (8장 중 번호 0부터, GPT 시트 칸)
-ARC = {1: (4, 4)}
+# 휘두르는 장에 겹칠 GPT 잔상: 타 → (8장 중 번호 0부터, GPT 시트 칸). 1타는 아래 SWOOSH 로 대신 (5차)
+ARC = {}
+# 5차 (같은 날 사용자: 정면은 위압감 있게 딱 베는데 후면은 베는 느낌이 없음): 칼이 지나간 길대로 큰 초승달 잔상을 계산해 그린다.
+# 타 → [(8장 중 번호, 원 중심 x, y, 반지름, 시작 각도, 끝 각도, 가장 두꺼운 폭)]. 각도는 화면 기준(오른쪽 0, 아래 90).
+# 1타: 오른쪽 어깨 위에서 오른쪽 아래로 크게 부풀며 왼쪽 아래까지 (몸 뒤라 몸 밖으로 나온 부분만 보임), 다음 장은 얇게 남음.
+SWOOSH = {1: [(4, 22, 20, 36, -20, 112, 8), (5, 22, 20, 36, 30, 112, 4)]}
 # 좌우로 뒤집는 타 (2026-11-18 사용자: 측면·정면 1타는 화면 왼쪽 위로 들어 오른쪽 아래로 벰. GPT·PixelLab 후면은 반대였음).
 # 뒷모습은 거의 좌우 대칭이라 그림째 뒤집는다 (칼 위치는 build_remake_preview.OVERRIDES 'backpl1' 이 뒤집은 값).
 MIRROR = set()  # 3차에서 되돌림: 측면·정면처럼 오른쪽 위에서 내려벤다 (사용자 설명)
@@ -40,6 +44,27 @@ def blue_only(cell):
         for x in range(cell.width):
             if b.is_blue(src[x, y]):
                 dst[x, y] = pb.BLUE
+    return out
+
+
+SWOOSH_ON_TOP = {(1, 4)}  # 1타 내려베는 순간 (8장 중 5번째)
+
+
+def swoosh(size, cx, cy, r, a0, a1, thick):
+    """초승달 잔상 (파란 단색 = 게임에서 잔상 색으로 바뀜): 가운데가 가장 두껍고 양 끝은 가늘게."""
+    import math
+    out = Image.new('RGBA', size, (0, 0, 0, 0))
+    px = out.load()
+    steps = 240
+    for i in range(steps + 1):
+        t = i / steps
+        a = math.radians(a0 + (a1 - a0) * t)
+        w = thick * math.sin(math.pi * t) ** 0.7  # 바깥쪽으로 두께
+        for k in range(int(w * 4) + 1):
+            rr = r - k / 4
+            x, y = cx + rr * math.cos(a), cy + rr * math.sin(a)
+            if 0 <= x < size[0] and 0 <= y < size[1]:
+                px[int(x), int(y)] = pb.BLUE
     return out
 
 
@@ -56,6 +81,15 @@ def main():
                 arc = blue_only(gpt_rows[hit][ARC[hit][1]])
                 arc.alpha_composite(f)  # 잔상은 몸 뒤
                 f = arc
+            for k2, cx, cy, r, a0, a1, th in SWOOSH.get(hit, []):
+                if k2 == k:
+                    arc = swoosh(f.size, cx, cy, r, a0, a1, th)
+                    if (hit, k) in SWOOSH_ON_TOP:
+                        f = f.copy()
+                        f.alpha_composite(arc)  # 몸 위로도 이어지게 (게임은 build_remake_preview.SMEAR_ON_TOP 로 몸 위에 반투명하게)
+                    else:
+                        arc.alpha_composite(f)  # 잔상은 몸 뒤
+                        f = arc
             if hit in MIRROR:
                 f = f.transpose(Image.FLIP_LEFT_RIGHT)
             cells.append(f)

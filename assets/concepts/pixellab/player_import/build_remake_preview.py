@@ -106,7 +106,9 @@ FRAME_PICK = {
     'attack3': [1, 2, 3, 4, 5, 6, 7, 8],
 }
 # 파란 덩어리를 모두 휘두른 잔상으로 보는 프레임 (칼은 몸에 가려 안 보이고 잔상만 있음, 2026-11-18 후면 1·2타)
-FORCE_SMEAR = {('backgpt1', 4), ('backgpt2', 4), ('backpl1', 5)}
+FORCE_SMEAR = {('backgpt1', 4), ('backgpt2', 4), ('backpl1', 5), ('backpl1', 6)}
+# 잔상을 몸 위에 겹쳐 그리는 프레임 (반투명): 후면 1타 내려베는 순간 — 몸 뒤면 가운데가 가려져 한 번에 베는 느낌이 안 남 (2026-11-18)
+SMEAR_ON_TOP = {('backpl1', 5)}
 # 칼·잔상이 몸과 얼굴을 가로질러 지운 자리가 지저분하게 남는 프레임은 깨끗한 프레임의 그림을 빌려 쓴다
 # (2026-11-17 사용자 지적: 얼굴 그림자가 프레임마다 다르고 픽셀이 묻어 있음).
 # 1타 5·6번은 몸 자세가 7번과 거의 같아 몸 전체를 7번으로 (칼 각도와 잔상은 그 프레임 것).
@@ -561,9 +563,13 @@ def build_layers(name, frames):
                 for x in range(CELL):
                     if bl[x, y][3] and bpx[x, y][3] and max(bpx[x, y][:3]) < 45:
                         bpx[x, y] = (0, 0, 0, 0)
-        # 몸 레이어 = 잔상(뒤) + 몸
-        sheet = smear_layer(frame, smear)
-        sheet.alpha_composite(body)
+        # 몸 레이어 = 잔상(뒤) + 몸 (SMEAR_ON_TOP 이면 몸 위에 잔상)
+        if (name, col) in SMEAR_ON_TOP:
+            sheet = body.copy()
+            sheet.alpha_composite(smear_layer(frame, smear))
+        else:
+            sheet = smear_layer(frame, smear)
+            sheet.alpha_composite(body)
         # 손 레이어: 칼 위에 다시 그리는 손 둘레 몸 픽셀 (칼이 앞에 있을 때만)
         hand = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
         if not behind:
