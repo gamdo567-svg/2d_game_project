@@ -30,16 +30,17 @@ BODY = (16, 16)  # 32×48 주인공 그림이 놓이는 캔버스 자리 (왼쪽
 OUTLINE = (22, 15, 20, 255)
 LEATHER = [(40, 26, 26, 255), (56, 36, 32, 255), (74, 48, 40, 255)]  # 어두운 → 밝은 (망토보다 어둡게)
 CHAPE = (213, 153, 103, 255)  # 칼집 끝 금속 (가드와 같은 색)
-# 방향별: (가드 자리 = 주인공 그림 좌표, 각도: 칼끝 방향, 화면 위가 + / 0 = 오른쪽, 몸 뒤에 그리는지)
+# 방향별: (가드 자리 = 주인공 그림 좌표, 각도: 칼끝 방향, 화면 위가 + / 0 = 오른쪽, 몸 뒤에 그리는지, 얇게)
+# 얇게: 칼집 넓은 면이 아니라 옆 날을 보는 방향이라 외곽선 사이 가죽 한 줄 (2026-11-18 사용자 지적: 측면이 두꺼움)
 PLACES = {
-    "front": ((7, 15), -55, True),
-    "back": ((22, 19), -122, False),
-    "side": ((10, 14), -105, True),  # 등에 붙여 망토 뒤로 (밖으로 튀어나오면 화살통처럼 보임, 사용자 지적)
+    "front": ((7, 15), -55, True, False),
+    "back": ((22, 19), -122, False, False),
+    "side": ((10, 14), -105, True, True),  # 등에 붙여 망토 뒤로 (밖으로 튀어나오면 화살통처럼 보임, 사용자 지적)
 }
 
 
-def sheathed(sword: Image.Image) -> Image.Image:
-    """칼날을 가죽 칼집으로 감싼 그림 (같은 56×10)."""
+def sheathed(sword: Image.Image, thin: bool = False) -> Image.Image:
+    """칼날을 가죽 칼집으로 감싼 그림 (같은 56×10). thin 이면 외곽선 사이 가죽 한 줄 (옆에서 본 칼집)."""
     w, h = sword.size
     px = sword.load()
     # 가드: 손(한가운데) 근처에서 가장 긴 세로 줄
@@ -49,6 +50,8 @@ def sheathed(sword: Image.Image) -> Image.Image:
     # 칼날 두께는 가드에서 3칸 떨어진 곳부터 잰다 (가드 기둥이 섞이면 칼집이 두꺼워짐)
     blade_rows = [y for y in range(h) if any(px[x, y][3] for x in blade_cols if x > guard_x + 3)]
     top, bottom = min(blade_rows), max(blade_rows)  # 칼날과 같은 두께 (칼이 들어갈 자리, 2026-11-18 사용자 요청)
+    if thin:
+        top, bottom = top + 1, bottom - 1
     tip = max(blade_cols)
     out = sword.copy()
     opx = out.load()
@@ -63,7 +66,8 @@ def sheathed(sword: Image.Image) -> Image.Image:
             elif x % 9 == 4:  # 가죽 띠
                 opx[x, y] = LEATHER[0]
             else:
-                opx[x, y] = LEATHER[2] if y == top + 1 else LEATHER[0] if y == bottom - 1 else LEATHER[1]
+                opx[x, y] = LEATHER[1] if thin else (
+                    LEATHER[2] if y == top + 1 else LEATHER[0] if y == bottom - 1 else LEATHER[1])
     return out
 
 
@@ -85,8 +89,8 @@ def main() -> None:
     sword = Image.open(WEAPONS / f"{WEAPON}.png").convert("RGBA")
     item = sheathed(sword)
     preview = Image.new("RGBA", (CANVAS * 3, CANVAS), (40, 44, 52, 255))
-    for k, (view, (guard, angle, behind)) in enumerate(PLACES.items()):
-        art = place(item, guard, angle)
+    for k, (view, (guard, angle, behind, thin)) in enumerate(PLACES.items()):
+        art = place(sheathed(sword, thin), guard, angle)
         art.save(WEAPONS / f"{WEAPON}_back_{view}.png")
         body = Image.open(PLAYER / "idle" / f"{view}.png").convert("RGBA").crop((0, 0, 32, 48))
         cell = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
