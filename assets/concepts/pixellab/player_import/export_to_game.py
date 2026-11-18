@@ -56,7 +56,8 @@ VIEW_ATTACKS = {
     'front': [(1, 'front1', 'attack_front_final_68.png', 0), (2, 'front2', 'attack_front_final_68.png', 1),
               (3, 'front3', 'attack_front_final_68.png', 2)],
     # 후면은 ChatGPT 8자세 (2026-11-18, build_attack_back.py 가 시트를 만든다)
-    'back': [(1, 'backgpt1', 'attack_back_gpt_68.png', 0), (2, 'backgpt2', 'attack_back_gpt_68.png', 1),
+    # 1타는 2차: PixelLab 이 GPT 자세 사이를 다시 그림 (build_attack_back_pl.py, 2026-11-18 사용자 요청)
+    'back': [(1, 'backpl1', 'attack_back_pl_68.png', 0), (2, 'backgpt2', 'attack_back_gpt_68.png', 1),
              (3, 'backgpt3', 'attack_back_gpt_68.png', 2)],
 }
 
