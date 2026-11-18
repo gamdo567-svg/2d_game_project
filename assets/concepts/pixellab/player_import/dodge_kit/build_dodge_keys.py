@@ -1,7 +1,9 @@
 """회피 핵심 자세(ChatGPT result_<view>.png)를 게임 크기로 줄이고 색·발을 맞춘다 (2026-11-18).
 
 1. 바깥에서 회색 배경을 채워 지우고, 가로로 떨어진 네 자세(서기·웅크림·돌진·미끄러져 멈춤)를 자른다.
-2. 서기 자세의 키를 게임 서 있는 그림(idle/<view>.png 첫 장)의 키에 맞춰 같은 배율로 줄인다 (BOX).
+2. 서기 자세의 키를 게임 서 있는 그림(idle/<view>.png 첫 장)의 키에 맞춰 같은 배율로 줄인다.
+   GPT 그림은 큰 픽셀 덩어리로 그려져 있어, 평균(BOX)이 아니라 덩어리 가운데 색을 집는다(NEAREST): 테두리가 뭉개지지 않게
+   (2026-11-18 사용자 지적: 화질이 뭉개짐).
 3. 색은 지금 게임 주인공 그림에 있는 색 중 가장 가까운 색으로 바꾼다.
 4. 발(아래 4줄) 가운데·발 밑을 게임 그림과 같은 자리에 맞춰 64×48 칸에 놓는다 (돌진 자세가 32보다 넓어서).
 출력: keys_<view>_64x48.png (서기 + 네 자세 = 5칸), 미리보기 keys_preview_x4.png
@@ -96,7 +98,7 @@ def build(view, palette):
     base.alpha_composite(ref, (16, 0))
     cells.append(base)
     for p in poses:
-        small = snap(p.resize((max(1, round(p.width * scale)), max(1, round(p.height * scale))), Image.BOX), palette)
+        small = snap(p.resize((max(1, round(p.width * scale)), max(1, round(p.height * scale))), Image.NEAREST), palette)
         fx, fy = feet(small)
         c = Image.new('RGBA', (CELL_W, CELL_H), (0, 0, 0, 0))
         c.alpha_composite(small, (round(16 + rfx - fx), round(rfy - fy)))

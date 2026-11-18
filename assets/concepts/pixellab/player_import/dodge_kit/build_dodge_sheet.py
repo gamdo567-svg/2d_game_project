@@ -1,5 +1,5 @@
 """회피 시트 만들기 (2026-11-18): 핵심 자세(ChatGPT, build_dodge_keys.py) 사이를 PixelLab(animate_image, 시작·끝 지정)이 채운
-pl_out/<view>_<a|b|c>_<0..4>.png 에서 고른 프레임을 정리해 이어 붙인다.
+pl_out2/<view>_<a|b>_<0..4>.png 에서 고른 프레임을 정리해 이어 붙인다.
   a = 웅크림 → 돌진, b = 돌진 → 미끄러져 멈춤, c = 멈춤 → 서기 (0 = 시작 자세, 4 = 끝 자세)
 정리: 게임 주인공 색에서 먼 픽셀(PixelLab 이 그린 흰 섬광·빛줄기)은 지우고 나머지는 가장 가까운 게임 색으로,
 몸과 떨어진 작은 덩어리는 지우고, 발(아래 4줄) 가운데·발 밑을 핵심 자세와 같은 자리에 맞춘다.
@@ -16,8 +16,12 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 import build_parry_front as pf  # noqa: E402
 
-# 일어서는 뒤쪽(c2~c4)은 몸이 늘어나거나(정면·후면) 후드가 뾰족해져(측면) 빼고, 끝나면 바로 서 있는 그림으로 돌아간다.
-PICK = {v: ['a0', 'a2', 'a4', 'b2', 'b4', 'c1'] for v in ('front', 'side', 'back')}
+# 2차(2026-11-18 사용자 지적: 망토 이상·화질 뭉개짐): 또렷하게 줄인 핵심 자세로 사이를 다시 채운 pl_out2/ 를 쓴다.
+# 일어서는 구간은 몸이 늘어나 빼고, 끝나면 바로 서 있는 그림으로 돌아간다.
+OUT_DIR = 'pl_out2'
+PICK = {v: ['a0', 'a2', 'a4', 'b1', 'b3', 'b4'] for v in ('front', 'side')}
+# 후면 b1~b3 은 PixelLab 이 머리 위에 흰 연기를 덮어 지우면 후드가 깨진다: 앞 구간을 더 쓰고 멈춤 자세를 한 장 더 둔다
+PICK['back'] = ['a0', 'a2', 'a3', 'a4', 'b4', 'b4']
 FAR = 70  # 게임 색과 이보다 멀면 지움 (RGB 거리)
 MIN_PART = 40  # 몸(가장 큰 덩어리)과 떨어진 이보다 작은 덩어리는 지움 (흰 섬광이 색 맞춤으로 남은 조각)
 
@@ -76,7 +80,7 @@ def build(view, palette):
     kfx, kfy = feet(key)
     frames = []
     for name in PICK[view]:
-        im = clean(Image.open(HERE / 'pl_out' / f'{view}_{name[0]}_{name[1]}.png'), palette)
+        im = clean(Image.open(HERE / OUT_DIR / f'{view}_{name[0]}_{name[1]}.png'), palette)
         fx, fy = feet(im)
         c = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
         c.alpha_composite(im, (round(kfx - fx), round(kfy - fy)))
