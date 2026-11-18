@@ -1,0 +1,12 @@
+back_crouch.png upload:77691747-cc00-4b8a-934d-a86447ce6604
+back_dash.png upload:1af1cbbb-62f6-4bbc-a4b2-a37c3760b040
+back_slide.png upload:f14f0316-4aec-4e17-9f98-a590499e6c24
+back_stand.png upload:94352f79-1272-4398-bebe-1c426d233601
+front_crouch.png upload:618d0ce8-9cb5-44ab-9317-5feda6aee8bf
+front_dash.png upload:9d8e3089-4848-44bc-b73c-3d406647729f
+front_slide.png upload:2dcc55da-699f-46d2-97d6-44bf22ffce61
+front_stand.png upload:b7523d77-8f28-4145-bb7d-84b27905320f
+side_crouch.png upload:73638d14-4f76-4504-a6a6-d7827fb840fd
+side_dash.png upload:63947278-d134-44b7-8973-464e06edcc5c
+side_slide.png upload:33bef56c-43f1-4760-885b-a75d3edfcea9
+side_stand.png upload:c25af5a3-ce6c-4dfc-b07d-51ee9e47301b
