@@ -759,6 +759,8 @@
     최종은 ChatGPT 가 정면 1타 8장을 "같은 순간을 뒤에서 본 모습"으로 그린 8장 (`attack_back_kit/hit1_v2/`, `build_attack_back_v2.py`).
     판정 장(5번째)에는 칼이 지나간 길대로 계산한 큰 초승달 잔상을 몸 위에 반투명하게 겹친다 (`SMEAR_ON_TOP`, `FORCE_SMEAR`).
     8장 같은 간격(정면과 같은 0.5 에 벰), 그림에 내디딤이 있어 `PLAYER_ATTACK_FRAME_SHIFTS_BACK` 은 0. 2·3타는 아직 GPT 1차 그림.
+  - (같은 날 사용자: GPT 픽셀 그림체가 게임과 달라 통일성이 없음) 줄인 8장을 PixelLab `transfer_outfit` 에 게임 뒷모습을 참고로 넘겨
+    자세·칼 자리는 그대로 두고 게임 화풍으로 다시 입혔다 (`hit1_v2/restyle_in` → `restyle_out`, `build_attack_back_v2.RESTYLE`).
 
 ## D-049 등에 멘 칼
 
