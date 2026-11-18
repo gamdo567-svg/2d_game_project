@@ -510,6 +510,9 @@ class Player:
                 center_x + (-dx if flip else dx) * scale, bottom + dy * scale,
                 size * scale, size * scale, flip_horizontal=flip)
 
+        if (state, view) in config.PLAYER_BACK_SWORD_HIDDEN:
+            draw_body()
+            return
         in_front = view in config.PLAYER_BACK_SWORD_IN_FRONT
         if not in_front:
             draw_sword()

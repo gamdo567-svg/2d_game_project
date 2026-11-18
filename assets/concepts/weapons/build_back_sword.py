@@ -89,11 +89,12 @@ def place(item: Image.Image, guard: tuple[int, int], angle: float) -> Image.Imag
 
 # PixelLab 그림 (2026-11-18 사용자 결정: 계산해 돌린 칼집은 픽셀이 깔끔하지 않고 측면은 칼집처럼 안 보임).
 # 처음부터 그 각도로 그린 그림이라 돌리지 않는다. (파일, 좌우 반전, 그림의 가드 자리, 몸에 놓을 가드 자리 = 주인공 그림 좌표)
-# 사선 그림은 지금 칼집 모양을 밑그림으로 줘 칼날 두께에 맞춘 것 (pixellab_sheath/diag_C.png), 측면은 세로 그림 side_A.png.
+# 사선 그림은 지금 칼집 모양을 밑그림으로 줘 칼날 두께에 맞춘 것 (pixellab_sheath/diag_C.png).
 PIXELLAB_ART = {
     "front": ("diag_C.png", False, (16, 16), (8, 16)),
     "back": ("diag_C.png", True, (16, 16), (21, 19)),
-    "side": ("side_A.png", False, (12, 13), (9, 14)),
+    # 측면은 사선 그림(diag_C)을 세운 것을 밑그림으로 다시 그린 side_C (같은 칼로 보이게, 2026-11-18 사용자 지적)
+    "side": ("side_C.png", False, (12, 15), (7, 15)),
 }
 
 

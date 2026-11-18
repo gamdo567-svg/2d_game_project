@@ -228,6 +228,9 @@ PLAYER_WEAPON = "old_sword"  # 시작 장비: 낡은 검
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.
 PLAYER_BACK_SWORD_SIZE = 64
 PLAYER_BACK_SWORD_IN_FRONT = ("back",)
+# 등 칼을 그리지 않는 (상태, 방향): 측면 회피는 몸을 크게 숙여 세운 칼이 몸 아래로 삐져나와서 숙인 몸에 가려진다고 본다
+# (2026-11-18 사용자 지적).
+PLAYER_BACK_SWORD_HIDDEN = (("dodge", "side"),)
 # 상태·방향별로 장마다 등 칼을 옮길 양 (원본 픽셀, 앞쪽·위가 +): 그 장의 머리 꼭대기가 서 있기 첫 장보다 움직인 만큼.
 # build_back_sword.py --offsets 가 계산한 값. 피격·기절 등 서 있는 그림을 쓰는 상태는 idle 첫 장.
 PLAYER_BACK_SWORD_OFFSETS = {

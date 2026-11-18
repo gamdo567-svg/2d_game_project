@@ -345,6 +345,16 @@ class BackSwordTest(unittest.TestCase):
         player.facing = Facing.UP
         self.assertEqual(self.draw(player), [sprite_sheet_path(IDLE, "back"), weapon_back_path(config.PLAYER_WEAPON, "back")])
 
+    def test_side_dodge_hides_back_sword(self):
+        # 측면 회피는 몸을 크게 숙여 등 칼을 그리지 않는다 (정면·후면 회피는 그림)
+        from game.player.player import weapon_back_path
+        for facing, view, shown in ((Facing.RIGHT, "side", False), (Facing.DOWN, "front", True)):
+            player = make_player()
+            player.facing = facing
+            player.dodge_tail_left = config.PLAYER_DODGE_TAIL_TIME / 2  # 회피 뒤 멈춤 그림
+            paths = self.draw(player)
+            self.assertEqual(weapon_back_path(config.PLAYER_WEAPON, view) in paths, shown, view)
+
     def test_offsets_match_sheets(self):
         # 위치표의 장 수가 그 상태 시트의 장 수와 같다
         from PIL import Image
