@@ -31,6 +31,10 @@ HITS = {
 OUT = 'attack_back_v3_68.png'
 
 
+def v2_sheet():
+    return 'attack_back_v2_68.png'  # 1타 시트 (build_attack_back_v2.py)
+
+
 def hood_width(im):
     """후드 너비: 파랑(칼)을 뺀 몸 윗부분(맨 위에서 몸 키 30% 까지) 줄들 중 가장 넓은 너비."""
     im = im.convert('RGBA')
@@ -77,7 +81,11 @@ def build(hit, ref, palette):
     if all(os.path.exists(os.path.join(restyle_out, f'r{k}.png')) for k in range(1, 9)):
         body[1:] = [pb.snap(Image.open(os.path.join(restyle_out, f'r{k}.png')).convert('RGBA'), palette)
                     for k in range(1, 9)]
-    body = [body[0]] + [v2.despeckle(c) for c in v2.match_tones(body[1:], body[0])]
+    # 색감 기준 (같은 날 사용자: 2·3타 색감이 좀 다름): 서기 그림 한 장이 아니라 완성된 1타 8장 전체의 색 분포에 맞춘다
+    tone_ref = Image.new('RGBA', (68 * 8, 68), (0, 0, 0, 0))
+    for k, c in enumerate(b.cells(v2_sheet(), 0)[1:9]):
+        tone_ref.alpha_composite(c, (k * 68, 0))
+    body = [body[0]] + [v2.despeckle(c) for c in v2.match_tones(body[1:], tone_ref)]
     if cfg['swoosh']:
         k, arc_args = cfg['swoosh']
         arc = bp.swoosh(body[k].size, *arc_args)  # 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머)
