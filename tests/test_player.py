@@ -664,18 +664,17 @@ class PlayerAttackTest(unittest.TestCase):
         self.assertEqual(attack_view(Facing.LEFT, 0), "side")
 
     def test_back_attack_hides_sword_when_covered(self):
-        # 후면 1타 첫 장(서기)은 칼이 몸에 완전히 가려져 칼을 그리지 않고, 들어 올린 장에서는 그린다
+        # 후면 1타 (2026-11-18 2차): 들어 올린 장은 칼을 그리고, 내려베는 잔상 장(판정 시점)은 칼이 잔상 속이라 그리지 않는다
         self.player.facing = Facing.UP
         self.click()
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
-        names = [c[0] for c in renderer.calls]
-        self.assertNotIn("draw_image_rotated", names)
-        self.assertEqual(renderer.calls[0][1][0], attack_sheet_path(1, "back"))
-        self.run_for(self.player.combo.current.duration * 0.3)  # 들어 올린 장 (칼날이 어깨 위로 보임)
+        self.assertIn("draw_image_rotated", [c[0] for c in renderer.calls])
+        self.run_for(self.player.combo.current.duration * 0.5)  # 판정 시점: 잔상 장
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
-        self.assertIn("draw_image_rotated", [c[0] for c in renderer.calls])
+        self.assertNotIn("draw_image_rotated", [c[0] for c in renderer.calls])
+        self.assertIn(attack_sheet_path(1, "back"), [c[1][0] for c in renderer.calls])
 
     def test_attack_sword_mirrors_when_facing_left(self):
         # 왼쪽: 손 위치를 좌우로 뒤집고, 칼은 뒤집은 뒤 반대 각도로 돌린다 (칼끝 방향 180 - 각도)

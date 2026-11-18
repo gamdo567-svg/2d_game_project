@@ -528,7 +528,8 @@ class Player:
         if ends is not None:
             # 타별 프레임 표로 고른다 (휘두르는 그림을 판정 시점에 맞춤)
             frame = frame_for_progress(self.combo.current.progress, ends)
-            shifts = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT if view == "front" else config.PLAYER_ATTACK_FRAME_SHIFTS
+            shifts = {"front": config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT,
+                      "back": config.PLAYER_ATTACK_FRAME_SHIFTS_BACK}.get(view, config.PLAYER_ATTACK_FRAME_SHIFTS)
             shift_x, shift_y = shifts[self.combo.index][frame]
         else:
             frame = self.combo.frame_index
