@@ -24,6 +24,9 @@ PICK = {
 }
 # 휘두르는 장에 겹칠 GPT 잔상: 타 → (8장 중 번호 0부터, GPT 시트 칸)
 ARC = {1: (3, 4)}
+# 좌우로 뒤집는 타 (2026-11-18 사용자: 측면·정면 1타는 화면 왼쪽 위로 들어 오른쪽 아래로 벰. GPT·PixelLab 후면은 반대였음).
+# 뒷모습은 거의 좌우 대칭이라 그림째 뒤집는다 (칼 위치는 build_remake_preview.OVERRIDES 'backpl1' 이 뒤집은 값).
+MIRROR = {1}
 
 
 def blue_only(cell):
@@ -48,6 +51,8 @@ def main():
                 arc = blue_only(gpt_rows[hit][ARC[hit][1]])
                 arc.alpha_composite(f)  # 잔상은 몸 뒤
                 f = arc
+            if hit in MIRROR:
+                f = f.transpose(Image.FLIP_LEFT_RIGHT)
             cells.append(f)
         for k, c in enumerate(cells):
             sheet.alpha_composite(c, (k * 68, (hit - 1) * 68))

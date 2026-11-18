@@ -65,9 +65,10 @@ OVERRIDES = {
     # 후면 공격 (2026-11-18, ChatGPT 8자세 attack_back_gpt_68.png): 칼은 늘 몸 뒤(가려짐). 보이는 칼날 끝에서 칼 길이(24)만큼
     # 몸 쪽이 손 (estimate_back_swords.py 로 어림 후 눈으로 맞춤). 칼이 안 보이는 장은 다섯째 값(칼 길이 비율) 0 = 그리지 않음.
     # 후면 1타 2차 (2026-11-18, PixelLab 이 GPT 자세 사이를 다시 그림 attack_back_pl_68.png). 4번째 = 잔상 장 (칼은 잔상 속).
-    ('backpl1', 1): (40, 31, 107, True), ('backpl1', 2): (32, 34, 50, True), ('backpl1', 3): (32, 34, 60, True),
-    ('backpl1', 4): (34, 30, -90, True, 0), ('backpl1', 5): (32, 41, -149, True), ('backpl1', 6): (36, 43, -157, True),
-    ('backpl1', 7): (37, 42, -148, True), ('backpl1', 8): (38, 39, -140, True),
+    # 측면·정면처럼 왼쪽 위로 들어 오른쪽 아래로 베게 좌우로 뒤집음: x → 67 - x, 각도 → 180 - 각도.
+    ('backpl1', 1): (27, 31, 73, True), ('backpl1', 2): (35, 34, 130, True), ('backpl1', 3): (35, 34, 120, True),
+    ('backpl1', 4): (33, 30, -90, True, 0), ('backpl1', 5): (35, 41, -31, True), ('backpl1', 6): (31, 43, -23, True),
+    ('backpl1', 7): (30, 42, -32, True), ('backpl1', 8): (29, 39, -40, True),
     ('backgpt1', 1): (34, 30, -90, True, 0), ('backgpt1', 2): (28, 41, 41, True), ('backgpt1', 3): (32, 34, 50, True),
     ('backgpt1', 4): (34, 30, -90, True, 0), ('backgpt1', 5): (36, 43, -157, True), ('backgpt1', 6): (38, 37, -147, True),
     ('backgpt1', 7): (36, 28, -129, True), ('backgpt1', 8): (34, 30, -90, True, 0),
