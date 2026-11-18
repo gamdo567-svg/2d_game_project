@@ -116,7 +116,9 @@ FRAME_PICK = {
 # 파란 덩어리를 모두 휘두른 잔상으로 보는 프레임 (칼은 몸에 가려 안 보이고 잔상만 있음, 2026-11-18 후면 1·2타)
 FORCE_SMEAR = {('backgpt1', 4), ('backgpt2', 4), ('backpl1', 5), ('backpl1', 6), ('backv2_1', 5)}
 # 잔상을 몸 위에 겹쳐 그리는 프레임 (반투명): 후면 1타 내려베는 순간 — 몸 뒤면 가운데가 가려져 한 번에 베는 느낌이 안 남 (2026-11-18)
-SMEAR_ON_TOP = {('backpl1', 5), ('backv2_1', 5)}
+# 직접 그린 잔상이라 원본 칼 자리로 지우지 않는 칸
+KEEP_WHOLE_SMEAR = {('backv2_1', 5)}
+SMEAR_ON_TOP = {('backpl1', 5)}  # backv2_1 5 는 몸 뒤 (2026-11-18 사용자 지적)
 # 칼·잔상이 몸과 얼굴을 가로질러 지운 자리가 지저분하게 남는 프레임은 깨끗한 프레임의 그림을 빌려 쓴다
 # (2026-11-17 사용자 지적: 얼굴 그림자가 프레임마다 다르고 픽셀이 묻어 있음).
 # 1타 5·6번은 몸 자세가 7번과 거의 같아 몸 전체를 7번으로 (칼 각도와 잔상은 그 프레임 것).
@@ -556,7 +558,8 @@ def build_layers(name, frames):
             donor_col, box = HEAD_DONOR[(name, col)]
             transplant_head(body, process_body(name, raw_frames[donor_col - 1]), box)
         # 원본 칼 둘레와 작은 조각은 지우고, 큰 덩어리만 잔상으로
-        smear = {p for p in smear if not near_sword(p, hx, hy, angle)}
+        if (name, col) not in KEEP_WHOLE_SMEAR:  # 직접 그린 잔상은 칼 자리로 지우지 않음 (가운데가 끊겼음, 같은 날 사용자 지적)
+            smear = {p for p in smear if not near_sword(p, hx, hy, angle)}
         # 작은 조각과 가는 줄(원본 칼의 가장자리)은 지우고, 넓은 덩어리만 잔상으로
         smear = {p for comp in components(smear)
                  if len(comp) >= SMEAR_MIN and (axis(comp)[3] > 1.6 or (name, col) in FORCE_SMEAR) for p in comp}

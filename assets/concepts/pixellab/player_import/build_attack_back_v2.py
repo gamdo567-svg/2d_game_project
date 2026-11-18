@@ -1,7 +1,7 @@
 """후면 1타 3차 시트 (2026-11-18): ChatGPT 가 정면 1타 8장을 "뒤에서 본 같은 순간"으로 그린 그림
 (attack_back_kit/hit1_v2/result_hit1_back.png, 한 줄 8자세, 칼은 파란 단색)을 게임 크기로.
 build_attack_back.py 와 같은 방법: 배경 제거 → 8자세 자르기 → 첫 자세 키를 게임 뒷모습에 맞춰 NEAREST 로 줄임
-→ 색 맞춤(파랑은 그대로) → 발 맞춤. 5번째(판정)에는 칼이 지나간 길대로 큰 초승달 잔상을 몸 위에 겹친다
+→ 색 맞춤(파랑은 그대로) → 발 맞춤. 5번째(판정)에는 칼이 지나간 길대로 큰 초승달 잔상을 몸 뒤에 깐다
 (build_attack_back_pl.swoosh). 출력: remake_raw/attack_back_v2_68.png 0행 (칸 0 = 게임 뒷모습).
 """
 import os
@@ -114,7 +114,9 @@ def main():
     sheet = Image.new('RGBA', (68 * 9, 68), (0, 0, 0, 0))
     for k, cell in enumerate(body):
         if k - 1 == SWOOSH[0]:
-            cell.alpha_composite(bp.swoosh(cell.size, *SWOOSH[1]))  # 판정 장: 몸 위로 이어지는 잔상
+            arc = bp.swoosh(cell.size, *SWOOSH[1])  # 판정 장: 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머, 같은 날 사용자 지적)
+            arc.alpha_composite(cell)
+            cell = arc
         if MIRROR and k > 0:
             cell = cell.transpose(Image.FLIP_LEFT_RIGHT)
         sheet.alpha_composite(cell, (k * 68, 0))
