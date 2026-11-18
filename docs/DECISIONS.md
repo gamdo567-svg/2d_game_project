@@ -697,3 +697,18 @@
   - 게임: `player/dodge/<view>.png` 64×48 × 6 (돌진이 32보다 넓음), 발 밑 가운데 = 칸 아래 가운데. 왼쪽은 측면 반전.
     이동 0.25초 동안 앞 `PLAYER_DODGE_MOVE_FRAMES`(4)장, 끝난 뒤 `PLAYER_DODGE_TAIL_TIME`(0.15초) 동안 나머지 2장
     (`Player.dodge_tail_left`). 멈춤 그림은 IDLE 일 때만 그리고, 다른 상태가 되면 0 으로 끊는다 (조작 지연 없음).
+
+## D-045 퍼펙트 회피 보상(상대 게이지·잔상)과 회피 뒤 일어섬
+
+- 상태: 확정 (사용자 요청, 2026-11-18)
+- 날짜: 2026-11-18
+- 결정
+  - `PostureGauge.add(amount)` (패링당함 `add_parried` 도 이걸 씀). 장면은 공격 결과에서 `Player.last_perfect_dodge` 이면
+    `Golem.on_perfect_dodged()` 를 불러 `POSTURE_PERFECT_DODGE_GAIN`(0.25, 패링당한 것과 같은 양)만큼 채운다.
+  - 잔상: 회피로 움직이는 동안(DODGE 상태만) `PLAYER_AFTERIMAGE_INTERVAL`(0.05초)마다 그림 위치·방향·회피 그림 번호를 적어 두고,
+    퍼펙트가 되면 그 기록을 잔상(`Player.afterimages`)으로 바꾸며 아직 회피 중이면 이어서 더한다. `PLAYER_AFTERIMAGE_TIME`(0.45초)에 걸쳐
+    `PLAYER_AFTERIMAGE_OPACITY`(0.7)에서 0 으로 옅어진다. 그림은 회피 그림을 하늘색 단계로 바꾼 `player/dodge_ghost/<view>.png`
+    (`dodge_kit/build_dodge_ghost.py`), `Renderer.draw_sprite_frame(opacity=)` 로 비쳐 보이게 그린다. 멈춤 그림 동안은 적지 않는다
+    (제자리에 겹쳐 뭉개짐).
+  - 회피 뒤: 멈춤 → 서기 사이를 PixelLab 으로 다시 받아 앞 두 장을 붙였다 (8장 = 이동 4 + 미끄러짐·멈춤·일어섬 4).
+    `PLAYER_DODGE_TAIL_TIME` 0.15 → 0.3초. 그림만이라 그동안 걷거나 행동하면 바로 끊긴다.
