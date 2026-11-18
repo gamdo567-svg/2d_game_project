@@ -1,4 +1,6 @@
-"""등에 멘 칼 그림을 칼 그림에서 계산해 만든다 (2026-11-18 사용자 요청: 평소에는 검을 등에 매고 다님).
+"""등에 멘 칼 그림을 만든다 (2026-11-18 사용자 요청: 평소에는 검을 등에 매고 다님).
+
+지금은 PixelLab 그림(pixellab_sheath/)을 자리에 맞춰 놓는다 (PIXELLAB_ART). 아래 1~3 은 처음의 계산 방식(밑그림용으로 남김).
 
 입력: assets/images/player/weapons/<무기>.png (56×10, 칼끝 오른쪽, 한가운데가 손).
 1. 칼날 부분(가드 오른쪽)을 가죽 칼집으로 감싼다: 칼날과 같은 두께(칼이 들어갈 자리), 끝에 금속 마구리, 검은 외곽선.
@@ -85,12 +87,33 @@ def place(item: Image.Image, guard: tuple[int, int], angle: float) -> Image.Imag
     return canvas
 
 
+# PixelLab 그림 (2026-11-18 사용자 결정: 계산해 돌린 칼집은 픽셀이 깔끔하지 않고 측면은 칼집처럼 안 보임).
+# 처음부터 그 각도로 그린 그림이라 돌리지 않는다. (파일, 좌우 반전, 그림의 가드 자리, 몸에 놓을 가드 자리 = 주인공 그림 좌표)
+# 사선 그림은 지금 칼집 모양을 밑그림으로 줘 칼날 두께에 맞춘 것 (pixellab_sheath/diag_C.png), 측면은 세로 그림 side_A.png.
+PIXELLAB_ART = {
+    "front": ("diag_C.png", False, (16, 16), (8, 16)),
+    "back": ("diag_C.png", True, (16, 16), (21, 19)),
+    "side": ("side_A.png", False, (12, 13), (9, 14)),
+}
+
+
+def place_art(view: str) -> Image.Image:
+    name, flip, (ax, ay), (tx, ty) = PIXELLAB_ART[view]
+    art = Image.open(HERE / "pixellab_sheath" / name).convert("RGBA")
+    if flip:
+        art = art.transpose(Image.FLIP_LEFT_RIGHT)
+        ax = art.width - 1 - ax
+    canvas = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
+    canvas.alpha_composite(art, (BODY[0] + tx - ax, BODY[1] + ty - ay))
+    return canvas
+
+
 def main() -> None:
     sword = Image.open(WEAPONS / f"{WEAPON}.png").convert("RGBA")
     item = sheathed(sword)
     preview = Image.new("RGBA", (CANVAS * 3, CANVAS), (40, 44, 52, 255))
     for k, (view, (guard, angle, behind, thin)) in enumerate(PLACES.items()):
-        art = place(sheathed(sword, thin), guard, angle)
+        art = place_art(view)  # 예전 계산 그림: place(sheathed(sword, thin), guard, angle)
         art.save(WEAPONS / f"{WEAPON}_back_{view}.png")
         body = Image.open(PLAYER / "idle" / f"{view}.png").convert("RGBA").crop((0, 0, 32, 48))
         cell = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
