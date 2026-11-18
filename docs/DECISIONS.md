@@ -677,3 +677,19 @@
   - 골렘은 기절 중 "STUN" 글자 대신 이 이펙트를 그리고, 체력·패링 막대를 `STUN_BAR_LIFT` 만큼 링 위로 올린다.
   - 골렘 기절 자세(휘청 → 한쪽 무릎)는 ChatGPT 핵심 자세 + PixelLab 사이 동작으로 만들 예정
     (`golem_stun/chatgpt_kit/README.txt`, 사용자 결과 대기).
+
+## D-044 주인공 회피 그림 (핵심 자세 ChatGPT + 사이 PixelLab), 도착 뒤 멈춤 그림
+
+- 상태: 확정 (사용자 결정, 2026-11-18)
+- 날짜: 2026-11-18
+- 결정
+  - PixelLab 은 후면을 제대로 못 그려, 핵심 자세(서기·웅크림·돌진·미끄러져 멈춤)를 ChatGPT 로 방향마다 받았다
+    (`assets/concepts/pixellab/player_import/dodge_kit/`: 요청 문구 README, result_<view>.png).
+  - `build_dodge_keys.py`: 게임 서 있는 그림 키에 맞춰 줄일 때 평균(BOX)이 아니라 픽셀 덩어리 가운데 색(NEAREST)을 집는다
+    (사용자 지적: 화질 뭉개짐). 색은 게임 주인공 색으로, 발 밑 가운데를 맞춘다.
+  - 사이 동작은 PixelLab animate_image(시작·끝 지정)로 웅크림→돌진, 돌진→멈춤만 채웠다 (일어서는 구간은 몸이 늘어나 뺌).
+    `build_dodge_sheet.py`: 고른 6장에서 게임 색과 먼 픽셀(PixelLab 이 넣은 흰 연기·섬광)과 몸 밖 조각을 지우고,
+    외톨이 픽셀을 지우고, 테두리를 가장 어두운 색 한 줄로 정리한다. 후면 뒤쪽은 연기가 머리를 덮어 앞 구간만 쓴다.
+  - 게임: `player/dodge/<view>.png` 64×48 × 6 (돌진이 32보다 넓음), 발 밑 가운데 = 칸 아래 가운데. 왼쪽은 측면 반전.
+    이동 0.25초 동안 앞 `PLAYER_DODGE_MOVE_FRAMES`(4)장, 끝난 뒤 `PLAYER_DODGE_TAIL_TIME`(0.15초) 동안 나머지 2장
+    (`Player.dodge_tail_left`). 멈춤 그림은 IDLE 일 때만 그리고, 다른 상태가 되면 0 으로 끊는다 (조작 지연 없음).

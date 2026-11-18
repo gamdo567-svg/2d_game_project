@@ -16,6 +16,19 @@
 
 ---
 
+## 2026-11-18 — 주인공 회피 동작 그림 (Claude Code)
+
+- **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
+- **한 일**: 회피 중 걷기 그림 대신 회피 그림을 쓴다 (D-044, PRE-PRD 2.2). 핵심 자세는 ChatGPT, 사이는 PixelLab.
+  도착한 뒤 멈춤 그림을 0.15초 더 보여 준다 (그림만, 다른 행동을 하면 바로 끊김).
+- **현재 상태**: 전체 테스트 통과. 실제 pico2d 창 녹화로 확인 (`assets/concepts/pixellab/player_import/dodge_kit/dodge_ingame*.gif`).
+  직접 조작해 본 확인은 아님.
+- **다음 작업자가 알아야 할 것**: 그림을 바꾸려면 result_<view>.png → `build_dodge_keys.py` → (PixelLab 사이 동작 pl_out2/) →
+  `build_dodge_sheet.py` → dodge_<view>_64x48.png 를 `assets/images/player/dodge/<view>.png` 로 복사.
+- **남은 문제 / 다음 할 일**: 후면 돌진은 GPT 원본부터 몸이 화면 왼쪽으로 조금 기욺. 푸시·PR 은 사용자 결정 대기.
+
+---
+
 ## 2026-11-18 — 기절 공용 별 이펙트, 골렘 기절 준비 (Claude Code)
 
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
