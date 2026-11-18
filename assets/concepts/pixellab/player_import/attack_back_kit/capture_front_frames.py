@@ -23,6 +23,7 @@ from game.scenes.field_scene import FieldScene  # noqa: E402
 from game.world.grid import Grid  # noqa: E402
 
 OUT = sys.argv[1]
+VIEW = sys.argv[2] if len(sys.argv) > 2 else 'front'  # 'back' 이면 위를 보고 후면 1~3타를 잡는다
 FLOOR = {(24, 20, 32), (52, 46, 68)}  # 바닥·격자 색 → 회색 (ChatGPT 에 넘길 때 배경을 단색으로)
 
 
@@ -41,7 +42,7 @@ scene = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_S
 scene.golems.clear()
 scene.dummies.clear()
 p = scene.player
-p.facing = Facing.DOWN
+p.facing = Facing.DOWN if VIEW == 'front' else Facing.UP
 inp = InputState()
 inp.press(Action.ATTACK)
 got = {}
@@ -53,7 +54,7 @@ for k in range(600):
         if len(got) >= 24:
             break
         continue
-    ends = pl.ATTACK_FRAME_ENDS['front'][p.combo.index]
+    ends = pl.ATTACK_FRAME_ENDS[VIEW][p.combo.index]
     fr = pl.frame_for_progress(cur.progress, ends) if ends else min(7, int(cur.progress * 8))
     key = (p.combo.index, fr)
     if key in got:
@@ -79,5 +80,5 @@ for hit in (1, 2, 3):
             im = im.transpose(Image.FLIP_LEFT_RIGHT) if mirror else im
             sheet.paste(im, (f * 160, 30))
             d.text((f * 160 + 76, 8), str(f + 1), fill=(255, 255, 255))
-        name = f'front_hit{hit}_8frames{"_mirror" if mirror else ""}_x5.png'
+        name = f'{VIEW}_hit{hit}_8frames{"_mirror" if mirror else ""}_x5.png'
         sheet.resize((sheet.width * 3, sheet.height * 3), Image.NEAREST).save(os.path.join(OUT, name))
