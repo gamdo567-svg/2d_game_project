@@ -625,3 +625,7 @@
     사용자가 ChatGPT 로 그린 핵심 자세 네 장(`golem_slam/chatgpt_kit_back/result_north.png`) 중 내려찍기·일어서기를 쓰고
     그 사이를 PixelLab v3(시작·끝 자세 지정)로 채웠다. PixelLab 이 그려 넣은 흰·하늘색 불꽃은 색으로 지웠다.
   - `slam_north.png` 의 착지·일어섬 7~13장만 바꾸고, 들기 0~6장·끝 서기 장·다른 방향·설정값은 그대로.
+  - (같은 날 사용자 요청: PixelLab 이 더 자연스러움) 충전·폭발 그림을 PixelLab VFX Creator 로 다시 만들었다
+    (내 이펙트 'Golem laser charge', 'Golem laser blast'). 충전은 골렘 앞모습 위에서 charge_up 조각을 코어에 두고 골렘 코어 색으로,
+    폭발은 flash_burst·shockwave_ring·spark_burst·debris_burst(돌 색). `assets/concepts/vfx/laser/pixellab/pack_for_game.py` 가
+    충전 88×88 24장(칸 가운데 = 코어, 충전 진행도로 고름)과 폭발 160×160 12장(16fps)으로 옮긴다. 레이저 단면은 계산 그림 그대로.
