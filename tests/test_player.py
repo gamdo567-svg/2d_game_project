@@ -612,12 +612,26 @@ class PlayerAttackTest(unittest.TestCase):
         self.assertFalse(kwargs["flip_horizontal"])
         self.assertFalse(body[2]["flip_horizontal"])
 
-    def test_attack_view_uses_side_when_facing_up(self):
-        # 후면 공격 그림이 없어 위를 볼 때는 측면 그림. 아래는 정면.
+    def test_attack_view_uses_back_when_facing_up(self):
+        # 2026-11-18 후면 공격 그림 (ChatGPT 8자세): 위를 볼 때는 후면, 아래는 정면.
         for index in range(config.PLAYER_ATTACK_HITS):
-            self.assertEqual(attack_view(Facing.UP, index), "side")
+            self.assertEqual(attack_view(Facing.UP, index), "back")
             self.assertEqual(attack_view(Facing.DOWN, index), "front")
         self.assertEqual(attack_view(Facing.LEFT, 0), "side")
+
+    def test_back_attack_hides_sword_when_covered(self):
+        # 후면 1타 첫 장(서기)은 칼이 몸에 완전히 가려져 칼을 그리지 않고, 들어 올린 장에서는 그린다
+        self.player.facing = Facing.UP
+        self.click()
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        names = [c[0] for c in renderer.calls]
+        self.assertNotIn("draw_image_rotated", names)
+        self.assertEqual(renderer.calls[0][1][0], attack_sheet_path(1, "back"))
+        self.run_for(self.player.combo.current.duration * 0.3)  # 들어 올린 장 (칼날이 어깨 위로 보임)
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        self.assertIn("draw_image_rotated", [c[0] for c in renderer.calls])
 
     def test_attack_sword_mirrors_when_facing_left(self):
         # 왼쪽: 손 위치를 좌우로 뒤집고, 칼은 뒤집은 뒤 반대 각도로 돌린다 (칼끝 방향 180 - 각도)

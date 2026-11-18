@@ -206,7 +206,6 @@ class PlayerAssetTest(unittest.TestCase):
 
     def test_front_attack_sheets_and_tables(self):
         # 정면 공격: 1타는 PixelLab 8프레임, 2·3타는 예전 5프레임 그림 (프레임 표·그림 옮김·칼 길이 비율이 따로 있음).
-        # 후면은 그림이 없어 표가 모두 None (위를 볼 때 측면 그림).
         w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
         self.assertEqual(len(config.PLAYER_ATTACK_SWORD_FRONT), config.PLAYER_ATTACK_HITS)
         for index, frames in enumerate(config.PLAYER_ATTACK_SWORD_FRONT):
@@ -225,7 +224,26 @@ class PlayerAssetTest(unittest.TestCase):
                 for hand_x, hand_y, angle, behind, *rest in frames:
                     self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
                     self.assertTrue(all(0 < length <= 1.0 for length in rest))
-        self.assertEqual(config.PLAYER_ATTACK_SWORD_BACK, (None, None, None))
+
+    def test_back_attack_sheets_and_tables(self):
+        # 후면 공격 (2026-11-18): 타마다 8프레임, 칼은 늘 몸 뒤. 다섯째 값 0 은 칼을 그리지 않는 장.
+        w, h = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
+        for index, frames in enumerate(config.PLAYER_ATTACK_SWORD_BACK):
+            hit = index + 1
+            ends = config.PLAYER_ATTACK_FRAME_ENDS_BACK[index]
+            with self.subTest(hit=hit):
+                self.assertEqual(len(frames), config.PLAYER_ATTACK_FRAMES)
+                if ends is not None:
+                    self.assertEqual(len(ends), config.PLAYER_ATTACK_FRAMES)
+                    self.assertEqual(list(ends), sorted(ends))
+                    self.assertEqual(ends[-1], 1.0)
+                for path in (attack_sheet_path(hit, "back"), attack_hand_sheet_path(hit, "back")):
+                    signature, width, height, color_type = read_png_header(path)
+                    self.assertEqual((width, height), (w * config.PLAYER_ATTACK_FRAMES, h))
+                for hand_x, hand_y, angle, behind, *rest in frames:
+                    self.assertTrue(0 <= hand_x < w and 0 <= hand_y < h)
+                    self.assertTrue(behind)
+                    self.assertTrue(all(0 <= length <= 1.0 for length in rest))
 
     def test_front_big_swing_frame_starts_at_hit_time(self):
         # 정면은 크게 휘두르거나 찌르는 그림(1타 6번째, 2타 5번째, 3타 6번째)이 판정이 나는 순간에 시작한다 (측면과 같은 박자)

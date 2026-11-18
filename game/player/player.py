@@ -60,11 +60,16 @@ def attack_hand_sheet_path(hit_number: int, view: str = "side") -> str:
     return sprite_sheet_path(ATTACK, f"{view}_{hit_number}_hand")
 
 
-# 방향별 공격 칼 위치표. 타 하나가 None 이면 그 방향 그림이 없어 측면을 쓴다 (지금은 후면 2타).
+# 방향별 공격 칼 위치표. 타 하나가 None 이면 그 방향 그림이 없어 측면을 쓴다.
 ATTACK_SWORD_TABLES = {
     "side": config.PLAYER_ATTACK_SWORD,
     "front": config.PLAYER_ATTACK_SWORD_FRONT,
     "back": config.PLAYER_ATTACK_SWORD_BACK,
+}
+# 방향별 타별 프레임 표 (None = 같은 간격)
+ATTACK_FRAME_ENDS = {
+    "front": config.PLAYER_ATTACK_FRAME_ENDS_FRONT,
+    "back": config.PLAYER_ATTACK_FRAME_ENDS_BACK,
 }
 
 
@@ -477,15 +482,16 @@ class Player:
     def _draw_attack(self, renderer, center_x: float, bottom: float) -> None:
         """지금 타의 공격 그림(96×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.
 
-        아래를 보면 정면, 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
-        후면은 그림이 없어 위를 볼 때 측면 그림을 쓴다. 정면 3타 찌르는 순간은 무기의 찌르기용 칼 그림을 쓴다.
+        아래를 보면 정면, 위를 보면 후면(2026-11-18), 오른쪽·왼쪽은 측면 그림(왼쪽은 좌우 반전)을 쓴다.
+        정면 3타 찌르는 순간은 무기의 찌르기용 칼 그림을 쓴다.
         """
         view = attack_view(self.facing, self.combo.index)
-        ends = config.PLAYER_ATTACK_FRAME_ENDS_FRONT[self.combo.index] if view == "front" else None
+        ends = ATTACK_FRAME_ENDS.get(view, (None,) * config.PLAYER_ATTACK_HITS)[self.combo.index]
         if ends is not None:
-            # 정면은 타별 프레임 표로 고른다 (1·2타는 휘두르는 그림을 판정 시점에 맞춤, 3타는 예전 5프레임 그림)
+            # 타별 프레임 표로 고른다 (휘두르는 그림을 판정 시점에 맞춤)
             frame = frame_for_progress(self.combo.current.progress, ends)
-            shift_x, shift_y = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT[self.combo.index][frame]
+            shifts = config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT if view == "front" else config.PLAYER_ATTACK_FRAME_SHIFTS
+            shift_x, shift_y = shifts[self.combo.index][frame]
         else:
             frame = self.combo.frame_index
             shift_x, shift_y = config.PLAYER_ATTACK_FRAME_SHIFTS[self.combo.index][frame]
@@ -553,6 +559,8 @@ class Player:
         """
         width, height = config.PLAYER_ATTACK_SPRITE_WIDTH, config.PLAYER_ATTACK_SPRITE_HEIGHT
         scale = config.RENDER_SCALE
+        if length <= 0:
+            return  # 칼이 몸에 완전히 가려지는 장 (후면)
         canvas_left = canvas_x - width * scale / 2
         canvas_top = canvas_bottom + height * scale
         x = width - hand_x - 0.5 if flip else hand_x + 0.5  # 손 픽셀의 가운데
