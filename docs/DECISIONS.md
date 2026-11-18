@@ -633,3 +633,6 @@
     (160×160 16장 18fps, 5칸 크기)로 되돌렸다. PixelLab 폭발은 `pixellab/blast/` 에 비교용으로만 남긴다.
   - 2026-11-18 사용자 지적(원본과 질감 차이): 7~12장의 밝기 분포를 게임 뒷모습 그림과 같게 바꿈 (`build_north.match_tone`).
     PixelLab 참고 그림 편집(edit_image 참고 모드)도 시험했으나 금이 거미줄처럼 늘거나 매끈해지고 크기가 바뀌어 쓰지 않음 (`refine/`, 커밋 안 함).
+  - (같은 날 사용자 지적: 빛이 뚝뚝 끊기며 모임) 충전 그림을 두 겹으로 나눴다: 빛 알갱이 반복 그림
+    ('Golem laser charge motes', 80×80 16장)은 지난 시간으로 16fps 로 돌리고, 구('Golem laser charge orb', 32×32 24장)는
+    충전 진행도로 고른다. 둘 다 PixelLab VFX Creator, 코어 자리에 겹쳐 그린다. 한 덩어리 시안(`pixellab/charge/`)은 쓰지 않는다.

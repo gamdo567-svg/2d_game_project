@@ -33,7 +33,7 @@
 - **브랜치**: `claude/golem-stomp-vfx` (푸시 안 함, 사용자 요청으로 보류)
 - **한 일**: ④ 레이저를 다시 켰다. 막지 못한 빨강·노랑 공격 4스택 또는 주인공이 8칸보다 멀면 발사 (D-040, PRE-PRD 2.4).
   맞은 공격은 스택에 세지 않는다 (사용자 요청). 코어 충전 구(점점 커짐, 다 커도 코어의 두 배 정도) → 하얀 레이저 → 조준점 4×4 폭발.
-  충전 그림은 사용자 요청으로 PixelLab VFX Creator 로 다시 만듦 (`assets/concepts/vfx/laser/pixellab/`, 바꾸려면 pixellab.ai
+  충전 그림(빛 알갱이 반복 + 커지는 구, 두 겹)은 사용자 요청으로 PixelLab VFX Creator 로 다시 만듦 (`assets/concepts/vfx/laser/pixellab/`, 바꾸려면 pixellab.ai
   내 이펙트에서 고쳐 내보낸 뒤 `pack_for_game.py`). 폭발·레이저 단면은 비교 뒤 사용자 결정으로 `build_golem_laser.py` 계산 그림.
 - **현재 상태**: 테스트 245개 통과. 실제 pico2d 창 캡처로 충전 → 발사 → 폭발 확인 (`assets/concepts/vfx/laser/golem_laser_ingame_capture.png`).
   직접 조작해 본 확인은 아님.
