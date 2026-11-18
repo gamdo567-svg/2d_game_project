@@ -145,7 +145,7 @@ class DodgeTest(unittest.TestCase):
                 return lambda *a, **k: calls.append((name, a))
 
         self.player.draw(Rec())
-        return calls[0][1]
+        return calls[-1][1]  # 잔상을 먼저 그리고 주인공을 마지막에 그린다
 
     def test_draws_dodge_frames_then_stop_pose(self):
         # 2026-11-18 회피 그림: 이동 중에는 앞 장들(웅크림 → 돌진), 도착한 뒤 멈춤 그림을 잠깐 더 보여 준다

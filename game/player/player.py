@@ -31,7 +31,7 @@ from game.world.grid import Grid
 
 @dataclass
 class Afterimage:
-    """퍼펙트 회피 잔상 하나 (그리기 전용): 그 순간의 그림 위치(칸, 실수)·방향·회피 그림 번호, 지난 시간."""
+    """회피 잔상 하나 (그리기 전용): 그 순간의 그림 위치(칸, 실수)·방향·회피 그림 번호, 지난 시간."""
     col: float
     row: float
     view: str
@@ -138,10 +138,8 @@ class Player:
         )
         self.dodge = Dodge(config.PLAYER_DODGE_DURATION, config.PLAYER_DODGE_MOVE_FRAMES)
         self.dodge_tail_left = 0.0  # 회피가 끝난 뒤 멈춤 그림을 더 보여 줄 남은 시간 (그림만)
-        # 퍼펙트 회피 잔상 (2026-11-18 사용자 요청): 회피 중 모습 기록 → 퍼펙트가 되면 잔상으로
-        self._trail: list[Afterimage] = []
+        # 회피 잔상 (2026-11-18 사용자 요청): 퍼펙트든 아니든 회피하며 지나온 자리에 남는다
         self._trail_clock = 0.0
-        self._afterimage_on = False
         self.afterimages: list[Afterimage] = []
         self.hurt = TimedAction(config.PLAYER_HURT_TIME, 1)
         self.max_hp = config.PLAYER_MAX_HP
@@ -335,18 +333,14 @@ class Player:
             self._perfect_this_dodge = True
             self.dodge_cooldown_left = 0.0
             self.perfect_text_left = config.PLAYER_PERFECT_TEXT_TIME
-            # 잔상: 이번 회피에서 지나온 모습들을 남기고, 아직 회피 중이면 이어서 남긴다
-            self.afterimages = [Afterimage(g.col, g.row, g.view, g.flip, g.frame) for g in self._trail]
-            self._afterimage_on = True
             return True
         return False
 
     def _record_trail(self, dt: float) -> None:
-        """회피로 움직이는 동안 PLAYER_AFTERIMAGE_INTERVAL 초마다 모습을 적어 둔다 (그리기 전용 기록).
-        도착한 뒤 멈춤 그림 동안은 적지 않는다 (제자리에 잔상이 겹쳐 뭉개짐)."""
+        """회피로 움직이는 동안 PLAYER_AFTERIMAGE_INTERVAL 초마다 그 모습을 잔상으로 남긴다 (그리기 전용).
+        퍼펙트든 아니든 남는다 (2026-11-18 사용자 요청). 도착한 뒤 멈춤 그림 동안은 남기지 않는다 (제자리에 겹쳐 뭉개짐)."""
         frame = self.dodge_frame if self.state == DODGE else None
         if frame is None:
-            self._afterimage_on = False
             return
         self._trail_clock -= dt
         if self._trail_clock > 0.0:
@@ -354,10 +348,7 @@ class Player:
         self._trail_clock = config.PLAYER_AFTERIMAGE_INTERVAL
         vcol, vrow = self.mover.visual_position
         view, flip = sprite_view(self.facing)
-        ghost = Afterimage(vcol, vrow, view, flip, frame)
-        self._trail.append(ghost)
-        if self._afterimage_on:
-            self.afterimages.append(Afterimage(vcol, vrow, view, flip, frame))
+        self.afterimages.append(Afterimage(vcol, vrow, view, flip, frame))
 
     def _start_dodge(self, input_state: InputState) -> bool:
         """누르고 있는 방향(없으면 바라보는 방향)으로 회피. 바로 앞이 막혀 있으면 하지 않는다 (대기 시간도 없음).
@@ -377,9 +368,7 @@ class Player:
         self._dodge_start_tile = start_tile
         self._since_dodge = 0.0
         self._perfect_this_dodge = False
-        self._trail = []
         self._trail_clock = 0.0
-        self._afterimage_on = False
         self.fsm.trigger("dodge")
         return True
 
@@ -471,7 +460,7 @@ class Player:
         return None
 
     def _draw_afterimages(self, renderer) -> None:
-        """퍼펙트 회피 잔상: 그림자처럼 바꾼 회피 그림을 지나온 자리에, 오래된 것일수록 옅게."""
+        """회피 잔상: 그림자처럼 바꾼 회피 그림을 지나온 자리에, 오래된 것일수록 옅게."""
         w, h = config.PLAYER_DODGE_SPRITE_WIDTH, config.PLAYER_DODGE_SPRITE_HEIGHT
         for ghost in self.afterimages:
             left, bottom, right, _ = self.grid.tile_to_pixel_rect(ghost.col, ghost.row)

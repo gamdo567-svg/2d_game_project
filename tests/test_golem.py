@@ -434,11 +434,14 @@ class GolemVsPlayerTest(unittest.TestCase):
         self.run_for(config.PLAYER_AFTERIMAGE_TIME + 0.05)
         self.assertEqual(self.player.afterimages, [])  # 잠시 뒤 모두 사라짐
 
-    def test_normal_dodge_no_gauge_no_afterimages(self):
+    def test_normal_dodge_leaves_afterimages_but_no_gauge(self):
+        # 2026-11-18 사용자 요청: 잔상은 퍼펙트든 아니든 남는다. 게이지는 퍼펙트일 때만
         self.player.facing = Facing.LEFT
         self.player.dodge_cooldown_left = 0.0
         self.tap(Action.DODGE)  # 공격과 상관없는 회피
-        self.run_for(0.4)
+        self.run_for(0.2)
+        self.assertTrue(self.player.afterimages)
+        self.run_for(config.PLAYER_AFTERIMAGE_TIME + 0.3)
         self.assertEqual(self.player.afterimages, [])
         self.assertEqual(self.golem.posture.value, 0.0)
 

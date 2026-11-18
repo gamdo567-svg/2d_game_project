@@ -112,8 +112,8 @@ PLAYER_DODGE_TAIL_TIME = 0.3  # 초 (2026-11-18 사용자: 대시 뒤 너무 빨
 # 성공 → 회피 대기 시간을 없앤다. 타이밍은 넉넉하게.
 PLAYER_PERFECT_DODGE_WINDOW = 0.4  # 초
 PLAYER_PERFECT_TEXT_TIME = 0.6  # 초. 머리 위 "PERFECT" 표시
-# 퍼펙트 회피 잔상 (2026-11-18 사용자 요청): 회피하며 지나온 자리에 그림자 잔상이 남았다가 옅어지며 사라진다.
-# 회피 중 PLAYER_AFTERIMAGE_INTERVAL 초마다 모습을 적어 두었다가 퍼펙트가 되면 그 자리들에 그린다.
+# 회피 잔상 (2026-11-18 사용자 요청): 회피하며 지나온 자리에 그림자 잔상이 남았다가 옅어지며 사라진다.
+# ~~퍼펙트 회피일 때만~~ → 퍼펙트든 아니든 남는다 (같은 날 사용자 요청). 회피로 움직이는 동안 PLAYER_AFTERIMAGE_INTERVAL 초마다 남긴다.
 PLAYER_AFTERIMAGE_INTERVAL = 0.05  # 초
 PLAYER_AFTERIMAGE_TIME = 0.45  # 초. 잔상이 사라질 때까지
 PLAYER_AFTERIMAGE_OPACITY = 0.8  # 처음 불투명도 (0~1), 사라질 때까지 0 으로 줄어든다
