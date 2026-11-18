@@ -300,7 +300,7 @@ GOLEM_LASER = {"windup": 4.0, "damage": 40, "beam_time": 0.3, "size": 4}
 # 스프라이트 시트: frame_size × frame_size 원본 프레임을 columns 개씩 줄지어 놓은 그림 (왼쪽 위부터 오른쪽으로).
 # 프레임 가운데가 이펙트가 터지는 지점이고, RENDER_SCALE 로 nearest 확대해 그린다.
 EFFECT_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "effects"
-# ④ 레이저 그림 (2026-11-18 사용자 요청: PixelLab VFX Creator 로 다시 만듦 'Golem laser charge' / 'Golem laser blast').
+# ④ 레이저 그림. 충전은 PixelLab VFX Creator 'Golem laser charge' (2026-11-18 사용자 요청), 폭발은 아래 계산 그림.
 #   옮기는 스크립트: assets/concepts/vfx/laser/pixellab/pack_for_game.py
 #   충전: 88×88 칸 24장 가로 한 줄, 칸 가운데 = 코어. 빛 알갱이가 모여 구가 코어의 두 배쯤까지 커진다. 충전 진행도로 고른다.
 #   core: 방향별 코어 자리 (그림 가운데에서 오른쪽, 발 밑에서 위로 원본 픽셀). 서쪽은 동쪽을 뒤집은 그림.
@@ -311,14 +311,15 @@ GOLEM_LASER_CHARGE = {
 }
 # 하얀 레이저: 단면 그림을 코어에서 조준점까지 늘려 돌려 그린다. 굵기(화면 픽셀)는 beam_time 동안 0 으로 줄어든다.
 GOLEM_LASER_BEAM = {"path": EFFECT_IMAGE_DIR / "golem_laser_beam.png", "thickness": 28}
-# 조준점 폭발 (PixelLab): 흰 섬광 → 빛살 고리 → 바닥으로 퍼지는 충격 고리 → 불꽃·돌 파편, 끝나면 아무것도 남지 않음. 인물 위에 그림, 화면 흔들림.
+# 조준점 폭발 (계산 그림 build_golem_laser.py, PixelLab 판과 비교 뒤 사용자 결정): 흰 섬광 → 충격 고리 → 불꽃·돌 파편, 끝나면 아무것도 남지 않음. 인물 위에 그림, 화면 흔들림.
 GOLEM_LASER_BLAST_EFFECT = {
     "path": EFFECT_IMAGE_DIR / "golem_laser_blast.png",
-    "frame_size": 160,  # 원본 픽셀 (칸 32픽셀 기준), RENDER_SCALE 로 키워 그림
-    "columns": 12,
-    "frames": 12,
-    "fps": 16,
+    "frame_size": 160,
+    "columns": 16,
+    "frames": 16,
+    "fps": 18,
     "shake": {"amplitude": 10, "duration": 0.4, "frequency": 20},
+    "draw_tiles": 5,  # 4×4 폭발 칸보다 조금 크게 (고리가 범위 둘레까지 퍼짐)
     "on_top": True,
 }
 # 화면 흔들림: 카메라에 더하는 화면 픽셀 오프셋. amplitude(픽셀)에서 duration(초) 동안 0 으로 줄고 frequency(번/초)로 떨림
