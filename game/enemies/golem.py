@@ -10,7 +10,8 @@
     ① 앞 3×3, 패링 가능  ② 앞 가로 3 × 앞으로 4, 패링 불가·회피 무적 가능  ③ 중심 7×7, 점프로만 피함
     범위의 기준은 발 칸(몸 맨 아래 줄 가운데)이고, 그 칸 바로 앞부터 늘린다 (2026-11-17 사용자 결정). ①·② 가로 3 은 대칭,
     짝수 너비(③ 8)는 남는 한 줄을 아래(왼쪽)에, 주인공이 위(오른쪽)에 있으면 그쪽에 붙인다.
-    ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함
+    ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함.
+    레이저는 벽을 통과하지 않는다: 코어에서 주인공으로 쏜 줄이 벽에 막히면 그 앞 칸이 조준점 (2026-11-18 사용자 요청)
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
 - 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
 게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 한다: 바라보는 방향(상하좌우)의
@@ -24,6 +25,7 @@ from collections.abc import Callable
 
 from game import config
 from game.combat.enemy_attack import HIT, PARRIED, EnemyAttack
+from game.physics.raycast import first_open_stop
 from game.combat.posture import PostureGauge
 from game.combat.training_dummy import DamagePopup
 from game.effects.effect import SpriteEffect
@@ -348,7 +350,7 @@ class Golem:
         elif pattern == STOMP:
             self.target_tiles = self.stomp_area(player_tile)
         else:
-            self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
+            self.aim = self._laser_aim(player_tile)
             self.target_tiles = self.laser_tiles()
 
     @property
@@ -396,16 +398,24 @@ class Golem:
 
     def _follow_aim(self, dt: float, player_tile: Tile) -> None:
         """레이저 조준점이 발사 순간까지 주인공을 그대로 따라온다 (걸어서는 못 피하고 회피 무적으로 피한다)."""
-        self.aim = (player_tile[0] + 0.5, player_tile[1] + 0.5)
+        self.aim = self._laser_aim(player_tile)
         self._face(player_tile)
 
+    def _laser_aim(self, player_tile: Tile) -> tuple[float, float]:
+        """레이저 조준점: 몸 가운데(코어)에서 주인공 칸 가운데로 쏜 줄이 벽에 막히면 그 앞 칸 가운데
+        (2026-11-18 사용자 요청: 벽을 통과하지 않게, 레이캐스트). 막히지 않으면 주인공 칸 가운데."""
+        target = (player_tile[0] + 0.5, player_tile[1] + 0.5)
+        return first_open_stop(self.center, target, self.is_wall)[0]
+
     def laser_tiles(self) -> frozenset[Tile]:
-        """조준점을 가운데로 한 size × size 폭발 칸 (벽 칸은 제외). 관통하는 일직선이 아니다."""
+        """조준점을 가운데로 한 size × size 폭발 칸. 벽 칸과, 조준점에서 보아 벽 너머인 칸은 뺀다
+        (2026-11-18 사용자 요청: 레이저가 벽을 통과하지 않게. 폭발도 벽을 넘지 않는다)."""
         n = config.GOLEM_LASER["size"]
         left = math.floor(self.aim[0] - n / 2)
         bottom = math.floor(self.aim[1] - n / 2)
         return frozenset((c, r) for c in range(left, left + n) for r in range(bottom, bottom + n)
-                         if not self.is_wall(c, r))
+                         if not self.is_wall(c, r)
+                         and not first_open_stop(self.aim, (c + 0.5, r + 0.5), self.is_wall)[1])
 
     def _release(self) -> None:
         spec = PATTERNS[self.pattern]

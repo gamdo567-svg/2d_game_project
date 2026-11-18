@@ -231,6 +231,21 @@ class GolemBehaviorTest(unittest.TestCase):
         self.assertEqual(self.golem.state, WALK)
         self.assertEqual((self.golem.col, self.golem.row), (7, 4))
 
+    def test_laser_blocked_by_wall(self):
+        # 2026-11-18 사용자 요청: 레이저는 벽을 통과하지 않는다. 골렘 (6,4)~(6,5), 세로 벽 x=9, 주인공 (12,4)
+        room = open_room()
+        is_wall = lambda c, r: room(c, r) or c == 9  # noqa: E731
+        self.golem = Golem(6, 4, is_wall, FixedRng(None, 0.0))
+        self.golem.state_left = 0.0
+        self.golem.laser_stacks = config.GOLEM_LASER_STACKS
+        self.advance(DT, (12, 4), lambda c, r: False)
+        self.assertEqual(self.golem.pattern, LASER)
+        self.assertEqual(self.golem.aim, (8.5, 4.5))  # 벽 바로 앞 칸
+        attacks = self.advance(config.GOLEM_LASER["windup"] + DT, (12, 4), lambda c, r: False)
+        self.assertEqual(len(attacks), 1)
+        self.assertNotIn((12, 4), attacks[0].tiles)  # 벽 너머 주인공은 맞지 않음
+        self.assertTrue(all(c < 9 for c, _ in attacks[0].tiles))  # 폭발도 벽을 넘지 않음
+
     def test_laser_aim_follows_player_until_fire(self):
         self.make(None, roll=0.0)
         self.golem.laser_stacks = config.GOLEM_LASER_STACKS
