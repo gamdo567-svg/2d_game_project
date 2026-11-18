@@ -244,7 +244,7 @@ GOLEM_LASER_ENABLED = True
 #   하늘색(점프로만 피함)·레이저 자신은 세지 않는다. 주인공이 GOLEM_LASER_FAR 칸보다 멀면 스택과 상관없이 바로 레이저.
 GOLEM_LASER_STACKS = 4
 GOLEM_LASER_FAR = 8  # 칸 (이보다 멀면)
-GOLEM_RESPAWN_TIME = 3.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남
+GOLEM_RESPAWN_TIME = 5.0  # 초. 죽으면 이 시간 뒤 처음 자리에 다시 나타남 (시험용). 2026-11-18 죽음 동작(3.7초)이 끝난 뒤로 3 → 5
 GOLEM_HIT_FLASH_TIME = 0.1
 # 골렘 그림 (2026-11-17, PixelLab 생성 그림 assets/images/golem/<south|north|east|west>.png, 원본 96×96, 투명 배경).
 # 판정·충돌은 몸 칸(1×2) 그대로이고 그림은 RENDER_SCALE 로 nearest 확대해 칸보다 크게(위·양옆으로 넘쳐) 그린다.
@@ -314,6 +314,10 @@ GOLEM_STUN_ANIM = {
     "exit_time": 0.6,
     "head_drop": (0, -2, 0, 2, 5, 11, 17, 8, 1, -2, 0),
 }
+# 죽음 동작 그림 (2026-11-18 사용자 요청, assets/images/golem/death_<방향>.png). 가로 한 줄 44장, 한 장 176×120, 12fps.
+#   서 있는 그림을 돌덩이별로 나눠 계산으로 그림 (concepts/vfx/golem_death/build_golem_death.py): 코어·눈 빛이 꺼짐 →
+#   돌덩이가 따로 떨어져 돌무더기 → 잠시 뒤 점점 사라짐. 죽은 순간 바라보던 방향 그림. 다 보여 주면 아무것도 그리지 않음.
+GOLEM_DEATH_ANIM = {"frame_size": (176, 120), "foot": (88, 104), "frames": 44, "fps": 12}
 # 패턴: 예고 시간(초), 피해, 범위. 앞쪽 범위는 (가로 칸 수, 앞으로 칸 수).
 # 2026-11-17 사용자 요청: 예고가 길어 걸어서 쉽게 빠져나가서 ① 0.8 → 0.35, ② 0.6 → 0.3, ③ 1.2 → 0.55초
 GOLEM_SLAM = {"windup": 0.35, "damage": 20, "width": 3, "depth": 3}  # ① 두 손 모아 내려찍기: 패링 가능

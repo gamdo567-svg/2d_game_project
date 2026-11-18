@@ -237,6 +237,60 @@ class SceneEffectTest(unittest.TestCase):
         self.assertEqual((draw_w, draw_h), (size, size))
 
 
+
+class GolemDeathAnimTest(unittest.TestCase):
+    """골렘 죽음 동작 (2026-11-18): 코어가 꺼지고 돌덩이가 무너져 사라진 뒤 다시 나타난다."""
+
+    def killed(self):
+        golem = Golem(6, 4, open_room())
+        golem.take_hit(config.GOLEM_MAX_HP, (1, 0))
+        return golem
+
+    def test_frames_play_then_nothing_until_respawn(self):
+        anim = config.GOLEM_DEATH_ANIM
+        duration = anim["frames"] / anim["fps"]
+        self.assertLess(duration, config.GOLEM_RESPAWN_TIME)  # 동작이 끝난 뒤에 다시 나타남
+        golem = self.killed()
+        step = lambda t: golem.update(t, (1, 1), lambda c, r: True)
+        self.assertEqual(golem.death_frame, 0)
+        step(duration / 2)
+        self.assertAlmostEqual(golem.death_frame, duration / 2 * anim["fps"], delta=1)  # 시간에 맞춰 진행
+        step(duration / 2 + 0.05)
+        self.assertIsNone(golem.death_frame)  # 다 사라짐
+        self.assertFalse(golem.alive)
+        step(config.GOLEM_RESPAWN_TIME)
+        self.assertTrue(golem.alive)
+        self.assertIsNone(golem.death_frame)
+
+    def test_draws_death_sheet_only(self):
+        from game.world.grid import Grid
+
+        class Rec:
+            def __init__(self):
+                self.calls = []
+
+            def draw_sprite_frame(self, path, *args, **kwargs):
+                self.calls.append(path)
+                return True
+
+            def __getattr__(self, name):
+                return lambda *a, **k: self.calls.append(name)
+
+        golem = self.killed()
+        golem.update(0.5, (1, 1), lambda c, r: True)
+        rec = Rec()
+        golem.draw(rec, Grid(16, 10, 64))
+        self.assertEqual(rec.calls, [golem.attack_sprite_path("death")])  # 막대·글자 없이 죽음 그림만
+
+    def test_sheets_match_spec(self):
+        from PIL import Image
+        anim = config.GOLEM_DEATH_ANIM
+        w, h = anim["frame_size"]
+        for view in ("south", "east", "north", "west"):
+            with Image.open(config.GOLEM_IMAGE_DIR / f"death_{view}.png") as im:
+                self.assertEqual(im.size, (w * anim["frames"], h), view)
+
+
 if __name__ == "__main__":
     unittest.main()
 

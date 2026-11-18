@@ -13,7 +13,7 @@
     ④ 4초 동안 조준점이 주인공을 그대로 따라오다(발사 순간까지) 조준점에서 4×4 폭발 (벽 칸 제외), 회피 무적으로 피함.
     레이저는 벽을 통과하지 않는다: 코어에서 주인공으로 쏜 줄이 벽에 막히면 그 앞 칸이 조준점 (2026-11-18 사용자 요청)
 - 패링당하면 패링 게이지가 25% 차고(경직 없음), 가득 차면 2초 기절한다 (PostureGauge). 몬스터형이라 게이지는 저절로 줄지 않는다.
-- 체력이 다하면 사라졌다가 GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
+- 체력이 다하면 코어가 꺼지고 돌덩이가 무너져 사라진 뒤(죽음 동작), GOLEM_RESPAWN_TIME 뒤 처음 자리에 다시 나타난다.
 게임 로직은 칸 좌표로 하고, 모든 시간은 dt(초). 그리기는 draw(renderer, grid) 에서 한다: 바라보는 방향(상하좌우)의
 그림(assets/images/golem, 원본 96×96 을 2배)을 발 밑이 발 칸 바닥 가운데에 오게 그리고, 그림을 못 읽으면 부위별 임시 도형.
 """
@@ -166,6 +166,15 @@ class Golem:
             return None
         anim = config.GOLEM_WALK_ANIM
         return int(self.walk_distance / anim["tiles_per_cycle"] * anim["frames"]) % anim["frames"]
+
+    @property
+    def death_frame(self) -> int | None:
+        """죽음 동작 그림 번호 (죽은 뒤 동작을 다 보여 줄 때까지). 다 보여 줬거나 살아 있으면 None."""
+        if self.state != DEAD:
+            return None
+        anim = config.GOLEM_DEATH_ANIM
+        index = int((config.GOLEM_RESPAWN_TIME - self.state_left) * anim["fps"])
+        return index if index < anim["frames"] else None
 
     @property
     def stun_frame(self) -> int | None:
@@ -496,13 +505,17 @@ class Golem:
         ③ 발 구르기만 동작 그림이 있다 (무릎 들기 → 쾅 → 반동). 나머지 공격은 아직 서 있는 그림을 쓰고,
         예고 칸·조준선 같은 효과만 보여 준다.
         """
-        if not self.alive:
-            return
         s = config.RENDER_SCALE
         tile = grid.tile_size
         vcol, vrow = self.visual_position
         left, bottom, _, _ = grid.tile_to_pixel_rect(vcol, vrow)
         cx = left + self.width * tile / 2
+        if not self.alive:
+            # 죽음: 코어가 꺼지고 돌덩이가 무너져 사라지는 그림만 (막대·글자 없음)
+            frame = self.death_frame
+            if frame is not None:
+                self._draw_anim(renderer, self.attack_sprite_path("death"), config.GOLEM_DEATH_ANIM, frame, cx, bottom)
+            return
         if self._draw_sprite(renderer, cx, bottom):
             core_y = bottom + 40 * s
             bar_top = bottom + (config.GOLEM_SPRITE_SIZE - config.GOLEM_SPRITE_FOOT_MARGIN[self.view]
