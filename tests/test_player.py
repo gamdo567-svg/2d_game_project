@@ -415,6 +415,16 @@ class PlayerAttackTest(unittest.TestCase):
                 seen.append(self.player.combo.hit_number)
         self.assertEqual(seen[:4], [1, 2, 3, 1])
 
+    def test_holding_attack_has_no_idle_frame_between_hits(self):
+        # 누르고 있으면 1 → 2 → 3타 사이에 서기 상태가 한 프레임도 끼지 않는다 (2026-11-19 사용자: 깜빡이는 흔들림)
+        self.input.press(Action.ATTACK)
+        states = []
+        for _ in range(round(sum(config.PLAYER_ATTACK_DURATIONS) / self.DT) + 5):
+            self.step()
+            states.append((self.player.state, self.player.combo.hit_number))
+        third = states.index((ATTACK, 3))
+        self.assertTrue(all(s == ATTACK for s, _ in states[:third]))
+
     def test_single_click_held_briefly_plays_one_hit(self):
         # 보통 클릭처럼 0.1초 눌렀다 떼면 1타만 나간다 (2026-11-18 사용자 지적: 한 번 눌렀는데 2타까지 나감)
         self.input.press(Action.ATTACK)

@@ -276,6 +276,12 @@ class Player:
             self.fsm.trigger("end_parry")
         elif self.state == ATTACK and self.combo.finished:
             self.fsm.trigger("end_attack")
+            if input_state.is_held(Action.ATTACK) and self.combo.can_start:
+                # 누르고 있으면 서기 그림을 한 프레임도 보이지 않고 같은 프레임에 다음 타로 (2026-11-19 사용자:
+                # 흔들림 → 타 사이에 서기 그림(등에 멘 칼)이 한 프레임씩 끼어 깜빡였다)
+                self._consume(Action.ATTACK)
+                self.combo.start()
+                self.fsm.trigger("attack")
         elif self.state == HURT and self.hurt.finished:
             self.fsm.trigger("end_hurt")
         elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
