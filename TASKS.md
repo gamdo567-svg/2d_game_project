@@ -10,6 +10,7 @@
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
 | T-014 | 화면·타일·주인공 스프라이트 규격 확정 | 완료 | ChatGPT | `codex/display-and-sprite-sizing` | 1024×576, 32×32, 32×18, 32×48. PR #1로 `main` 병합됨 |
 | T-017 | 주인공 기본 이동 + Idle/Walk 애니메이션 | 검토 중 | Claude Code | `claude/player-move-anim` | 4방향 칸 이동(대각선 제거, D-015), transitions idle/walk, 3방향 원본+반전. 스프라이트는 **임시 에셋**. T-002·T-004 일부, T-015·T-016의 idle/walk 부분 포함 |
+| T-041 | 골렘 후면 두 손 내려찍기 일어섬 다시 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | ChatGPT 핵심 자세 + PixelLab 사이 동작, 팔이 몸과 함께 올라옴 (D-041) |
 | T-040 | 골렘 ④ 레이저 다시 넣기 (스택 발사) + 충전·레이저·폭발 이펙트 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 막지 못한 빨강·노랑 4스택 또는 8칸보다 멀면 발사 (D-040) |
 | T-039 | 주인공 후면 패링 모션 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 핵심 자세는 ChatGPT 이미지, 칼 분리, 칼은 몸 뒤, 막기는 왼쪽 위, 불꽃도 왼쪽 (D-039) |
 | T-038 | 골렘 올려차기 4방향 동작 그림, 앞차기 앞으로 4칸 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 핵심 자세는 ChatGPT 이미지, 사이는 PixelLab, 화면 흔들림 없음, 범위 가로 3 × 앞으로 4 (D-038) |
