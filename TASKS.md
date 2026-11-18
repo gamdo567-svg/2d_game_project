@@ -7,6 +7,7 @@
 
 | ID | 작업 | 상태 | 담당 | 브랜치 | 비고 |
 |---|---|---|---|---|---|
+| T-050 | 공격 버튼 누르고 있으면 콤보 이어짐 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 누르는 동안 입력 기억을 매 프레임 다시 채움, 쿨타임은 그대로 (D-050) |
 | T-049 | 칼을 등에 멤 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | 공격·패링 말고는 칼집째 등에, 몸을 따라 움직임, 무기별 그림 (D-049). 뽑는 동작 없음 |
 | T-048 | 주인공 후면 공격 1·2·3타 그림 | 검토 중 | Claude Code | `claude/golem-stomp-vfx` | ChatGPT 8자세, 칼은 몸 뒤·가려지면 안 그림, 2타 프레임 표 (D-048) |
 | T-000 | 프로젝트 초기 환경 구성 | 완료 | Claude Code | `main` | 문서, 폴더 구조, 최소 Pico2D 프로그램, 테스트 29개. 상세는 `docs/HANDOFF.md` |
