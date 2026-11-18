@@ -14,6 +14,11 @@ from game.world.grid import Grid
 STEP = 1.0 / config.PLAYER_MOVE_SPEED  # 한 칸 이동 시간(초)
 
 
+def _without_back_sword(calls):
+    """등에 멘 칼 그림(weapons/*_back_*.png)을 뺀 그리기 호출 (몸 그림만 보는 테스트용)."""
+    return [c for c in calls if not (c[1] and isinstance(c[1][0], str) and "_back_" in c[1][0])]
+
+
 class _RecordingRenderer:
     """pico2d 없이 그리기 호출을 기록하는 가짜 Renderer."""
 
@@ -123,7 +128,7 @@ class PlayerTest(unittest.TestCase):
         self.player.update(STEP / 2, self.input)
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
-        name, args, kwargs = renderer.calls[0]
+        name, args, kwargs = _without_back_sword(renderer.calls)[0]
         self.assertEqual(name, "draw_sprite_frame")
         self.assertEqual(args[0], sprite_sheet_path(WALK, "side"))
         self.assertEqual(args[2:4], (config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT))
@@ -280,7 +285,7 @@ class JumpParryTest(unittest.TestCase):
         self.run_for(config.PLAYER_JUMP_DURATION / 2 - 1 / 60)  # 최고점 근처
         renderer = _RecordingRenderer()
         self.player.draw(renderer)
-        (shadow_name, shadow_args, _), (body_name, body_args, _) = renderer.calls
+        (shadow_name, shadow_args, _), (body_name, body_args, _) = _without_back_sword(renderer.calls)
         self.assertEqual(shadow_args[0], SHADOW_PATH)
         self.assertEqual(body_args[0], sprite_sheet_path(JUMP, "front"))
         tile = config.RENDER_TILE_SIZE
@@ -311,9 +316,48 @@ class JumpParryTest(unittest.TestCase):
         player.update(1 / 60, inp)
         renderer = _RecordingRenderer()
         player.draw(renderer)
-        (name, args, kwargs), = renderer.calls
+        (name, args, kwargs), = _without_back_sword(renderer.calls)
         self.assertEqual(args[0], sprite_sheet_path(WALK, "side"))
         self.assertTrue(kwargs["flip_horizontal"])
+
+
+class BackSwordTest(unittest.TestCase):
+    """등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 칼집째 등에 멘다."""
+
+    def draw(self, player):
+        renderer = _RecordingRenderer()
+        player.draw(renderer)
+        return [c[1][0] for c in renderer.calls if c[0] == "draw_sprite_frame"]
+
+    def test_front_and_side_draw_sword_behind_body(self):
+        from game.player.player import weapon_back_path
+        player = make_player()
+        player.facing = Facing.DOWN
+        paths = self.draw(player)
+        self.assertEqual(paths[:2], [weapon_back_path(config.PLAYER_WEAPON, "front"), sprite_sheet_path(IDLE, "front")])
+        player.facing = Facing.LEFT
+        paths = self.draw(player)
+        self.assertEqual(paths[:2], [weapon_back_path(config.PLAYER_WEAPON, "side"), sprite_sheet_path(IDLE, "side")])
+
+    def test_back_view_draws_sword_on_top(self):
+        from game.player.player import weapon_back_path
+        player = make_player()
+        player.facing = Facing.UP
+        self.assertEqual(self.draw(player), [sprite_sheet_path(IDLE, "back"), weapon_back_path(config.PLAYER_WEAPON, "back")])
+
+    def test_offsets_match_sheets(self):
+        # 위치표의 장 수가 그 상태 시트의 장 수와 같다
+        from PIL import Image
+        widths = {"idle": config.PLAYER_SPRITE_WIDTH, "walk": config.PLAYER_SPRITE_WIDTH,
+                  "jump": config.PLAYER_JUMP_SPRITE_WIDTH, "dodge": config.PLAYER_DODGE_SPRITE_WIDTH}
+        for state, views in config.PLAYER_BACK_SWORD_OFFSETS.items():
+            for view, offsets in views.items():
+                with Image.open(sprite_sheet_path(state, view)) as im:
+                    self.assertEqual(len(offsets), im.width // widths[state], (state, view))
+        for view in ("front", "side", "back"):
+            from game.player.player import weapon_back_path
+            with Image.open(weapon_back_path(config.PLAYER_WEAPON, view)) as im:
+                self.assertEqual(im.size, (config.PLAYER_BACK_SWORD_SIZE,) * 2)
 
 
 class PlayerAttackTest(unittest.TestCase):

@@ -109,6 +109,11 @@ def weapon_sheet_path(weapon: str) -> str:
     return str(config.PLAYER_IMAGE_DIR / "weapons" / f"{weapon}.png")
 
 
+def weapon_back_path(weapon: str, view: str) -> str:
+    """등에 멘 칼 그림 경로 (64×64, 아래 가운데가 발 밑). 예: weapons/old_sword_back_front.png"""
+    return str(config.PLAYER_IMAGE_DIR / "weapons" / f"{weapon}_back_{view}.png")
+
+
 def weapon_view_art_path(weapon: str, view: str, hit_number: int) -> str:
     """무기의 찌르기용 칼 그림 시트 경로 (공격 시트와 같은 칸). 예: weapons/old_sword_front_3.png"""
     return str(config.PLAYER_IMAGE_DIR / "weapons" / f"{weapon}_{view}_{hit_number}.png")
@@ -441,17 +446,21 @@ class Player:
             width, height = config.PLAYER_JUMP_SPRITE_WIDTH, config.PLAYER_JUMP_SPRITE_HEIGHT
         else:
             width, height = config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT
-        renderer.draw_sprite_frame(
-            sprite_sheet_path(sprite_state, view),
-            frame_index,
-            width,
-            height,
-            center_x,
-            bottom + lift,
-            width * config.RENDER_SCALE,
-            height * config.RENDER_SCALE,
-            flip_horizontal=flip,
-        )
+        sword_frame = frame_index if animated else 0
+        self._with_back_sword(
+            renderer, sprite_view(self.facing)[0], flip, center_x, bottom + lift,
+            sprite_state if animated else IDLE, sword_frame,
+            lambda: renderer.draw_sprite_frame(
+                sprite_sheet_path(sprite_state, view),
+                frame_index,
+                width,
+                height,
+                center_x,
+                bottom + lift,
+                width * config.RENDER_SCALE,
+                height * config.RENDER_SCALE,
+                flip_horizontal=flip,
+            ))
 
     @property
     def dodge_frame(self) -> int | None:
@@ -476,8 +485,37 @@ class Player:
 
     def _draw_dodge(self, renderer, center_x: float, bottom: float, view: str, flip: bool) -> None:
         w, h = config.PLAYER_DODGE_SPRITE_WIDTH, config.PLAYER_DODGE_SPRITE_HEIGHT
-        renderer.draw_sprite_frame(sprite_sheet_path(DODGE, view), self.dodge_frame, w, h, center_x, bottom,
-                                   w * config.RENDER_SCALE, h * config.RENDER_SCALE, flip_horizontal=flip)
+        frame = self.dodge_frame
+        self._with_back_sword(
+            renderer, view, flip, center_x, bottom, DODGE, frame,
+            lambda: renderer.draw_sprite_frame(sprite_sheet_path(DODGE, view), frame, w, h, center_x, bottom,
+                                               w * config.RENDER_SCALE, h * config.RENDER_SCALE, flip_horizontal=flip))
+
+    def _with_back_sword(self, renderer, view: str, flip: bool, center_x: float, bottom: float,
+                         state: str, frame: int, draw_body) -> None:
+        """몸 그림(draw_body)과 등에 멘 칼을 그린다. 후면은 칼이 등 위(몸 다음), 정면·측면은 몸 뒤(몸 전).
+
+        칼은 그 장의 머리 꼭대기가 움직인 만큼 옮긴다 (PLAYER_BACK_SWORD_OFFSETS, 없는 상태는 서 있기 첫 장).
+        왼쪽을 볼 때는 칼 그림을 뒤집고 앞쪽 옮김도 반대로.
+        """
+        table = config.PLAYER_BACK_SWORD_OFFSETS.get(state, config.PLAYER_BACK_SWORD_OFFSETS[IDLE])
+        offsets = table.get(view, table["front"])
+        dx, dy = offsets[frame] if state in config.PLAYER_BACK_SWORD_OFFSETS and frame < len(offsets) else offsets[0]
+        scale = config.RENDER_SCALE
+        size = config.PLAYER_BACK_SWORD_SIZE
+
+        def draw_sword() -> None:
+            renderer.draw_sprite_frame(
+                weapon_back_path(config.PLAYER_WEAPON, view), 0, size, size,
+                center_x + (-dx if flip else dx) * scale, bottom + dy * scale,
+                size * scale, size * scale, flip_horizontal=flip)
+
+        in_front = view in config.PLAYER_BACK_SWORD_IN_FRONT
+        if not in_front:
+            draw_sword()
+        draw_body()
+        if in_front:
+            draw_sword()
 
     def _draw_attack(self, renderer, center_x: float, bottom: float) -> None:
         """지금 타의 공격 그림(96×64 캔버스)을 발끝이 칸 아래 가운데에 오도록 그린다.
