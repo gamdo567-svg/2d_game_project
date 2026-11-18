@@ -276,6 +276,11 @@ def main():
     for view, t in export_parry().items():
         print(f'PLAYER_PARRY_SWORD[{view!r}] = (' + ', '.join('(' + ', '.join(str(v) for v in e) + ')' for e in t) + ')')
     export_jump()
+    # 후면 그림에 망토 명암 넣기 (2026-11-18, back_shading.py): 방금 쓴 명암 없는 그림을 flat 으로 보관하고 명암을 넣는다
+    import back_shading
+    for rel in back_shading.TARGETS:
+        if rel.split('/')[0] in ('sword_attack', 'parry', 'jump') and os.path.exists(os.path.join(OUT, rel)):
+            back_shading.refresh(os.path.join(OUT, rel))
 
 
 if __name__ == '__main__':
