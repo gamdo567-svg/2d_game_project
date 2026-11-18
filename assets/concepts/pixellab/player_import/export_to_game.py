@@ -122,6 +122,10 @@ def export_attacks(view='side'):
             hx, hy, angle, behind, *rest = layer['sword']
             table.append((round(hx + dx), round(hy + dy), round(angle), behind) + tuple(rest))
         body.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}.png'))
+        if view == 'back':
+            # 후면은 장마다 따로 그려 후드가 꿈틀거림 → 서기 그림 후드로 바꿔 끼움 (2026-11-19, stabilize_back.py)
+            import stabilize_back
+            stabilize_back.apply_sheet(os.path.join(OUT, 'sword_attack', f'{view}_{hit}.png'))
         hand.save(os.path.join(OUT, 'sword_attack', f'{view}_{hit}_hand.png'))
         if art_frames:
             # 찌르기용 칼 그림 (무기마다 하나, 공격 시트와 같은 칸): weapons/<무기>_<방향>_<타>.png
