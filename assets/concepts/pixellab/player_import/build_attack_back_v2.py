@@ -24,6 +24,43 @@ RESTYLE = os.path.join(HERE, 'attack_back_kit', 'hit1_v2', 'restyle_out')
 SWOOSH = (4, (22, 20, 36, -20, 112, 8))
 
 
+def match_tones(cells, ref):
+    """색감 맞추기 (같은 날 사용자: 여전히 색감과 분위기가 다름): 8장 몸 색(파랑 제외)을 밝기 순서로 줄 세워, 게임 뒷모습
+    서기 그림(ref) 색을 같은 비율 자리(분위수)에 대응시킨다. 쓰는 색과 명암 분포가 서기 그림과 같아진다."""
+    def lum(c):
+        return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+
+    def ramp(images):
+        counts = {}
+        for im in images:
+            for p in im.get_flattened_data():
+                if p[3] == 255 and not b.is_blue(p):
+                    counts[p[:3]] = counts.get(p[:3], 0) + 1
+        cols = sorted(counts, key=lum)
+        total = sum(counts.values())
+        out, acc = [], 0
+        for c in cols:  # (색, 이 색이 차지하는 분위 구간의 가운데)
+            out.append((c, (acc + counts[c] / 2) / total))
+            acc += counts[c]
+        return out
+
+    src, dst = ramp(cells), ramp([ref])
+    mapping = {}
+    for c, q in src:
+        mapping[c] = min(dst, key=lambda d: abs(d[1] - q))[0]
+    out = []
+    for im in cells:
+        im = im.copy()
+        px = im.load()
+        for y in range(im.height):
+            for x in range(im.width):
+                p = px[x, y]
+                if p[3] == 255 and not b.is_blue(p):
+                    px[x, y] = mapping[p[:3]] + (255,)
+        out.append(im)
+    return out
+
+
 def split_n(im, n=8):
     w, h = im.size
     a = im.getchannel('A').load()
@@ -60,7 +97,8 @@ def main():
         c = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
         c.alpha_composite(small, (round(rfx - fx), round(rfy - fy)))
         cells.append(c)
-    sheet = Image.new('RGBA', (68 * 9, 68), (0, 0, 0, 0))
+    # 화풍 맞춘 그림(restyle_out)이 있으면 먼저 그것으로 바꾸고, 색감을 서기 그림에 맞춘다
+    body = []
     for k, f in enumerate(cells):
         big = Image.new('RGBA', (144, 144), (0, 0, 0, 0))
         big.alpha_composite(f, (40, 40))
@@ -68,6 +106,10 @@ def main():
         restyled = os.path.join(RESTYLE, f'r{k}.png')
         if k > 0 and os.path.exists(restyled):
             cell = pb.snap(Image.open(restyled).convert('RGBA'), palette)  # 같은 68 칸 자리로 돌려받음
+        body.append(cell)
+    body = [body[0]] + match_tones(body[1:], body[0])
+    sheet = Image.new('RGBA', (68 * 9, 68), (0, 0, 0, 0))
+    for k, cell in enumerate(body):
         if k - 1 == SWOOSH[0]:
             cell.alpha_composite(bp.swoosh(cell.size, *SWOOSH[1]))  # 판정 장: 몸 위로 이어지는 잔상
         sheet.alpha_composite(cell, (k * 68, 0))
