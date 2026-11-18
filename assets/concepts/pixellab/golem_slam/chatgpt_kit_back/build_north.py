@@ -5,6 +5,7 @@
   PixelLab v3 사이 동작(pixellab/rise_*: 내려찍기 → 일어서기, pixellab/stand_*: 일어서기 → 서기, 시작·끝 자세 지정).
   rise_* 에는 PixelLab 이 흰·하늘색 불꽃을 그려 넣어, 그 색(밝거나 푸른 픽셀)을 지우고 작은 점을 버린다.
   모두 게임 뒷모습 색으로 맞추고, 두 발(아래 6줄) 가운데·발 밑을 FOOT 에 맞춘다.
+- 밝기 분포를 원본 뒷모습에 맞춘다 (match_tone, 7~12장).
 - 끝 장(13)은 지금 그림의 끝 장(서 있는 자세, 들기 첫 장과 같음)을 그대로 써서 서 있는 그림으로 이어진다.
 
 순서: 7 내려찍기(키) / 8 rise_1 / 9 rise_2 / 10 일어서기(키) / 11 stand_1 / 12 stand_2 / 13 서기(지금 그림)
@@ -69,6 +70,27 @@ def drop_specks(im: Image.Image) -> Image.Image:
     return im
 
 
+def luma(c) -> float:
+    return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+
+
+def match_tone(im: Image.Image, ref: Image.Image) -> Image.Image:
+    """밝기 순서를 그대로 두고, 밝기 분포를 게임 뒷모습 그림과 같게 바꾼다 (2026-11-18 사용자 지적: 원본과 질감 차이).
+
+    프레임의 불투명 픽셀을 밝기 순으로 늘어놓고, 같은 비율 자리의 원본 픽셀 색으로 바꾼다.
+    자세·모양은 그대로이고 어두운 외곽선·그늘·하이라이트의 비율이 원본과 같아진다.
+    """
+    ref_cols = sorted((p for p in ref.get_flattened_data() if p[3]), key=luma)
+    im = im.copy()
+    px = im.load()
+    pts = sorted(((x, y) for y in range(im.height) for x in range(im.width) if px[x, y][3]), key=lambda q: luma(px[q]))
+    n = len(pts)
+    new = [ref_cols[min(len(ref_cols) - 1, int(i / n * len(ref_cols)))] for i in range(n)]
+    for q, c in zip(pts, new):
+        px[q] = c
+    return im
+
+
 def place(im: Image.Image, pal) -> Image.Image:
     im = drop_specks(snap(im.convert("RGBA"), pal))
     fx, fy = feet_center(im)
@@ -91,6 +113,8 @@ def main() -> None:
         place(pl("stand_2"), pal),
         old[13],
     ]
+    ref = Image.open(ROOT / "assets/images/golem/north.png").convert("RGBA")
+    recover = [match_tone(f, ref) for f in recover[:-1]] + recover[-1:]
     frames = old[:7] + recover
     sheet = Image.new("RGBA", (CANVAS[0] * len(frames), CANVAS[1]), (0, 0, 0, 0))
     for i, f in enumerate(frames):
