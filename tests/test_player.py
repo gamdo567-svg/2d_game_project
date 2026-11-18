@@ -383,7 +383,7 @@ class PlayerAttackTest(unittest.TestCase):
         self.assertFalse(self.player.combo.can_start)
 
     def test_attack_while_walking_finishes_step_first(self):
-        # 걷는 중에 공격하면 걷던 칸을 빠르게 마저 가서 칸에 선 뒤 공격한다 (미끄러지며 공격하지 않음)
+        # 걷는 중에 공격하면 걷던 칸을 평소 속도로 마저 가서 칸에 선 뒤 공격한다 (미끄러지지도, 재빨리 가지도 않음)
         self.input.press(Action.MOVE_RIGHT)
         for _ in range(3):
             self.step()
@@ -393,7 +393,10 @@ class PlayerAttackTest(unittest.TestCase):
         self.step()
         self.input.release(Action.ATTACK)
         self.assertNotEqual(self.player.state, ATTACK)  # 아직 걷던 칸을 마저 가는 중
-        self.run_for(config.PLAYER_ATTACK_STEP_FINISH_TIME + 2 * self.DT)
+        self.run_for(0.05)
+        self.assertTrue(self.player.mover.is_moving)  # 2026-11-18: 0.05초 만에 재빨리 가지 않는다
+        self.assertNotEqual(self.player.state, ATTACK)
+        self.run_for(1.0 / config.PLAYER_MOVE_SPEED)  # 평소 속도로 도착 (클릭은 도착까지 기억)
         self.assertEqual(self.player.state, ATTACK)
         self.assertFalse(self.player.mover.is_moving)
         self.assertEqual((self.player.col, self.player.row), target)  # 다음 칸으로 가지 않음

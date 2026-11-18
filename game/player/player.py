@@ -212,8 +212,9 @@ class Player:
         attack_waiting = False  # 걷던 칸을 마저 가는 중 (도착하면 공격)
         if self.state in FREE_STATES:
             if self._buffered(Action.ATTACK) and self.combo.can_start and self.mover.is_moving:
-                # 걷는 중 공격: 걷던 칸을 빠르게 마저 가서 칸에 선 뒤 공격 (클릭은 입력 기억에 남겨 둔다)
-                self.mover.hurry(config.PLAYER_ATTACK_STEP_FINISH_TIME)
+                # 걷는 중 공격: 걷던 칸을 평소 속도로 마저 가서 칸에 선 뒤 공격 (2026-11-18 사용자 요청: 재빨리 가지 않음).
+                # 한 칸 걷는 시간이 입력 기억보다 길 수 있어, 도착할 때까지 클릭을 기억해 둔다.
+                self._buffer[Action.ATTACK] = config.PLAYER_INPUT_BUFFER_TIME
                 attack_waiting = True
             elif self._buffered(Action.ATTACK) and self.combo.can_start:
                 self._consume(Action.ATTACK)

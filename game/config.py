@@ -97,7 +97,7 @@ PLAYER_INPUT_BUFFER_TIME = 0.15  # 초
 # (처음 5칸·0.25초 → 3칸·0.5초 → 느려서 3칸·0.25초. 모두 같은 날 사용자 요청)
 PLAYER_DODGE_DISTANCE = 2  # 칸 (2026-11-17 사용자 요청으로 3 → 2)
 PLAYER_DODGE_DURATION = 0.25  # 초
-PLAYER_DODGE_COOLDOWN = 8.0  # 초 (회피가 끝난 뒤부터). 2026-11-17 사용자 요청으로 1 → 8
+PLAYER_DODGE_COOLDOWN = 5.0  # 초 (회피가 끝난 뒤부터). 2026-11-17 사용자 요청으로 1 → 8, 2026-11-18 8 → 5
 # 회피 그림 (2026-11-18): 핵심 자세는 ChatGPT, 사이는 PixelLab (assets/concepts/pixellab/player_import/dodge_kit/).
 # 돌진 자세가 서 있는 그림보다 넓어 64×48 칸, 발 밑 가운데가 칸 아래 가운데. 왼쪽은 측면을 뒤집음.
 # 0.25초 이동 동안 앞 PLAYER_DODGE_MOVE_FRAMES 장(웅크림 → 박차기 → 돌진), 도착한 뒤 나머지(미끄러짐 → 멈춤)를
@@ -136,8 +136,8 @@ PLAYER_ATTACK_FRAME_ENDS = tuple(
 PLAYER_ATTACK_FRAME_SHIFTS = tuple(((0, 0),) * PLAYER_ATTACK_FRAMES for _ in range(PLAYER_ATTACK_HITS))
 # 공격 중에 클릭해 두면 이어지고, 한 타가 끝난 뒤 이 시간(초) 안에 클릭해도 다음 타로 이어진다.
 PLAYER_ATTACK_COMBO_WINDOW = 0.3
-# 걷는 중에 공격하면 걷던 칸을 이 시간(초) 안에 마저 가서 칸에 선 뒤 공격한다 (2026-11-17 사용자 결정: 미끄러지며 공격하지 않게)
-PLAYER_ATTACK_STEP_FINISH_TIME = 0.05
+# 걷는 중에 공격하면 걷던 칸을 평소 속도로 마저 가서 칸에 선 뒤 공격한다 (미끄러지며 공격하지 않게).
+# 2026-11-18 사용자 요청: 칸을 0.05초 만에 재빨리 가던 것은 어색해 없앰.
 # 공격 판정 (2026-11-17 사용자 결정, D-024): 칸 단위, 바라보는 방향으로 타별 칸 수, 휘두르는 프레임에 들어설 때 한 번.
 PLAYER_ATTACK_REACH = (1, 1, 2)  # 1·2타 앞 1칸, 3타(찌르기) 앞 2칸
 # 가로 칸 수 (2026-11-17 사용자 결정): 1·2타는 앞 1칸 × 가로 3칸, 3타는 앞 2칸 × 가로 1칸

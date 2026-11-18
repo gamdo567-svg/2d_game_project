@@ -84,19 +84,6 @@ class GridMover:
             if remaining <= 0.0:
                 return
 
-    def hurry(self, duration: float) -> None:
-        """걷던 한 칸의 남은 거리를 duration 초 안에 마저 간다 (공격하려고 칸에 바로 서기, 2026-11-17).
-
-        지금 보이는 위치에서 도착 칸까지 이어지므로 그림이 튀지 않는다. 회피 중이거나 이미 더 빨리 도착하면 그대로 둔다.
-        """
-        if not self.is_moving or self._dashing:
-            return
-        if self._step_duration * (1.0 - self._progress) <= duration:
-            return
-        self._from_col, self._from_row = self.visual_position
-        self._progress = 0.0
-        self._step_duration = duration
-
     def dash(self, dx: int, dy: int, max_tiles: int, duration: float) -> int:
         """(dx, dy) 방향으로 최대 max_tiles 칸을 duration 초에 한 번에 미끄러지듯 이동한다 (회피).
 
