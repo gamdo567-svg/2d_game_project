@@ -596,3 +596,20 @@
     두 손이 몸 앞이라 칼은 늘 몸 뒤(가려짐)에 그리고, 칼 자리는 손으로 맞춤(`build_remake_preview.OVERRIDES`).
     당김은 오른쪽 어깨 위로 세운 칼날, 막기는 화면 왼쪽 위로 기운 칼.
   - 위를 볼 때 패링 성공 불꽃은 칼날 쪽인 **화면 왼쪽**에서 터진다 (정면은 그대로 오른쪽).
+
+## D-040 골렘 ④ 레이저: 스택으로 발사, 충전 구·레이저·폭발 이펙트
+
+- 상태: 확정 (사용자 결정, 2026-11-18)
+- 날짜: 2026-11-18
+- 결정
+  - `GOLEM_LASER_ENABLED = True`. 확률(`GOLEM_LASER_CHANCE`)·쿨타임(`GOLEM_LASER_COOLDOWN`)은 없앴다.
+  - 레이저 스택: 장면이 공격 결과를 `Golem.on_attack_result(attack, parried, perfect_dodged)` 로 알려 준다.
+    빨강(parryable)은 패링, 노랑(패링 불가·회피 가능)은 퍼펙트 회피로 막지 못하면 +1 (범위 밖으로 걸어 피해도 +1).
+    하늘색(jumpable)·레이저 자신은 세지 않는다. 퍼펙트 회피 여부는 `Player.last_perfect_dodge`.
+  - `GOLEM_LASER_STACKS`(4) 이면 거리와 상관없이 다음 판단에서 레이저, 주인공이 `GOLEM_LASER_FAR`(8) 칸보다 멀면 바로 레이저.
+    5~8칸은 다가간다. 레이저를 쏘면 스택 0. 충전 4초·4×4 폭발·피해 40 은 그대로.
+  - 그림(`assets/concepts/vfx/laser/build_golem_laser.py` 가 계산해 그림, 골렘 코어 색):
+    충전 구 시트(64×64, 줄 = 충전 진행도 12단계, 칸 = 빨려 드는 빛 4단계를 12fps 로 돌림)를 방향별 코어 자리(`GOLEM_LASER_CHARGE["core"]`)에,
+    발사 뒤 `beam_time` 동안 하얀 레이저 단면 그림을 코어 → 조준점으로 늘려 돌려 그리며 굵기가 0 으로 줄고,
+    조준점에 폭발 `GOLEM_LASER_BLAST_EFFECT`(160×160 16장 18fps, 5칸 크기, 인물 위, 흔들림). 끝나면 아무것도 남지 않는다.
+  - 후면을 볼 때도 구는 가슴 자리에 앞으로 그린다 (코어가 등에 가려지지만 충전이 보이도록).
