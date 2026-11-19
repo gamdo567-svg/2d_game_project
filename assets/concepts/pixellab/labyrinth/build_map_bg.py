@@ -4,7 +4,7 @@
 같은 날 ① 푸른 회색 돌(tiles_v1)은 하수도 느낌 → 따뜻한 색(tiles_v2) + 횃불 빛.
 ② "분위기는 괜찮은데 퀄리티가 떨어짐" (바닥 반복·단조로움, 빛이 뿌옇고 탁함, 벽이 납작함, 장식 없음) →
    바닥은 PixelLab Wang 타일셋(큰 판석 ↔ 모래·부스러기, floor_wang)을 노이즈로 섞어 격자·반복이 안 보이게,
-   빛은 몇 단계로 끊고 경계만 4×4 디더로 섞어 픽셀 그림답게, 벽은 윗면 턱 하이라이트·앞면 위 그늘·모서리 그늘,
+   빛은 (처음엔 단계로 끊었다가 같은 날 '어설프다'는 지적에) 횃불에서 부드럽게 퍼지게, 벽은 윗면 턱 하이라이트·앞면 위 그늘·모서리 그늘,
    소품은 PixelLab 그림(props): 막는 소품은 맵 글자(B 통, C 상자, I 기둥), 밟고 지나가는 해골·돌무더기·항아리는 자동으로 드문드문.
 
 글자 맵(assets/maps/<이름>.txt)을 읽어 맵 크기의 그림 한 장으로 합친다. 게임은 이 그림을 바닥에 한 번 그린다
@@ -28,7 +28,7 @@ TORCH = os.path.join(HERE, 'torch_v1.png')
 TORCH_ANIM = os.path.join(HERE, 'torch_anim')  # PixelLab animate_image: 0 = 원본, 1~8 = 불꽃이 일렁이는 고리 (같은 날)
 TORCH_FRAMES = 8
 GLOW_RADIUS = 2.6 * 32  # 게임이 횃불 위에 겹쳐 그리는 빛 고리 반지름 (원본 픽셀)
-GLOW_RINGS = ((1.0, 34), (0.68, 22), (0.4, 12))  # (반지름 비율, 알파): 바깥부터, 단계로 끊은 고리
+GLOW_ALPHA = 78  # 게임이 겹쳐 그리는 빛 가운데 알파 (바깥으로 부드럽게 0)
 GLOW_COLOR = (255, 186, 104)
 T = 32
 FACE_TOP = 6  # 앞에서 보이는 벽에서 윗면이 차지하는 줄 수 (나머지는 벽돌 앞면)
@@ -53,10 +53,8 @@ WALL_FACE_DARK = 0.8  # 벽 앞면은 바닥보다 어둡게
 TORCH_EVERY = 6  # 앞에서 보이는 벽 줄에서 몇 칸마다 횃불
 TORCH_SCALE = 0.62
 TORCH_RADIUS = 4.5 * T  # 빛이 닿는 거리 (픽셀)
-LIGHT_LEVELS = (0.38, 0.55, 0.75, 1.0, 1.25)  # 빛을 이 단계로 끊는다 (픽셀 그림답게)
+LIGHT_MIN, LIGHT_MAX = 0.36, 1.25  # 빛이 닿지 않는 곳 / 횃불 바로 앞 밝기 (사이는 부드럽게)
 WARM = (1.08, 0.92, 0.72)  # 횃불 빛 색 (빨강·초록·파랑 배율), 밝은 단계일수록 강하게
-DITHER_SHARPNESS = 3.0  # 클수록 디더 띠가 좁아짐 (2배로 보면 체크 무늬가 바닥 전체에 깔려 지저분했음)
-BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 
 
 def lum(p):
@@ -295,26 +293,21 @@ def build(name):
                     if not wall(c + dc, r):
                         img.putpixel((xx, r * T), RIM)
 
-    # 빛: 밝기를 LIGHT_LEVELS 단계로 끊고 단계 사이는 4×4 디더로 섞는다 (매끄러운 그라데이션은 뿌옇게 보였음)
-    levels = LIGHT_LEVELS
+    # 빛: 횃불에서 멀어질수록 부드럽게 어두워짐 (같은 날 사용자: 단계로 나뉜 빛이 어설픔 → 부드러운 빛).
+    # 예전 '뿌옇다'는 지적을 피하려고 바깥은 충분히 어둡게(LIGHT_MIN), 밝을수록 따뜻한 색을 강하게 해 탁해 보이지 않게.
+    lo, hi = LIGHT_MIN, LIGHT_MAX
 
     def lit(pix, x, y, mx, my):
         """(mx, my) = 바탕 그림 좌표에서의 자리 (빛 계산용), (x, y) = 이 그림에서의 자리."""
-        light = levels[0]
+        glow = 0.0
         for fx, fy in flames:
             d = math.hypot(mx - fx, (my - fy) * 1.15)
             if d < TORCH_RADIUS:
-                light += (levels[-1] - levels[0]) * (1 - d / TORCH_RADIUS) ** 1.5
-        light = min(levels[-1], light)
-        i = max(k for k in range(len(levels)) if levels[k] <= light + 1e-9)
-        if i < len(levels) - 1:
-            frac = (light - levels[i]) / (levels[i + 1] - levels[i])
-            frac = min(1.0, max(0.0, (frac - 0.5) * DITHER_SHARPNESS + 0.5))  # 디더는 단계 경계 좁은 띠에만
-            if frac > (BAYER[my % 4][mx % 4] + 0.5) / 16:
-                i += 1
-        lv = levels[i]
-        warm = i / (len(levels) - 1)
-        tint = [1 + (w - 1) * warm for w in WARM]
+                t = 1 - d / TORCH_RADIUS
+                glow += t * t * (3 - 2 * t)  # 부드러운 끝 (smoothstep)
+        glow = min(1.0, glow)
+        lv = lo + (hi - lo) * glow
+        tint = [1 + (w - 1) * glow for w in WARM]
         r_, g_, b_, a_ = pix[x, y]
         pix[x, y] = (min(255, round(r_ * lv * tint[0])), min(255, round(g_ * lv * tint[1])),
                      min(255, round(b_ * lv * tint[2])), a_)
@@ -343,7 +336,7 @@ def build(name):
     for y in range(2 * g):
         for x in range(2 * g):
             d = math.hypot(x + 0.5 - g, (y + 0.5 - g) * 1.15) / g
-            a = sum(alpha for ratio, alpha in GLOW_RINGS if d <= ratio)
+            a = round(GLOW_ALPHA * max(0.0, 1 - d) ** 2) if d < 1 else 0
             if a:
                 gpx[x, y] = GLOW_COLOR + (min(255, a),)
     glow.save(os.path.join(out_dir, 'torch_glow.png'))
