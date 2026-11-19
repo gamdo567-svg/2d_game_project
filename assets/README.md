@@ -59,6 +59,7 @@
 | `images/player/weapons/old_sword_back_{front,side,back}.png` | Claude Code 제작: 낡은 검 그림에 칼집을 씌우고 기울여 계산 (`concepts/weapons/build_back_sword.py`, 2026-11-18) | 프로젝트 소유 | 64×64, 아래 가운데가 발 밑. 등에 멘 칼. D-049 |
 | `images/player/weapons/old_sword.png` | Claude Code 제작 (`concepts/weapons/build_old_sword.py`, 2026-11-17). 컨셉 시트의 낡은 검 기준 | 프로젝트 소유 | 56×10, 칼끝 오른쪽, 손이 한가운데. D-022 |
 | `images/maps/test_room_bg.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성한 지하 미궁 타일(`concepts/pixellab/labyrinth/tiles_v2/`)·바닥 Wang 타일셋(`floor_wang/`)·횃불(`torch_v1.png`)·소품(`props/` 통·상자·해골·돌무더기·기둥·항아리)을 Claude Code가 칸마다 합치고 빛을 계산함 (`build_map_bg.py`, 2026-11-19) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 1024×576 (맵 32×18칸 × 32). D-052 |
+| `images/maps/torch.png`, `torch_glow.png`, `test_room_walltop.png`, `test_room_torches.json` | 사용자 PixelLab 계정으로 생성한 횃불 불꽃 애니메이션(`concepts/pixellab/labyrinth/torch_anim/`)을 Claude Code가 줄이고 이어 붙임, 빛 고리·솟은 벽 윗면·자리는 `build_map_bg.py` 가 계산 (2026-11-19) | PixelLab 이용약관에 따름 (사용자 계정 생성물) / 계산 그림은 프로젝트 소유 | 횃불 9×28 × 8장. D-052 |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)
 

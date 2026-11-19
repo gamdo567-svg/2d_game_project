@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+import json
+import math
 import os
 
 from game import config
@@ -28,6 +30,21 @@ from game.world.grid import Grid
 from game.world.tile_map import TileMap
 
 
+def load_torches(path: str) -> dict | None:
+    """맵 그림을 만들 때 내보낸 횃불 자리 (없으면 None)."""
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as fp:
+        return json.load(fp)
+
+
+def torch_glow_opacity(time: float, index: int) -> float:
+    """횃불 빛 고리 불투명도: 빠르기가 다른 두 사인파를 섞어 불규칙하게 깜빡임 (횃불마다 박자가 다름)."""
+    phase = index * 1.7
+    swing = 0.6 * math.sin(time * 7.3 + phase) + 0.4 * math.sin(time * 12.9 + phase * 2.3)
+    return max(0.0, min(1.0, config.MAP_TORCH_GLOW_BASE + config.MAP_TORCH_GLOW_SWING * swing))
+
+
 class FieldScene:
     def __init__(self, grid: Grid, tile_map: TileMap | None = None) -> None:
         self.grid = grid
@@ -35,6 +52,8 @@ class FieldScene:
         self.map_background = (config.map_background_path(config.FIELD_MAP_PATH)
                                 if tile_map is None else None)
         self.map_walltop = config.map_walltop_path(config.FIELD_MAP_PATH) if tile_map is None else None
+        self.torches = load_torches(config.map_torches_path(config.FIELD_MAP_PATH)) if tile_map is None else None
+        self.time = 0.0  # 장면이 흐른 시간 (횃불 불꽃·빛 깜빡임)
         self.tile_map = tile_map or TileMap.load(config.FIELD_MAP_PATH)
         if (self.tile_map.cols, self.tile_map.rows) != (grid.cols, grid.rows):
             raise ValueError(f"맵 크기 {self.tile_map.cols}×{self.tile_map.rows} 가 격자 {grid.cols}×{grid.rows} 와 다릅니다.")
@@ -68,6 +87,7 @@ class FieldScene:
         return True
 
     def update(self, dt: float, input_state: InputState) -> None:
+        self.time += dt
         self.player.update(dt, input_state)
         for strike in self.player.strikes:
             tiles = attack_tiles(strike, self.tile_map.is_wall)
@@ -131,6 +151,23 @@ class FieldScene:
             grid.origin_x + grid.width_px / 2, grid.origin_y, grid.width_px, grid.height_px,
         )
 
+    def _draw_torches(self, renderer) -> None:
+        """벽 횃불: 따뜻한 빛 고리(불투명도가 두 사인파로 흔들림) → 불꽃 그림. 횃불마다 박자를 어긋나게 한다."""
+        if not self.torches:
+            return
+        grid, scale = self.grid, config.RENDER_SCALE
+        map_height = grid.rows * config.LOGICAL_TILE_SIZE
+        info = self.torches
+        fw, fh, frames = info["frame_width"], info["frame_height"], info["frames"]
+        for k, spot in enumerate(info["torches"]):
+            x = grid.origin_x + spot["x"] * scale
+            flame_y = grid.origin_y + (map_height - spot["flame_y"]) * scale
+            bottom = grid.origin_y + (map_height - spot["bottom"]) * scale
+            opacity = torch_glow_opacity(self.time, k)
+            renderer.draw_image_centered(config.MAP_TORCH_GLOW, x, flame_y, opacity=opacity)
+            frame = int(self.time * config.MAP_TORCH_FPS + k * 3) % frames
+            renderer.draw_sprite_frame(config.MAP_TORCH_SHEET, frame, fw, fh, x, bottom, fw * scale, fh * scale)
+
     def _draw_walltop_band(self, renderer, row: int) -> None:
         """칸 줄 row 의 벽 가운데 위가 바닥인 칸의 솟은 윗면 (그 줄 칸 위쪽 경계 바로 위에 붙음)."""
         grid = self.grid
@@ -149,6 +186,7 @@ class FieldScene:
             for col, row in sorted(self.tile_map.walls):
                 renderer.fill_tile(grid, col, row, config.COLOR_WALL_EDGE)
                 renderer.fill_tile(grid, col, row, config.COLOR_WALL, inset=3)
+        self._draw_torches(renderer)
 
         for golem in self.golems:
             golem.draw_warning(renderer, grid)  # 공격 예고 칸·레이저는 바닥에

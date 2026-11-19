@@ -25,6 +25,11 @@ TILES = os.path.join(HERE, 'tiles_v2')
 WANG = os.path.join(HERE, 'floor_wang')
 PROPS_DIR = os.path.join(HERE, 'props')
 TORCH = os.path.join(HERE, 'torch_v1.png')
+TORCH_ANIM = os.path.join(HERE, 'torch_anim')  # PixelLab animate_image: 0 = 원본, 1~8 = 불꽃이 일렁이는 고리 (같은 날)
+TORCH_FRAMES = 8
+GLOW_RADIUS = 2.6 * 32  # 게임이 횃불 위에 겹쳐 그리는 빛 고리 반지름 (원본 픽셀)
+GLOW_RINGS = ((1.0, 34), (0.68, 22), (0.4, 12))  # (반지름 비율, 알파): 바깥부터, 단계로 끊은 고리
+GLOW_COLOR = (255, 186, 104)
 T = 32
 FACE_TOP = 6  # 앞에서 보이는 벽에서 윗면이 차지하는 줄 수 (나머지는 벽돌 앞면)
 # 솟은 벽 윗면 (같은 날 사용자: 한 칸 두께 벽은 윗면이 안 보임): 위가 바닥인 벽 칸은 윗면이 위 칸으로 OVERHANG 줄 솟는다.
@@ -246,16 +251,22 @@ def build(name):
                     torches.append((run[len(run) // 2], r))
             else:
                 torches += [(cc, r) for cc in run[TORCH_EVERY // 2::TORCH_EVERY]]
-    torch = Image.open(TORCH).convert('RGBA')
-    torch = torch.crop(torch.getbbox())
-    torch = torch.resize((max(1, round(torch.width * TORCH_SCALE)), max(1, round(torch.height * TORCH_SCALE))),
-                         Image.NEAREST)
-    flames = []
+    # 횃불 그림은 바탕에 박지 않고 게임이 불꽃을 움직여 그린다 (같은 날 사용자: 다음 작업 = 횃불 일렁임).
+    # 바탕의 빛 계산에 쓸 불꽃 자리만 구하고, 자리는 <이름>_torches.json 으로 내보낸다.
+    frames = [Image.open(os.path.join(TORCH_ANIM, f'f{k}.png')).convert('RGBA') for k in range(1, TORCH_FRAMES + 1)]
+    box = frames[0].getbbox()
+    for f in frames[1:]:
+        b = f.getbbox()
+        box = (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
+    frames = [f.crop(box) for f in frames]
+    tw, th = max(1, round(frames[0].width * TORCH_SCALE)), max(1, round(frames[0].height * TORCH_SCALE))
+    frames = [f.resize((tw, th), Image.NEAREST) for f in frames]
+    flames, torch_spots = [], []
     for c, r in torches:
-        x = c * T + (T - torch.width) // 2
-        y = r * T + T - 4 - torch.height  # 밑동이 벽 밑에서 조금 위
-        img.alpha_composite(torch, (x, y))
-        flames.append((x + torch.width / 2, y + torch.height * 0.2))
+        x = c * T + (T - tw) // 2
+        y = r * T + T - 4 - th  # 밑동이 벽 밑에서 조금 위
+        flames.append((x + tw / 2, y + th * 0.2))
+        torch_spots.append({'x': x + tw / 2, 'bottom': y + th, 'flame_y': y + th * 0.2})
 
     # 솟은 벽 윗면 띠: 줄 i 의 띠 = 줄 i 벽 가운데 위가 바닥인 칸 위로 솟는 OVERHANG 줄 (바탕 그림 좌표로 i*T - OVERHANG ~ i*T)
     walltop = Image.new('RGBA', (cols * T, rows * OVERHANG), (0, 0, 0, 0))
@@ -321,11 +332,30 @@ def build(name):
     os.makedirs(out_dir, exist_ok=True)
     img.save(os.path.join(out_dir, f'{name}_bg.png'))
     walltop.save(os.path.join(out_dir, f'{name}_walltop.png'))
+    # 횃불 그림 (가로 TORCH_FRAMES 장)·빛 고리·자리 (원본 픽셀, y 는 맵 그림 위에서부터)
+    sheet = Image.new('RGBA', (tw * TORCH_FRAMES, th), (0, 0, 0, 0))
+    for k, f in enumerate(frames):
+        sheet.alpha_composite(f, (k * tw, 0))
+    sheet.save(os.path.join(out_dir, 'torch.png'))
+    g = round(GLOW_RADIUS)
+    glow = Image.new('RGBA', (2 * g, 2 * g), (0, 0, 0, 0))
+    gpx = glow.load()
+    for y in range(2 * g):
+        for x in range(2 * g):
+            d = math.hypot(x + 0.5 - g, (y + 0.5 - g) * 1.15) / g
+            a = sum(alpha for ratio, alpha in GLOW_RINGS if d <= ratio)
+            if a:
+                gpx[x, y] = GLOW_COLOR + (min(255, a),)
+    glow.save(os.path.join(out_dir, 'torch_glow.png'))
+    with open(os.path.join(out_dir, f'{name}_torches.json'), 'w', encoding='utf-8') as fp:
+        json.dump({'frame_width': tw, 'frame_height': th, 'frames': TORCH_FRAMES, 'torches': torch_spots}, fp, indent=1)
     # 미리보기: 솟은 띠까지 얹은 모습
     for r in range(rows):
         band = walltop.crop((0, r * OVERHANG, cols * T, (r + 1) * OVERHANG))
         if r > 0:
             img.alpha_composite(band, (0, r * T - OVERHANG))
+    for spot in torch_spots:  # 미리보기에만 횃불 첫 장
+        img.alpha_composite(frames[0], (round(spot['x'] - tw / 2), round(spot['bottom'] - th)))
     img.resize((img.width * 2, img.height * 2), Image.NEAREST).save(os.path.join(HERE, f'preview_{name}_x2.png'))
     return img, torches
 

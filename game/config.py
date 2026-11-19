@@ -47,6 +47,20 @@ def map_background_path(map_path) -> str:
 MAP_WALL_OVERHANG = 12
 
 
+# 벽 횃불 (2026-11-19 사용자: 횃불 일렁임): 맵 그림을 만들 때 자리를 '<맵>_torches.json' 으로 내보내고, 게임이 불꽃 그림(가로 여러 장)을
+# 돌려 그리며 그 위에 따뜻한 빛 고리를 깜빡이듯 그린다. 바탕 그림의 빛은 그대로이고 고리만 흔들린다.
+MAP_TORCH_SHEET = str(MAP_IMAGE_DIR / "torch.png")
+MAP_TORCH_GLOW = str(MAP_IMAGE_DIR / "torch_glow.png")
+MAP_TORCH_FPS = 10  # 불꽃 그림 넘기는 빠르기 (장/초)
+MAP_TORCH_GLOW_BASE = 0.7  # 빛 고리 불투명도 가운데 값
+MAP_TORCH_GLOW_SWING = 0.25  # 위아래로 흔들리는 폭 (두 사인파를 섞어 불규칙하게)
+
+
+def map_torches_path(map_path) -> str:
+    """글자 맵 파일에 짝지은 횃불 자리 파일 경로 (test_room.txt → images/maps/test_room_torches.json)."""
+    return str(MAP_IMAGE_DIR / f"{Path(map_path).stem}_torches.json")
+
+
 def map_walltop_path(map_path) -> str:
     """글자 맵 파일에 짝지은 솟은 벽 윗면 그림 경로 (test_room.txt → images/maps/test_room_walltop.png)."""
     return str(MAP_IMAGE_DIR / f"{Path(map_path).stem}_walltop.png")

@@ -10,6 +10,7 @@ import os
 
 import pico2d
 
+from game import config
 from game.world.grid import Grid
 
 Color = tuple[int, int, int]
@@ -124,6 +125,21 @@ class Renderer:
         image.clip_composite_draw(
             left, 0, frame_width, frame_height, 0, flip, x, y, draw_width, draw_height
         )
+        if opacity < 1.0:
+            image.opacify(1.0)
+        return True
+
+    def draw_image_centered(self, path: str, center_x: float, center_y: float, opacity: float = 1.0) -> bool:
+        """그림 한 장을 RENDER_SCALE 배로 (center_x, center_y) 가운데에 그린다 (nearest). opacity 로 비쳐 보이게. 못 읽으면 False."""
+        image = self._image(path)
+        if image is None:
+            return False
+        w, h = image.w * config.RENDER_SCALE, image.h * config.RENDER_SCALE
+        x = round(center_x - w / 2) + w / 2
+        y = round(center_y - h / 2) + h / 2
+        if opacity < 1.0:
+            image.opacify(max(0.0, opacity))
+        image.composite_draw(0, "", x, y, w, h)
         if opacity < 1.0:
             image.opacify(1.0)
         return True
