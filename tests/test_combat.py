@@ -38,31 +38,60 @@ class StrikeTest(unittest.TestCase):
 
 
 class TrainingDummyTest(unittest.TestCase):
-    def test_hit_flashes_shakes_and_pops_number(self):
+    def test_hit_flashes_wobbles_and_pops_number(self):
         dummy = TrainingDummy(3, 3, max_hp=30)
         self.assertTrue(dummy.take_hit(10, (1, 0)))
         self.assertEqual(dummy.hp, 20)
         self.assertGreater(dummy.flash_left, 0)
-        self.assertGreater(dummy.shake_offset()[0], 0)  # 맞은 방향(오른쪽)으로 밀림
         self.assertEqual([p.amount for p in dummy.popups], [10])
-        dummy.update(1.0)
+        self.assertTrue(dummy.bits)  # 밀짚 부스러기가 튐
+        dummy.update(0.05)
+        self.assertGreater(dummy.lean_right, 0)  # 맞은 방향(오른쪽)으로 기욺
+        self.assertLess(dummy.squash.value, 1.0)  # 살짝 눌림
+        dummy.update(3.0)
         self.assertEqual(dummy.flash_left, 0)
-        self.assertEqual(dummy.shake_offset(), (0.0, 0.0))
+        self.assertAlmostEqual(dummy.lean_right, 0.0, places=2)  # 흔들리다 멈춤
+        self.assertAlmostEqual(dummy.squash.value, 1.0, places=2)
         self.assertEqual(dummy.popups, [])
+        self.assertEqual(dummy.bits, [])
         self.assertEqual((dummy.col, dummy.row), (3, 3))  # 칸 위치는 그대로
 
-    def test_falls_at_zero_hp_and_stands_up_later(self):
+    def test_wobble_swings_back_past_upright(self):
+        # 용수철처럼: 맞은 쪽으로 기울었다가 반대쪽으로 넘어갔다 돌아온다
+        dummy = TrainingDummy(0, 0)
+        dummy.take_hit(5, (-1, 0))
+        leans = []
+        for _ in range(60):
+            dummy.update(1 / 60)
+            leans.append(dummy.lean_right)
+        self.assertLess(min(leans), 0)  # 왼쪽으로 먼저
+        self.assertGreater(max(leans), 0)  # 반대로 넘어감
+        self.assertLessEqual(max(abs(v) for v in leans), config.DUMMY_WOBBLE_MAX)
+
+    def test_damage_stages(self):
+        dummy = TrainingDummy(0, 0, max_hp=60)
+        self.assertEqual(dummy.stage, 0)
+        dummy.take_hit(25, (1, 0))
+        self.assertEqual(dummy.stage, 1)
+        dummy.take_hit(20, (1, 0))
+        self.assertEqual(dummy.stage, 2)
+
+    def test_falls_at_zero_hp_breaks_and_stands_up_later(self):
         dummy = TrainingDummy(0, 0, max_hp=20)
         dummy.take_hit(12, (0, 1))
         dummy.take_hit(12, (0, 1))
         self.assertEqual(dummy.hp, 0)
         self.assertTrue(dummy.is_down)
+        self.assertEqual(dummy.break_frame, 0)
         self.assertFalse(dummy.take_hit(10, (0, 1)))  # 쓰러진 동안은 맞지 않음
-        dummy.update(config.DUMMY_DOWN_TIME - 0.1)
+        dummy.update(config.DUMMY_BREAK_TIME)
+        self.assertEqual(dummy.break_frame, config.DUMMY_BREAK_FRAMES - 1)  # 무너진 뒤 부러진 밑동
+        dummy.update(config.DUMMY_DOWN_TIME - config.DUMMY_BREAK_TIME - 0.1)
         self.assertTrue(dummy.is_down)
         dummy.update(0.2)
         self.assertFalse(dummy.is_down)
         self.assertEqual(dummy.hp, 20)
+        self.assertLess(dummy.squash.value, 1.0)  # 눌린 채 나타나 튀어 오름
 
 
 ROOM = """

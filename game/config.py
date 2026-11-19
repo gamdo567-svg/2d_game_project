@@ -308,8 +308,29 @@ PLAYER_WEAPON_VIEW_ART = {("front", 3): (5, 6, 7)}
 # [임시값] 2026-11-17. 맞으면 깜빡임·흔들림·피해 숫자, 체력이 다하면 쓰러졌다가 다시 선다.
 DUMMY_MAX_HP = 60
 DUMMY_FLASH_TIME = 0.12  # 초. 하얗게 깜빡이는 시간
-DUMMY_SHAKE_TIME = 0.15  # 초. 맞은 방향으로 밀렸다 돌아오는 시간
-DUMMY_SHAKE_PIXELS = 3  # 원본 픽셀. 처음 밀리는 거리 (칸 위치는 그대로)
+# 밀짚 더미 그림·흔들림 (2026-11-20 사용자 요청: PixelLab 그림, 자연스럽게 흔들리고 부서지게). 그림은
+# assets/concepts/pixellab/dummy/build_dummy.py 가 내보낸다. 맞으면 기둥 밑을 축으로 감쇠 용수철처럼 흔들리고 세로로 살짝 눌린다.
+DUMMY_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "dummy"
+DUMMY_STAGE_IMAGES = tuple(str(DUMMY_IMAGE_DIR / f"stage{k}.png") for k in range(3))
+DUMMY_STAGE_WHITE = tuple(str(DUMMY_IMAGE_DIR / f"stage{k}_white.png") for k in range(3))
+DUMMY_BREAK_SHEET = str(DUMMY_IMAGE_DIR / "break.png")
+DUMMY_BREAK_FRAMES = 8
+DUMMY_BREAK_TIME = 0.6  # 초. 무너지는 그림 8장 (그 뒤 부러진 밑동으로 쓰러져 있음)
+DUMMY_SPRITE_SIZE = (48, 56)  # 원본 그림 크기
+DUMMY_PIVOT = (23, 50)  # 원본 그림에서 기둥 밑 (왼쪽부터, 위에서부터) = 기울이는 축
+DUMMY_FOOT_PAD = 3  # 원본 픽셀. 칸 아래에서 기둥 밑까지
+DUMMY_WOBBLE_FREQ = 2.4  # Hz. 흔들리는 빠르기
+DUMMY_WOBBLE_DAMPING = 0.2  # 감쇠비 (작을수록 오래 흔들림)
+DUMMY_WOBBLE_KICK = 170.0  # 도/초. 맞는 순간 기우는 속도
+DUMMY_WOBBLE_MAX = 16.0  # 도. 가장 많이 기우는 각도
+DUMMY_SQUASH_FREQ = 4.0  # Hz. 눌렸다 펴지는 빠르기
+DUMMY_SQUASH_DAMPING = 0.3
+DUMMY_SQUASH_KICK = 1.1  # 맞는 순간 세로 비율이 줄어드는 속도 (/초)
+DUMMY_RESPAWN_SQUASH = 0.55  # 다시 설 때 이만큼 눌린 채 나타나 튀어 오름
+DUMMY_HIT_BITS = 6  # 맞을 때 튀는 밀짚 부스러기 수
+DUMMY_BREAK_BITS = 16  # 무너질 때
+DUMMY_BIT_GRAVITY = 260.0  # 원본 픽셀/초²
+DUMMY_STRAW_COLORS = ((222, 178, 84), (196, 146, 60), (240, 206, 120))
 DUMMY_DOWN_TIME = 2.0  # 초. 쓰러져 있는 시간
 DAMAGE_POPUP_TIME = 0.6  # 초. 피해 숫자가 떠 있는 시간
 DAMAGE_POPUP_RISE = 0.5  # 칸. 그동안 떠오르는 높이
@@ -519,8 +540,6 @@ COLOR_WALL = (64, 54, 78)
 COLOR_WALL_EDGE = (40, 34, 52)
 COLOR_WHITE = (255, 255, 255)
 # 허수아비 임시 도형 색
-COLOR_DUMMY_WOOD = (120, 84, 52)
-COLOR_DUMMY_STRAW = (196, 164, 96)
 COLOR_DUMMY_SHADOW = (20, 16, 26)
 COLOR_DUMMY_HP = (200, 70, 60)
 COLOR_DAMAGE_TEXT = (255, 236, 160)

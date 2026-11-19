@@ -53,5 +53,14 @@ class MapBackgroundTest(unittest.TestCase):
         self.assertTrue(config.map_background_path("x/dungeon_1.txt").endswith(os.path.join("maps", "dungeon_1_bg.png")))
 
 
+class DummyAssetTest(unittest.TestCase):
+    def test_dummy_images(self):
+        # 밀짚 더미 (2026-11-20): 단계 그림 3장 + 깜빡임 실루엣 3장 + 무너지는 그림 (가로 DUMMY_BREAK_FRAMES 장)
+        w, h = config.DUMMY_SPRITE_SIZE
+        for path in config.DUMMY_STAGE_IMAGES + config.DUMMY_STAGE_WHITE:
+            self.assertEqual(png_size(path), (w, h), path)
+        self.assertEqual(png_size(config.DUMMY_BREAK_SHEET), (w * config.DUMMY_BREAK_FRAMES, h))
+
+
 if __name__ == "__main__":
     unittest.main()

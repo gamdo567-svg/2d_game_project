@@ -180,6 +180,7 @@ class Renderer:
         draw_height: int,
         angle_degrees: float,
         flip_horizontal: bool = False,
+        opacity: float = 1.0,
     ) -> None:
         """그림 한 장을 (center_x, center_y)를 중심으로 angle_degrees(반시계 +) 만큼 돌려 그린다.
 
@@ -189,4 +190,8 @@ class Renderer:
         if image is None:
             return
         flip = "h" if flip_horizontal else ""
+        if opacity < 1.0:
+            image.opacify(max(0.0, opacity))
         image.composite_draw(math.radians(angle_degrees), flip, center_x, center_y, draw_width, draw_height)
+        if opacity < 1.0:
+            image.opacify(1.0)
