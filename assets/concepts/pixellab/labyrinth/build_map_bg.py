@@ -27,6 +27,10 @@ PROPS_DIR = os.path.join(HERE, 'props')
 TORCH = os.path.join(HERE, 'torch_v1.png')
 T = 32
 FACE_TOP = 6  # 앞에서 보이는 벽에서 윗면이 차지하는 줄 수 (나머지는 벽돌 앞면)
+# 솟은 벽 윗면 (같은 날 사용자: 한 칸 두께 벽은 윗면이 안 보임): 위가 바닥인 벽 칸은 윗면이 위 칸으로 OVERHANG 줄 솟는다.
+# 그 부분은 바탕 그림이 아니라 따로 '<이름>_walltop.png'(줄마다 OVERHANG 높이 띠)로 내보내, 게임이 인물과 줄 순서대로 그린다
+# (벽 뒤 칸에 선 인물의 발이 벽 윗면에 가려짐). 값은 game/config.py MAP_WALL_OVERHANG 과 같아야 한다.
+OVERHANG = 12
 BLOCKING = {'B': 'barrel', 'C': 'crates', 'I': 'pillar'}  # game/world/tile_map.py PROPS 와 같음
 DECALS = [('bones', 2), ('rubble', 3), ('pots', 2)]  # 밟고 지나가는 소품 (그림, 비중)
 DECAL_CHANCE = 0.025  # 바닥 칸마다 소품이 놓일 확률 (칸 좌표로 정해져 늘 같음)
@@ -253,32 +257,75 @@ def build(name):
         img.alpha_composite(torch, (x, y))
         flames.append((x + torch.width / 2, y + torch.height * 0.2))
 
+    # 솟은 벽 윗면 띠: 줄 i 의 띠 = 줄 i 벽 가운데 위가 바닥인 칸 위로 솟는 OVERHANG 줄 (바탕 그림 좌표로 i*T - OVERHANG ~ i*T)
+    walltop = Image.new('RGBA', (cols * T, rows * OVERHANG), (0, 0, 0, 0))
+    wpx = walltop.load()
+    for r in range(rows):
+        for c in range(cols):
+            if not (wall(c, r) and not wall(c, r - 1)) or r == 0:
+                continue
+            x, by = c * T, r * OVERHANG
+            src = tiles[pick(WALL_TOP, c, r - 1, 4)]
+            walltop.alpha_composite(src.crop((0, T - OVERHANG, T, T)), (x, by))
+            for i in range(T):
+                wpx[x + i, by] = RIM
+            for dc, xx in ((-1, x), (1, x + T - 1)):
+                if not (wall(c + dc, r) and not wall(c + dc, r - 1)):  # 옆 칸은 솟지 않음 → 끝 테두리
+                    for j in range(OVERHANG):
+                        wpx[xx, by + j] = RIM
+            # 바탕 그림의 윗면 맨 위 테두리를 지운 자리와 이어지게, 띠 맨 아래 한 줄은 윗면 색 그대로 둔다
+        # (바탕 그림 쪽 맨 위 테두리는 아래에서 지움)
+    for r in range(1, rows):
+        for c in range(cols):
+            if wall(c, r) and not wall(c, r - 1):
+                src = tiles[pick(WALL_TOP, c, r - 1, 4)]
+                img.alpha_composite(src.crop((0, 0, T, 1)), (c * T, r * T))  # 솟은 띠와 이어지게 칸 맨 위 테두리 지움
+                for dc, xx in ((-1, c * T), (1, c * T + T - 1)):
+                    if not wall(c + dc, r):
+                        img.putpixel((xx, r * T), RIM)
+
     # 빛: 밝기를 LIGHT_LEVELS 단계로 끊고 단계 사이는 4×4 디더로 섞는다 (매끄러운 그라데이션은 뿌옇게 보였음)
-    px = img.load()
     levels = LIGHT_LEVELS
+
+    def lit(pix, x, y, mx, my):
+        """(mx, my) = 바탕 그림 좌표에서의 자리 (빛 계산용), (x, y) = 이 그림에서의 자리."""
+        light = levels[0]
+        for fx, fy in flames:
+            d = math.hypot(mx - fx, (my - fy) * 1.15)
+            if d < TORCH_RADIUS:
+                light += (levels[-1] - levels[0]) * (1 - d / TORCH_RADIUS) ** 1.5
+        light = min(levels[-1], light)
+        i = max(k for k in range(len(levels)) if levels[k] <= light + 1e-9)
+        if i < len(levels) - 1:
+            frac = (light - levels[i]) / (levels[i + 1] - levels[i])
+            frac = min(1.0, max(0.0, (frac - 0.5) * DITHER_SHARPNESS + 0.5))  # 디더는 단계 경계 좁은 띠에만
+            if frac > (BAYER[my % 4][mx % 4] + 0.5) / 16:
+                i += 1
+        lv = levels[i]
+        warm = i / (len(levels) - 1)
+        tint = [1 + (w - 1) * warm for w in WARM]
+        r_, g_, b_, a_ = pix[x, y]
+        pix[x, y] = (min(255, round(r_ * lv * tint[0])), min(255, round(g_ * lv * tint[1])),
+                     min(255, round(b_ * lv * tint[2])), a_)
+
+    px = img.load()
     for y in range(img.height):
         for x in range(img.width):
-            light = levels[0]
-            for fx, fy in flames:
-                d = math.hypot(x - fx, (y - fy) * 1.15)
-                if d < TORCH_RADIUS:
-                    light += (levels[-1] - levels[0]) * (1 - d / TORCH_RADIUS) ** 1.5
-            light = min(levels[-1], light)
-            i = max(k for k in range(len(levels)) if levels[k] <= light + 1e-9)
-            if i < len(levels) - 1:
-                frac = (light - levels[i]) / (levels[i + 1] - levels[i])
-                frac = min(1.0, max(0.0, (frac - 0.5) * DITHER_SHARPNESS + 0.5))  # 디더는 단계 경계 좁은 띠에만
-                if frac > (BAYER[y % 4][x % 4] + 0.5) / 16:
-                    i += 1
-            lv = levels[i]
-            warm = i / (len(levels) - 1)
-            tint = [1 + (w - 1) * warm for w in WARM]
-            r_, g_, b_, a_ = px[x, y]
-            px[x, y] = (min(255, round(r_ * lv * tint[0])), min(255, round(g_ * lv * tint[1])),
-                        min(255, round(b_ * lv * tint[2])), a_)
+            lit(px, x, y, x, y)
+    for y in range(walltop.height):
+        r, j = divmod(y, OVERHANG)
+        for x in range(walltop.width):
+            if wpx[x, y][3]:
+                lit(wpx, x, y, x, r * T - OVERHANG + j)
     out_dir = os.path.join(ROOT, 'assets', 'images', 'maps')
     os.makedirs(out_dir, exist_ok=True)
     img.save(os.path.join(out_dir, f'{name}_bg.png'))
+    walltop.save(os.path.join(out_dir, f'{name}_walltop.png'))
+    # 미리보기: 솟은 띠까지 얹은 모습
+    for r in range(rows):
+        band = walltop.crop((0, r * OVERHANG, cols * T, (r + 1) * OVERHANG))
+        if r > 0:
+            img.alpha_composite(band, (0, r * T - OVERHANG))
     img.resize((img.width * 2, img.height * 2), Image.NEAREST).save(os.path.join(HERE, f'preview_{name}_x2.png'))
     return img, torches
 

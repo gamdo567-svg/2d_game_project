@@ -42,6 +42,16 @@ def map_background_path(map_path) -> str:
     return str(MAP_IMAGE_DIR / f"{Path(map_path).stem}_bg.png")
 
 
+# 솟은 벽 윗면 (2026-11-19 사용자: 한 칸 두께 벽은 윗면이 안 보임): 위가 바닥인 벽 칸은 윗면이 위 칸으로 이만큼(원본 픽셀) 솟는다.
+# 그림 '<맵>_walltop.png' 는 맵 줄마다 이 높이의 띠 (맨 위 줄부터). 인물과 줄 순서대로 그려 벽 뒤에 선 인물의 발을 가린다.
+MAP_WALL_OVERHANG = 12
+
+
+def map_walltop_path(map_path) -> str:
+    """글자 맵 파일에 짝지은 솟은 벽 윗면 그림 경로 (test_room.txt → images/maps/test_room_walltop.png)."""
+    return str(MAP_IMAGE_DIR / f"{Path(map_path).stem}_walltop.png")
+
+
 # ----- 플레이어 그림 크기 -----
 # 스프라이트 시트 원본 프레임 크기 (에셋 픽셀). 충돌은 논리적 칸 좌표로 처리한다.
 PLAYER_SPRITE_WIDTH = 32

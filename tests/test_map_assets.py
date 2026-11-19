@@ -25,6 +25,14 @@ class MapBackgroundTest(unittest.TestCase):
         self.assertEqual(png_size(path), (tile_map.cols * config.LOGICAL_TILE_SIZE,
                                           tile_map.rows * config.LOGICAL_TILE_SIZE))
 
+    def test_walltop_bands_match_map(self):
+        # 솟은 벽 윗면: 맵 줄마다 MAP_WALL_OVERHANG 높이의 띠 (build_map_bg.py OVERHANG 과 같아야 함)
+        path = config.map_walltop_path(config.FIELD_MAP_PATH)
+        self.assertTrue(os.path.exists(path), path)
+        tile_map = TileMap.load(config.FIELD_MAP_PATH)
+        self.assertEqual(png_size(path), (tile_map.cols * config.LOGICAL_TILE_SIZE,
+                                          tile_map.rows * config.MAP_WALL_OVERHANG))
+
     def test_background_path_follows_map_name(self):
         self.assertTrue(config.map_background_path("x/dungeon_1.txt").endswith(os.path.join("maps", "dungeon_1_bg.png")))
 

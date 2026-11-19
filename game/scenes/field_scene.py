@@ -34,6 +34,7 @@ class FieldScene:
         # 바탕 그림은 기본 맵 파일에 짝지은 것만 쓴다 (테스트 등에서 맵을 직접 넘기면 단색 네모로 그림)
         self.map_background = (config.map_background_path(config.FIELD_MAP_PATH)
                                 if tile_map is None else None)
+        self.map_walltop = config.map_walltop_path(config.FIELD_MAP_PATH) if tile_map is None else None
         self.tile_map = tile_map or TileMap.load(config.FIELD_MAP_PATH)
         if (self.tile_map.cols, self.tile_map.rows) != (grid.cols, grid.rows):
             raise ValueError(f"맵 크기 {self.tile_map.cols}×{self.tile_map.rows} 가 격자 {grid.cols}×{grid.rows} 와 다릅니다.")
@@ -130,6 +131,16 @@ class FieldScene:
             grid.origin_x + grid.width_px / 2, grid.origin_y, grid.width_px, grid.height_px,
         )
 
+    def _draw_walltop_band(self, renderer, row: int) -> None:
+        """칸 줄 row 의 벽 가운데 위가 바닥인 칸의 솟은 윗면 (그 줄 칸 위쪽 경계 바로 위에 붙음)."""
+        grid = self.grid
+        band = config.MAP_WALL_OVERHANG
+        width = grid.cols * config.LOGICAL_TILE_SIZE
+        height = band * config.RENDER_SCALE
+        top_of_row = grid.origin_y + (row + 1) * grid.tile_size
+        renderer.draw_sheet_frame(self.map_walltop, self.tile_map.rows - 1 - row, 1, width, band,
+                                  grid.origin_x + grid.width_px / 2, top_of_row + height / 2, grid.width_px, height)
+
     def draw(self, renderer) -> None:
         grid = self.grid
         renderer.fill_screen(config.COLOR_BACKGROUND)
@@ -148,6 +159,10 @@ class FieldScene:
         actors = [(dummy.row, dummy.draw) for dummy in self.dummies]
         actors += [(golem.visual_position[1], golem.draw) for golem in self.golems]
         actors.append((self.player.mover.visual_position[1], lambda r, g: self.player.draw(r)))
+        # 솟은 벽 윗면 띠: 줄 R 의 띠는 위 칸(R+1)에 선 인물보다 나중에, 줄 R 인물보다 먼저 (벽 뒤 인물의 발을 가림)
+        if self.map_walltop and os.path.exists(self.map_walltop):
+            actors += [(row + 0.5, lambda r, g, row=row: self._draw_walltop_band(r, row))
+                       for row in range(self.tile_map.rows - 1)]
         for _, draw in sorted(actors, key=lambda a: -a[0]):
             draw(renderer, grid)
         for effect in self.effects:  # 인물 위에 그리는 이펙트 (패링 불꽃)

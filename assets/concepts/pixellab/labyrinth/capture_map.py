@@ -12,6 +12,10 @@ pico2d.open_canvas(config.SCREEN_WIDTH, config.SCREEN_HEIGHT, sync=False)
 r = Renderer(config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
 s = FieldScene(Grid(config.GRID_COLS, config.GRID_ROWS, config.RENDER_TILE_SIZE))
 inp = InputState()
+if len(sys.argv) > 3:  # 주인공을 이 칸에 세움 (벽 뒤에 선 모습 확인용)
+    m = s.player.mover
+    m.col, m.row = int(sys.argv[2]), int(sys.argv[3])
+    m._from_col, m._from_row = m.col, m.row
 for _ in range(10):
     s.update(1 / 60, inp); inp.begin_frame()
 s.draw(r)
