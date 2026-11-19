@@ -32,6 +32,15 @@ VIEW_ROWS = SCREEN_HEIGHT / RENDER_TILE_SIZE
 # 글자 맵 파일 (D-023): # 벽, . 바닥, P 주인공 시작 칸. 크기는 GRID_COLS × GRID_ROWS 와 같아야 한다.
 MAP_DIR = PROJECT_ROOT / "assets" / "maps"
 FIELD_MAP_PATH = MAP_DIR / "test_room.txt"
+# 맵 바탕 그림 (2026-11-19 지하 미궁 타일): 맵 칸 수 × 32 픽셀 한 장. 바닥·벽(윗면 + 3/4 벽돌 앞면)·그늘을 미리 합친 것.
+# assets/concepts/pixellab/labyrinth/build_map_bg.py 가 글자 맵에서 만든다. 없으면 예전처럼 단색 네모로 그린다.
+MAP_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "maps"
+
+
+def map_background_path(map_path) -> str:
+    """글자 맵 파일에 짝지은 바탕 그림 경로 (test_room.txt → images/maps/test_room_bg.png)."""
+    return str(MAP_IMAGE_DIR / f"{Path(map_path).stem}_bg.png")
+
 
 # ----- 플레이어 그림 크기 -----
 # 스프라이트 시트 원본 프레임 크기 (에셋 픽셀). 충돌은 논리적 칸 좌표로 처리한다.

@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+import os
+
 from game import config
 from game.input.input_state import InputState
 from game.combat.enemy_attack import PARRIED
@@ -29,6 +31,9 @@ from game.world.tile_map import TileMap
 class FieldScene:
     def __init__(self, grid: Grid, tile_map: TileMap | None = None) -> None:
         self.grid = grid
+        # 바탕 그림은 기본 맵 파일에 짝지은 것만 쓴다 (테스트 등에서 맵을 직접 넘기면 단색 네모로 그림)
+        self.map_background = (config.map_background_path(config.FIELD_MAP_PATH)
+                                if tile_map is None else None)
         self.tile_map = tile_map or TileMap.load(config.FIELD_MAP_PATH)
         if (self.tile_map.cols, self.tile_map.rows) != (grid.cols, grid.rows):
             raise ValueError(f"맵 크기 {self.tile_map.cols}×{self.tile_map.rows} 가 격자 {grid.cols}×{grid.rows} 와 다릅니다.")
@@ -114,13 +119,25 @@ class FieldScene:
         self.grid.origin_y = -self.camera.bottom + shake_y
 
     # ----- 그리기 -----
+    def _draw_map_background(self, renderer) -> bool:
+        """맵 바탕 그림(지하 미궁 타일을 미리 합친 한 장)을 그린다. 그림이 없거나 못 읽으면 False."""
+        if not self.map_background or not os.path.exists(self.map_background):
+            return False
+        grid = self.grid
+        width, height = grid.cols * config.LOGICAL_TILE_SIZE, grid.rows * config.LOGICAL_TILE_SIZE
+        return renderer.draw_sprite_frame(
+            self.map_background, 0, width, height,
+            grid.origin_x + grid.width_px / 2, grid.origin_y, grid.width_px, grid.height_px,
+        )
+
     def draw(self, renderer) -> None:
         grid = self.grid
         renderer.fill_screen(config.COLOR_BACKGROUND)
-        renderer.draw_grid(grid, config.COLOR_GRID_LINE)
-        for col, row in sorted(self.tile_map.walls):
-            renderer.fill_tile(grid, col, row, config.COLOR_WALL_EDGE)
-            renderer.fill_tile(grid, col, row, config.COLOR_WALL, inset=3)
+        if not self._draw_map_background(renderer):
+            renderer.draw_grid(grid, config.COLOR_GRID_LINE)
+            for col, row in sorted(self.tile_map.walls):
+                renderer.fill_tile(grid, col, row, config.COLOR_WALL_EDGE)
+                renderer.fill_tile(grid, col, row, config.COLOR_WALL, inset=3)
 
         for golem in self.golems:
             golem.draw_warning(renderer, grid)  # 공격 예고 칸·레이저는 바닥에
