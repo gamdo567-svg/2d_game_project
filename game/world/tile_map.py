@@ -4,6 +4,8 @@
     - 한 줄 = 한 행, 한 글자 = 한 칸. 모든 줄의 길이가 같아야 한다.
     - `#` 벽, `.` 바닥, `P` 주인공 시작 칸(바닥), `D` 연습용 허수아비(바닥 위에 놓임),
       `G` 골렘(그 칸이 골렘의 발 칸(몸 1×2 의 아래 칸), 그 위 칸은 바닥이어야 함). 빈 줄은 무시한다.
+    - 막는 소품 (2026-11-19, 지하 미궁 꾸미기): `B` 통, `C` 상자 더미, `I` 부서진 기둥. 벽처럼 지나갈 수 없고,
+      그림은 맵 바탕 그림에 바닥 위로 그려진다 (assets/concepts/pixellab/labyrinth/build_map_bg.py).
     - 파일의 **맨 위 줄이 가장 위쪽 행**이다. 게임의 칸 좌표는 (0, 0) 이 왼쪽 아래이므로
       맨 아래 줄이 row 0 이 된다.
 
@@ -18,14 +20,16 @@ FLOOR = "."
 PLAYER_START = "P"
 DUMMY = "D"
 GOLEM = "G"
-KNOWN_TILES = {WALL, FLOOR, PLAYER_START, DUMMY, GOLEM}
+PROPS = {"B": "barrel", "C": "crates", "I": "pillar"}  # 막는 소품 글자 → 그림 이름
+KNOWN_TILES = {WALL, FLOOR, PLAYER_START, DUMMY, GOLEM} | set(PROPS)
 
 
 class TileMap:
     def __init__(self, cols: int, rows: int, walls: set[tuple[int, int]],
                  player_start: tuple[int, int] | None = None,
                  dummies: list[tuple[int, int]] | None = None,
-                 golems: list[tuple[int, int]] | None = None) -> None:
+                 golems: list[tuple[int, int]] | None = None,
+                 props: list[tuple[int, int, str]] | None = None) -> None:
         if cols <= 0 or rows <= 0:
             raise ValueError("맵 크기는 1 이상이어야 합니다.")
         self.cols = cols
@@ -34,6 +38,7 @@ class TileMap:
         self.player_start = player_start
         self.dummies = list(dummies or [])  # 허수아비를 놓을 칸
         self.golems = list(golems or [])  # 골렘의 발 칸 (몸 1×2 의 아래 칸)
+        self.props = list(props or [])  # 막는 소품 (칸, 칸, 그림 이름). 그 칸은 walls 에도 들어 있다
 
     @classmethod
     def from_text(cls, text: str) -> TileMap:
@@ -48,6 +53,7 @@ class TileMap:
         walls: set[tuple[int, int]] = set()
         dummies: list[tuple[int, int]] = []
         golems: list[tuple[int, int]] = []
+        props: list[tuple[int, int, str]] = []
         start = None
         for i, line in enumerate(lines):
             row = rows - 1 - i
@@ -56,6 +62,9 @@ class TileMap:
                     raise ValueError(f"알 수 없는 칸 글자 {ch!r} (줄 {i + 1}, 칸 {col + 1})")
                 if ch == WALL:
                     walls.add((col, row))
+                elif ch in PROPS:
+                    walls.add((col, row))  # 소품은 지나갈 수 없다
+                    props.append((col, row, PROPS[ch]))
                 elif ch == PLAYER_START:
                     if start is not None:
                         raise ValueError("주인공 시작 칸(P)이 둘 이상입니다.")
@@ -64,7 +73,7 @@ class TileMap:
                     dummies.append((col, row))
                 elif ch == GOLEM:
                     golems.append((col, row))
-        return cls(cols, rows, walls, start, dummies, golems)
+        return cls(cols, rows, walls, start, dummies, golems, props)
 
     @classmethod
     def load(cls, path: str | Path) -> TileMap:

@@ -25,6 +25,14 @@ class TileMapTest(unittest.TestCase):
         self.assertFalse(tile_map.is_wall(1, 1))
         self.assertTrue(tile_map.is_wall(0, 0))
 
+    def test_prop_letters_block_and_are_listed(self):
+        # 통(B)·상자(C)·기둥(I)은 지나갈 수 없고 그림 이름과 함께 기억한다 (2026-11-19 지하 미궁 꾸미기)
+        tile_map = TileMap.from_text("######\n#BPCI#\n######")
+        self.assertTrue(tile_map.is_wall(1, 1))
+        self.assertTrue(tile_map.is_wall(3, 1))
+        self.assertFalse(tile_map.is_wall(2, 1))
+        self.assertEqual(tile_map.props, [(1, 1, "barrel"), (3, 1, "crates"), (4, 1, "pillar")])
+
     def test_dummy_letter(self):
         tile_map = TileMap.from_text("#####\n#PD.#\n#####")
         self.assertEqual(tile_map.dummies, [(2, 1)])
