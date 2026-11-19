@@ -56,16 +56,40 @@ def warning_kind(pattern: str) -> str:
 Tile = tuple[int, int]
 
 
-def aggro_mark_pop(age: float) -> tuple[float, float]:
-    """붉은 ! 의 (크기 배율, 불투명도): 톡 커졌다(조금 넘쳤다 돌아옴) 머물고, 끝에서 옅어진다."""
-    pop = config.AGGRO_MARK_POP_TIME
-    if age < pop:
-        t = age / pop
-        scale = 1.35 * math.sin(t / 0.7 * math.pi / 2) if t < 0.7 else 1.35 - 0.35 * (t - 0.7) / 0.3
+def aggro_mark_pose(age: float) -> dict:
+    """붉은 ! 의 모습 (2026-11-20 사용자: ! 애니메이션이 부족함 → 더 살아 있게).
+
+    - 0 ~ 0.10초: 머리 위로 쭉 늘어나며 솟구침 (가로 0.5→0.8, 세로 0→1.5, 8 픽셀 위로)
+    - 0.10 ~ 0.22초: 떨어져 내려앉으며 납작하게 눌림 (가로 1.4, 세로 0.65)
+    - 그 뒤: 용수철처럼 출렁이다 제 크기, 좌우로 흔들림(최대 12°, 점점 줄어듦)
+    - 처음 0.15초 하얗게 번쩍, 0.08 ~ 0.35초 둘레로 강조선이 퍼지며 사라짐
+    - 끝 AGGRO_MARK_FADE_TIME 초: 살짝 떠오르며 옅어짐
+    돌려주는 값: sx, sy (크기 배율), lift (원본 픽셀, 위로), angle (도, 반시계 +), opacity, flash (0~1), burst (0~1 또는 None).
+    """
+    up, land = 0.10, 0.22
+    if age < up:
+        t = age / up
+        sx, sy, lift = 0.5 + 0.3 * t, 1.5 * math.sin(t * math.pi / 2), 8 * t
+    elif age < land:
+        t = (age - up) / (land - up)
+        sx, sy, lift = 0.8 + 0.6 * t, 1.5 - 0.85 * t, 8 * (1 - t * t)
     else:
-        scale = 1.0
-    opacity = max(0.0, min(1.0, (config.AGGRO_MARK_TIME - age) / config.AGGRO_MARK_FADE_TIME))
-    return scale, opacity
+        t = age - land  # 눌린 자세(1.4, 0.65)에서 감쇠 진동하며 1 로
+        decay = math.exp(-t * 9)
+        wave = math.cos(t * 26)
+        sx, sy, lift = 1 + 0.4 * decay * wave, 1 - 0.35 * decay * wave, 0.0
+    angle = 0.0
+    if age >= land:
+        t = age - land
+        angle = 12 * math.exp(-t * 7) * math.sin(t * 34)
+    fade_start = config.AGGRO_MARK_TIME - config.AGGRO_MARK_FADE_TIME
+    opacity = 1.0
+    if age > fade_start:
+        k = min(1.0, (age - fade_start) / config.AGGRO_MARK_FADE_TIME)
+        opacity, lift = 1 - k, lift + 6 * k
+    flash = max(0.0, 1 - age / 0.15)
+    burst = (age - 0.08) / 0.27 if 0.08 <= age <= 0.35 else None
+    return {"sx": sx, "sy": sy, "lift": lift, "angle": angle, "opacity": opacity, "flash": flash, "burst": burst}
 
 
 def _spread(low: int, high: int, total: int, toward: int) -> tuple[int, int]:
@@ -590,10 +614,8 @@ class Golem:
             head_top = bar_top - 4 * s
             draw_stun_stars(renderer, cx, head_top + 2 * s, s, self.stun_time)
             bar_top += config.STUN_BAR_LIFT * s
-        if self.aggro_mark_age >= 0.0:  # 어그로가 끌린 순간: 머리 위에 붉은 ! 가 톡 튀어나왔다 사라짐
-            scale, opacity = aggro_mark_pop(self.aggro_mark_age)
-            renderer.draw_image_centered(config.AGGRO_MARK_IMAGE, cx, bar_top + 22 * s, opacity=opacity,
-                                         scale=scale * config.AGGRO_MARK_SCALE)
+        if self.aggro_mark_age >= 0.0:  # 어그로가 끌린 순간: 머리 위에 붉은 ! (aggro_mark_pose 참고)
+            self._draw_aggro_mark(renderer, cx, bar_top + 12 * s)
         if self.state == DORMANT:
             for popup in self.popups:  # 휴면 중에는 막대 없이 피해 숫자만
                 rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
@@ -609,6 +631,30 @@ class Golem:
         for popup in self.popups:
             rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
             renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+
+    def _draw_aggro_mark(self, renderer, cx: float, base_y: float) -> None:
+        """붉은 ! 를 아래 가운데가 base_y 에 오도록 그린다 (늘어나고 눌리고 흔들리고, 번쩍임·강조선)."""
+        pose = aggro_mark_pose(self.aggro_mark_age)
+        s = config.RENDER_SCALE * config.AGGRO_MARK_SCALE
+        w, h = config.AGGRO_MARK_SIZE
+        dw, dh = max(1, round(w * s * pose["sx"])), max(1, round(h * s * pose["sy"]))
+        bottom = base_y + pose["lift"] * config.RENDER_SCALE
+        a = math.radians(pose["angle"])
+        cx_, cy_ = cx - math.sin(a) * dh / 2, bottom + math.cos(a) * dh / 2  # 아래 가운데를 축으로 기울임
+        if pose["burst"] is not None:  # 강조선 6개: 가운데에서 밖으로 퍼지며 짧아짐
+            b = pose["burst"]
+            mid_y = bottom + h * s / 2
+            for k in range(6):
+                ang = math.radians(90 + 60 * k + 30)
+                r0, r1 = (7 + 9 * b) * s, (11 + 9 * b - 6 * b) * s
+                for ox, oy in ((0, 0), (1, 0), (0, 1), (1, 1)):  # 2×2 픽셀 굵기
+                    renderer.draw_line(cx + math.cos(ang) * r0 + ox, mid_y + math.sin(ang) * r0 + oy,
+                                       cx + math.cos(ang) * r1 + ox, mid_y + math.sin(ang) * r1 + oy,
+                                       config.COLOR_AGGRO_BURST)
+        renderer.draw_image_rotated(config.AGGRO_MARK_IMAGE, cx_, cy_, dw, dh, pose["angle"], opacity=pose["opacity"])
+        if pose["flash"] > 0.0:
+            renderer.draw_image_rotated(config.AGGRO_MARK_WHITE, cx_, cy_, dw, dh, pose["angle"],
+                                        opacity=pose["flash"] * pose["opacity"])
 
     def _draw_sprite(self, renderer, cx: float, bottom: float) -> bool:
         """방향별 그림을 발 밑이 발 칸 바닥 가운데에 오도록 그린다. 맞으면 깜빡인다. 그림을 못 읽으면 False.

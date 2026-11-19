@@ -1,6 +1,6 @@
 """골렘 휴면·깨어남 그림과 어그로 ! 아이콘 내보내기 (2026-11-20 사용자 요청: 몬스터 어그로 시스템).
 
-휴면: 코어가 꺼지고 고개를 숙인 채 서 있는 모습 (PixelLab edit_image, 4방향 한 번에) + 회색빛 (여기서 색을 빼고 어둡게).
+휴면: 코어가 꺼지고 깊게 웅크려 머리를 어깨 사이에 묻은 모습 (PixelLab edit_image, 4방향 한 번에) + 회색빛 (여기서 색을 빼고 어둡게).
 깨어남: 휴면 → 평소 서 있는 그림으로 코어가 켜지며 고개를 드는 9장 (PixelLab animate_image, 시작·끝 지정, 방향마다).
   회색빛은 장마다 조금씩 빠져 마지막 장은 평소 색. 후면은 PixelLab 이 몸 둘레에 빛 테두리를 그려 몸 윤곽 밖 픽셀은 지운다.
 ! 아이콘: 붉은 느낌표 (픽셀로 직접 그림, 진한 테두리·밝은 하이라이트).
@@ -11,6 +11,9 @@ import os
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# 2차 (같은 날 사용자: 휴면이 서 있는 모습과 거의 같음 → 깊게 웅크린 자세). 1차는 이 폴더 바로 아래 파일들.
+# 서쪽 휴면은 PixelLab 이 반대쪽을 보게 그려 동쪽을 좌우로 뒤집어 씀 (dormant_west_pixellab.png 는 버린 것).
+SRC = os.path.join(HERE, 'v2')
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..', '..', '..'))
 GOLEM = os.path.join(ROOT, 'assets', 'images', 'golem')
 EFFECTS = os.path.join(ROOT, 'assets', 'images', 'effects')
@@ -95,9 +98,9 @@ def exclamation():
 def main():
     for view in VIEWS:
         idle = Image.open(os.path.join(GOLEM, f'{view}.png')).convert('RGBA')
-        dormant = Image.open(os.path.join(HERE, f'dormant_{view}.png')).convert('RGBA')
+        dormant = Image.open(os.path.join(SRC, f'dormant_{view}.png')).convert('RGBA')
         greyed(dormant, 1.0).save(os.path.join(GOLEM, f'dormant_{view}.png'))
-        frames = [Image.open(os.path.join(HERE, f'wake_{view}', f'f{i}.png')).convert('RGBA') for i in range(FRAMES)]
+        frames = [Image.open(os.path.join(SRC, f'wake_{view}', f'f{i}.png')).convert('RGBA') for i in range(FRAMES)]
         if view == 'north':  # 몸 둘레 빛 테두리 지우기
             mask = body_mask(idle, dormant)
             frames = [keep_inside(f, mask, idle) for f in frames]
@@ -105,7 +108,14 @@ def main():
         for i, f in enumerate(frames):
             sheet.alpha_composite(greyed(f, 1 - i / (FRAMES - 1)), (i * 96, 0))
         sheet.save(os.path.join(GOLEM, f'wake_{view}.png'))
-    exclamation().save(os.path.join(EFFECTS, 'aggro_mark.png'))
+    mark = exclamation()
+    mark.save(os.path.join(EFFECTS, 'aggro_mark.png'))
+    white = Image.new('RGBA', mark.size, (0, 0, 0, 0))  # 번쩍임용 흰 실루엣
+    for y in range(mark.height):
+        for x in range(mark.width):
+            if mark.getpixel((x, y))[3]:
+                white.putpixel((x, y), (255, 255, 255, 255))
+    white.save(os.path.join(EFFECTS, 'aggro_mark_white.png'))
     print('ok')
 
 

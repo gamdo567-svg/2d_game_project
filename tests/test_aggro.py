@@ -3,7 +3,7 @@ import unittest
 
 from game import config
 from game.enemies.aggro import AggroTracker
-from game.enemies.golem import DEAD, DORMANT, WAKING, Golem, aggro_mark_pop
+from game.enemies.golem import DEAD, DORMANT, WAKING, Golem, aggro_mark_pose
 
 
 def open_room(c, r):
@@ -47,17 +47,24 @@ class GolemDormantTest(unittest.TestCase):
     def test_default_golem_is_awake(self):
         self.assertNotEqual(Golem(10, 5, open_room).state, DORMANT)
 
-    def test_mark_pops_then_fades(self):
-        small, _ = aggro_mark_pop(0.0)
-        big, _ = aggro_mark_pop(config.AGGRO_MARK_POP_TIME * 0.7)
-        steady, opaque = aggro_mark_pop(0.5)
-        _, fading = aggro_mark_pop(config.AGGRO_MARK_TIME - 0.05)
-        self.assertLess(small, 0.1)
-        self.assertGreater(big, 1.0)  # 톡 커졌다가
-        self.assertEqual(steady, 1.0)  # 제 크기
-        self.assertEqual(opaque, 1.0)
-        self.assertLess(fading, 0.5)  # 끝에서 옅어짐
-
+    def test_mark_springs_out_squashes_wobbles_and_fades(self):
+        rising = aggro_mark_pose(0.08)
+        landed = aggro_mark_pose(0.22)
+        later = [aggro_mark_pose(0.22 + k / 60) for k in range(30)]
+        steady = aggro_mark_pose(0.8)
+        fading = aggro_mark_pose(config.AGGRO_MARK_TIME - 0.05)
+        self.assertGreater(rising["sy"], rising["sx"])  # 위로 쭉 늘어나며
+        self.assertGreater(rising["lift"], 0)  # 솟구침
+        self.assertGreater(landed["sx"], 1.2)  # 내려앉으며 납작
+        self.assertLess(landed["sy"], 0.8)
+        self.assertGreater(max(abs(p["angle"]) for p in later), 3)  # 좌우로 흔들림
+        self.assertAlmostEqual(steady["sx"], 1.0, places=1)  # 제 크기로 멈춤
+        self.assertLess(abs(steady["angle"]), 0.5)  # 흔들림이 거의 멈춤
+        self.assertGreater(aggro_mark_pose(0.02)["flash"], 0.5)  # 처음엔 하얗게 번쩍
+        self.assertIsNotNone(aggro_mark_pose(0.2)["burst"])  # 강조선
+        self.assertIsNone(steady["burst"])
+        self.assertLess(fading["opacity"], 0.5)  # 끝에서 옅어지며
+        self.assertGreater(fading["lift"], 0)  # 떠오름
 
 class AggroTrackerTest(unittest.TestCase):
     def setUp(self):
