@@ -58,7 +58,7 @@
 | `images/player/weapons/old_sword_front_3.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성한 정면 3타 그림의 칼을 Claude Code가 떼어 칼 색으로 바꿈 (`export_to_game.py`, 2026-11-17) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 96×64 × 8, 찌르는 6~8번째만 그림. 정면 3타 찌르기용 칼 그림. D-031 |
 | `images/player/weapons/old_sword_back_{front,side,back}.png` | Claude Code 제작: 낡은 검 그림에 칼집을 씌우고 기울여 계산 (`concepts/weapons/build_back_sword.py`, 2026-11-18) | 프로젝트 소유 | 64×64, 아래 가운데가 발 밑. 등에 멘 칼. D-049 |
 | `images/player/weapons/old_sword.png` | Claude Code 제작 (`concepts/weapons/build_old_sword.py`, 2026-11-17). 컨셉 시트의 낡은 검 기준 | 프로젝트 소유 | 56×10, 칼끝 오른쪽, 손이 한가운데. D-022 |
-| `images/maps/test_room_bg.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성한 지하 미궁 타일(`concepts/pixellab/labyrinth/tiles_v1/`)을 Claude Code가 칸마다 합침 (`build_map_bg.py`, 2026-11-19) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 1024×576 (맵 32×18칸 × 32). D-052 |
+| `images/maps/test_room_bg.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성한 지하 미궁 타일(`concepts/pixellab/labyrinth/tiles_v2/`)·횃불(`torch_v1.png`)을 Claude Code가 칸마다 합치고 빛을 계산함 (`build_map_bg.py`, 2026-11-19) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 1024×576 (맵 32×18칸 × 32). D-052 |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)
 
