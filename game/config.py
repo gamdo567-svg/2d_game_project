@@ -371,6 +371,19 @@ GOLEM_HIT_FLASH_TIME = 0.1
 # 판정·충돌은 몸 칸(1×2) 그대로이고 그림은 RENDER_SCALE 로 nearest 확대해 칸보다 크게(위·양옆으로 넘쳐) 그린다.
 # 발 밑(가장 아래 불투명 줄)을 몸 바닥(발 칸) 가운데에 맞추기 위해, 방향별로 그림 아래 투명 줄 수를 적어 둔다.
 GOLEM_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "golem"
+# 어그로 시스템 (2026-11-20 사용자 결정): 몬스터는 휴면(코어 꺼짐, 고개 숙임, 회색빛)으로 시작하고, 주인공이 AGGRO_WAKE_DISTANCE 칸 안에
+# 들어오거나 때리면 깨어나 어그로가 끌린다. 주인공은 한 번에 한 마리만 끌고, 그 몬스터가 죽을 때까지 유지한다 (멀어져도 풀리지 않음).
+# 그동안 다른 몬스터는 다가가도·맞아도 휴면 그대로. 끌리는 순간 머리 위에 붉은 ! 가 톡 떴다가 사라진다.
+# 그림: assets/concepts/pixellab/golem_dormant/build_dormant.py (휴면 dormant_<방향>.png, 깨어남 wake_<방향>.png 9장)
+AGGRO_WAKE_DISTANCE = 6  # 칸. 몸에서 이 거리 안 (가로·세로 중 큰 쪽)
+GOLEM_WAKE_TIME = 0.9  # 초. 코어가 켜지며 고개를 드는 동안 (공격하지 않음)
+GOLEM_WAKE_FRAMES = 9
+GOLEM_AFTER_WAKE_REST = 0.4  # 초. 깨어난 뒤 첫 행동까지
+AGGRO_MARK_IMAGE = str(PROJECT_ROOT / "assets" / "images" / "effects" / "aggro_mark.png")
+AGGRO_MARK_TIME = 1.2  # 초. 붉은 ! 가 떠 있는 시간
+AGGRO_MARK_SCALE = 1.5  # ! 그림(7×16) 크기 배율 (RENDER_SCALE 에 곱함)
+AGGRO_MARK_POP_TIME = 0.18  # 초. 톡 튀어나오는 시간
+AGGRO_MARK_FADE_TIME = 0.3  # 초. 끝에서 옅어지는 시간
 GOLEM_SPRITE_SIZE = 96  # 원본 픽셀
 GOLEM_SPRITE_FOOT_MARGIN = {"south": 7, "north": 6, "east": 5, "west": 5}  # 발 밑 아래 투명 줄 수 (원본 픽셀)
 GOLEM_SPRITE_HEAD_ROW = 5  # 그림 위쪽 투명 줄 수 (머리 꼭대기, 체력 막대를 그 위에 둔다)

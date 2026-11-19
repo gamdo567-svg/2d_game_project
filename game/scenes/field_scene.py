@@ -22,6 +22,7 @@ from game.combat.enemy_attack import PARRIED
 from game.combat.strike import attack_tiles
 from game.combat.training_dummy import TrainingDummy
 from game.effects.effect import ScreenShake, SpriteEffect
+from game.enemies.aggro import AggroTracker
 from game.enemies.golem import Golem
 from game.physics.collision import can_enter
 from game.player.player import Player, parry_spark_point
@@ -59,7 +60,9 @@ class FieldScene:
             raise ValueError(f"맵 크기 {self.tile_map.cols}×{self.tile_map.rows} 가 격자 {grid.cols}×{grid.rows} 와 다릅니다.")
         start = self.tile_map.player_start or (config.PLAYER_START_COL, config.PLAYER_START_ROW)
         self.dummies = [TrainingDummy(col, row) for col, row in self.tile_map.dummies]
-        self.golems = [Golem(col, row, self.tile_map.is_wall) for col, row in self.tile_map.golems]
+        # 몬스터는 휴면으로 시작하고, 주인공은 한 번에 한 마리만 끈다 (2026-11-20 어그로 시스템)
+        self.golems = [Golem(col, row, self.tile_map.is_wall, dormant=True) for col, row in self.tile_map.golems]
+        self.aggro = AggroTracker()
         self.player = Player(grid, *start, can_enter=self.can_enter)
         self.camera = Camera(config.SCREEN_WIDTH, config.SCREEN_HEIGHT, grid.width_px, grid.height_px)
         self.effects: list[SpriteEffect] = []  # 재생 중인 이펙트 (그리기 전용)
@@ -95,11 +98,12 @@ class FieldScene:
                 if (dummy.col, dummy.row) in tiles:
                     dummy.take_hit(strike.damage, strike.direction)
             for golem in self.golems:
-                if golem.tiles.intersection(tiles):
-                    golem.take_hit(strike.damage, strike.direction)
+                if golem.tiles.intersection(tiles) and golem.take_hit(strike.damage, strike.direction):
+                    self.aggro.on_hit(golem)  # 휴면 중에 맞으면 (끈 몬스터가 없을 때) 깨어나 끌림
         for dummy in self.dummies:
             dummy.update(dt)
         player_tile = (self.player.col, self.player.row)
+        self.aggro.update(player_tile, self.golems)
         for golem in self.golems:
             golem.update(dt, player_tile, lambda c, r, g=golem: self._golem_can_place(g, c, r))
             for attack in golem.attacks:

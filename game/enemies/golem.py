@@ -33,6 +33,7 @@ from game.world.grid import Grid
 
 SLAM, KICK, STOMP, LASER = "slam", "kick", "stomp", "laser"
 REST, WALK, WINDUP, RECOVER, STUNNED, DEAD = "rest", "walk", "windup", "recover", "stunned", "dead"
+DORMANT, WAKING = "dormant", "waking"  # 휴면(코어 꺼짐, 고개 숙임) → 깨어남 (2026-11-20 어그로 시스템)
 PATTERNS = {SLAM: config.GOLEM_SLAM, KICK: config.GOLEM_KICK, STOMP: config.GOLEM_STOMP, LASER: config.GOLEM_LASER}
 # 패턴별로 피하는 방법: 패링 가능 / 회피 무적으로 피함 / 점프(공중)로 피함
 PATTERN_RULES = {
@@ -55,6 +56,18 @@ def warning_kind(pattern: str) -> str:
 Tile = tuple[int, int]
 
 
+def aggro_mark_pop(age: float) -> tuple[float, float]:
+    """붉은 ! 의 (크기 배율, 불투명도): 톡 커졌다(조금 넘쳤다 돌아옴) 머물고, 끝에서 옅어진다."""
+    pop = config.AGGRO_MARK_POP_TIME
+    if age < pop:
+        t = age / pop
+        scale = 1.35 * math.sin(t / 0.7 * math.pi / 2) if t < 0.7 else 1.35 - 0.35 * (t - 0.7) / 0.3
+    else:
+        scale = 1.0
+    opacity = max(0.0, min(1.0, (config.AGGRO_MARK_TIME - age) / config.AGGRO_MARK_FADE_TIME))
+    return scale, opacity
+
+
 def _spread(low: int, high: int, total: int, toward: int) -> tuple[int, int]:
     """[low, high] 를 total 칸으로 넓힐 때 양쪽(작은 쪽, 큰 쪽)에 붙일 칸 수. 똑같이 나누고, 남는 1칸은
     기본으로 작은 쪽(아래·왼쪽)에, 주인공(toward)이 범위보다 큰 쪽(위·오른쪽)에 있을 때만 큰 쪽에 붙인다.
@@ -75,8 +88,10 @@ def _lerp_color(a, b, t):
 
 class Golem:
     def __init__(self, col: int, row: int, is_wall: Callable[[int, int], bool],
-                 rng: random.Random | None = None) -> None:
+                 rng: random.Random | None = None, dormant: bool = False) -> None:
         self.spawn = (col, row)
+        self.starts_dormant = dormant  # True 면 휴면으로 시작하고, 죽었다 다시 나타날 때도 휴면 (어그로 시스템)
+        self.aggro_mark_age = -1.0  # 붉은 ! 가 뜬 뒤 흐른 시간 (음수면 없음)
         self.width, self.height = config.GOLEM_BODY  # 몸 칸 수 (가로, 세로). (col, row) 가 왼쪽 아래 = 발 칸
         self.is_wall = is_wall
         self.rng = rng or random.Random()
@@ -89,10 +104,11 @@ class Golem:
         self.col, self.row = self.spawn
         self.hp = config.GOLEM_MAX_HP
         self.posture = PostureGauge(decays=False)  # 몬스터형: 패링 게이지가 저절로 줄지 않음
-        self.state = REST
+        self.state = DORMANT if self.starts_dormant else REST
         self.state_left = config.GOLEM_REST_TIME
         self.pattern: str | None = None
         self.facing: Tile = (-1, 0)
+        self.aggro_mark_age = -1.0
         self.target_tiles: frozenset[Tile] = frozenset()  # 예고 중인 공격 범위
         self.aim = (float(self.col), float(self.row))  # 레이저 조준점 (칸 좌표, 실수)
         self.beam_tiles: frozenset[Tile] = frozenset()
@@ -108,6 +124,26 @@ class Golem:
     @property
     def alive(self) -> bool:
         return self.state != DEAD
+
+    @property
+    def dormant(self) -> bool:
+        """휴면 중 (어그로가 끌리지 않음)."""
+        return self.state == DORMANT
+
+    @property
+    def wake_progress(self) -> float:
+        """깨어나는 진행도 0~1 (깨어나는 중이 아니면 1)."""
+        if self.state != WAKING:
+            return 1.0
+        return 1.0 - max(0.0, self.state_left) / config.GOLEM_WAKE_TIME
+
+    def wake(self) -> None:
+        """어그로가 끌림: 휴면이면 코어가 켜지며 깨어나고 머리 위에 붉은 ! 가 뜬다."""
+        if self.state != DORMANT:
+            return
+        self.state = WAKING
+        self.state_left = config.GOLEM_WAKE_TIME
+        self.aggro_mark_age = 0.0
 
     @property
     def tiles(self) -> frozenset[Tile]:
@@ -285,10 +321,21 @@ class Golem:
             self._move_t = min(1.0, self._move_t + dt * config.GOLEM_MOVE_SPEED)
             self.walk_distance += self._move_t - before  # 걸은 칸 수 (걷기 그림 고르기용)
 
+        if self.aggro_mark_age >= 0.0:
+            self.aggro_mark_age += dt
+            if self.aggro_mark_age > config.AGGRO_MARK_TIME:
+                self.aggro_mark_age = -1.0
         if self.state == DEAD:
             self.state_left -= dt
             if self.state_left <= 0.0 and can_place(*self.spawn):
                 self._respawn()
+            return
+        if self.state == DORMANT:
+            return  # 휴면: 가만히 서 있음 (맞거나 다가가면 장면이 어그로를 정해 깨운다)
+        if self.state == WAKING:
+            self.state_left -= dt
+            if self.state_left <= 0.0:
+                self._rest(config.GOLEM_AFTER_WAKE_REST)
             return
         self.posture.update(dt)
         if self.state == STUNNED:
@@ -499,6 +546,12 @@ class Golem:
     def sprite_path(self) -> str:
         return str(config.GOLEM_IMAGE_DIR / f"{self.view}.png")
 
+    def dormant_sprite_path(self) -> str:
+        return str(config.GOLEM_IMAGE_DIR / f"dormant_{self.view}.png")
+
+    def wake_sprite_path(self) -> str:
+        return str(config.GOLEM_IMAGE_DIR / f"wake_{self.view}.png")
+
     def draw(self, renderer, grid: Grid) -> None:
         """그림(방향별 서 있는 그림)을 그리고, 못 읽으면 부위별 임시 도형을 그린다. 그 위에 조준선·막대·글자.
 
@@ -537,6 +590,15 @@ class Golem:
             head_top = bar_top - 4 * s
             draw_stun_stars(renderer, cx, head_top + 2 * s, s, self.stun_time)
             bar_top += config.STUN_BAR_LIFT * s
+        if self.aggro_mark_age >= 0.0:  # 어그로가 끌린 순간: 머리 위에 붉은 ! 가 톡 튀어나왔다 사라짐
+            scale, opacity = aggro_mark_pop(self.aggro_mark_age)
+            renderer.draw_image_centered(config.AGGRO_MARK_IMAGE, cx, bar_top + 22 * s, opacity=opacity,
+                                         scale=scale * config.AGGRO_MARK_SCALE)
+        if self.state == DORMANT:
+            for popup in self.popups:  # 휴면 중에는 막대 없이 피해 숫자만
+                rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
+                renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+            return
         # 체력·패링 게이지 막대 (머리 위)
         renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)
         renderer.fill_rect(cx - 26 * s, bar_top, cx - 26 * s + 52 * s * self.hp / config.GOLEM_MAX_HP, bar_top + 3 * s,
@@ -557,6 +619,14 @@ class Golem:
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
+        foot = bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s
+        if self.state == DORMANT:  # 휴면: 코어가 꺼지고 고개를 숙인 회색빛 그림
+            return bool(renderer.draw_sprite_frame(self.dormant_sprite_path(), 0, size, size,
+                                                   cx, foot, size * s, size * s))
+        if self.state == WAKING:  # 깨어남: 코어가 켜지며 고개를 듦 (회색빛이 점점 빠짐)
+            frame = min(config.GOLEM_WAKE_FRAMES - 1, int(self.wake_progress * config.GOLEM_WAKE_FRAMES))
+            return bool(renderer.draw_sprite_frame(self.wake_sprite_path(), frame, size, size,
+                                                   cx, foot, size * s, size * s))
         frame = self.stun_frame
         if frame is not None and self._draw_anim(renderer, self.attack_sprite_path("stun"), config.GOLEM_STUN_ANIM,
                                                  frame, cx, bottom):
