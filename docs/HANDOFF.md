@@ -16,6 +16,15 @@
 
 ---
 
+## 2026-11-20 — 몬스터 어그로 시스템 (Claude Code)
+- 브랜치 / 마지막 커밋: `claude/monster-aggro` (`claude/labyrinth-tileset` 위에서 시작) / 이 항목을 담은 커밋
+- 한 일: 몬스터 휴면 → 6칸 안·맞으면 깨어남, 주인공은 한 번에 한 마리만 끌고 죽을 때까지 유지 (`game/enemies/aggro.py`). 골렘 휴면(코어 꺼짐·고개 숙임·회색빛)·깨어남 그림(PixelLab), 붉은 ! (D-054).
+- 현재 상태: `python -m unittest` 통과 (`tests/test_aggro.py` 10개 추가). 게임 창 녹화로 확인, 실제 모니터 플레이는 안 함.
+- 다음 작업자가 알아야 할 것: 새 몬스터도 `dormant`·`alive`·`distance_to`·`wake()` 만 있으면 `AggroTracker` 가 다룸. 주인공 사망이 생기면 그때 `aggro.target = None`.
+- 남은 문제 / 다음 할 일: 주인공 사망(기획 [미정])과 어그로 해제 연결. 푸시 보류.
+
+---
+
 ## 2026-11-20 — 연습용 허수아비 밀짚 더미 (Claude Code)
 - 브랜치 / 마지막 커밋: `claude/labyrinth-tileset` / 이 항목을 담은 커밋
 - 한 일: 도형 허수아비를 PixelLab 밀짚 더미로 (손상 3단계·무너지는 8장·부러진 밑동). 맞으면 기둥 밑 축 용수철 흔들림·눌림·깜빡임·밀짚 부스러기, 다 닳으면 무너졌다 튀어 오르며 다시 섬 (D-053).
