@@ -124,6 +124,32 @@ class PlayerEnchantTest(unittest.TestCase):
         self.assertEqual(len(effect), 1)
         self.assertTrue(effect[0][1][0].endswith("fire.png"))  # 다 붙은 뒤에는 반복 시트
 
+    def test_burst_and_shake_when_fully_charged_then_flourish_swing(self):
+        # 다 차는 순간 폭발·화면 흔들림, 마지막에 1타 그림으로 휘두름 (2026-11-20 사용자: 더 역동적으로)
+        self.tap(Action.ENCHANT)
+        shook, burst_seen, swing_seen = False, False, False
+        for _ in range(round(config.PLAYER_ENCHANT_DURATION * 60)):
+            self.input.begin_frame()
+            self.player.update(1 / 60, self.input)
+            shook = shook or bool(self.player.shake_requests)
+            renderer = _RecordingRenderer()
+            self.player.draw(renderer)
+            if self.player.burst_age is not None and any(c[0] == "fill_rect" for c in renderer.calls):
+                burst_seen = True
+            if any(c[0] == "draw_sprite_frame" and "sword_attack" in c[1][0] for c in renderer.calls):
+                swing_seen = True
+        self.assertTrue(shook)
+        self.assertTrue(burst_seen)
+        self.assertTrue(swing_seen)
+        self.assertEqual(self.player.enchant.active, "fire")
+
+    def test_flourish_swing_deals_no_damage(self):
+        self.tap(Action.ENCHANT)
+        for _ in range(round(config.PLAYER_ENCHANT_DURATION * 60) + 5):
+            self.input.begin_frame()
+            self.player.update(1 / 60, self.input)
+            self.assertEqual(self.player.strikes, [])
+
     def test_effect_on_back_sword_when_idle(self):
         # 칼집 없이 등에 멘 칼에도 속성 이펙트 (2026-11-20 사용자 요청)
         self.tap(Action.ENCHANT)

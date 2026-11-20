@@ -92,6 +92,8 @@ class FieldScene:
     def update(self, dt: float, input_state: InputState) -> None:
         self.time += dt
         self.player.update(dt, input_state)
+        for shake in self.player.shake_requests:  # 검 속성이 다 차오른 순간 등
+            self.shake.start(**shake)
         for strike in self.player.strikes:
             tiles = attack_tiles(strike, self.tile_map.is_wall)
             for dummy in self.dummies:

@@ -22,6 +22,7 @@ class SwordEnchant(TimedAction):
         self.selected: str = config.SWORD_ELEMENTS[0]
         self.active: str | None = None
         self.pending: str | None = None
+        self.just_applied = False  # 이번 update 에서 막 입혀짐 (폭발·화면 흔들림 신호)
 
     def select(self, index: int) -> None:
         """index 번째 속성(0 부터)을 고른다. 검은 그대로."""
@@ -39,9 +40,11 @@ class SwordEnchant(TimedAction):
 
     def update(self, dt: float) -> None:
         super().update(dt)
+        self.just_applied = False
         if self.pending is not None and self.rise >= 1.0:
             self.active = self.pending  # 다 차오른 순간 입혀짐
             self.pending = None
+            self.just_applied = True
 
     def interrupt(self) -> None:
         """입히는 동작이 끊김 (다 차오르기 전이면 입히지 않음)."""

@@ -26,6 +26,7 @@
 - 전기 이펙트 추가 → 사용자 의견으로 게임이 도는 동안 계산해 만드는 번개(`game/player/sword_lightning.py`)로 바꿈. 숫자 패드 1·2·3 도 고르기.
 - 어둠 이펙트 추가 (`game/player/sword_dark.py`, 블랙홀처럼 빨아들임, 실시간 계산).
 - 입히는 자세 그림 (PixelLab `Enchant Hold` + 사이 동작, 정면·측면·후면, `build_enchant_pose.py`).
+- 더 역동적으로: 다 차는 순간 속성 색 폭발 + 화면 흔들림, 마지막에 1타 그림으로 휘두르기 (`enchant_burst.py`).
 - 남은 문제 / 다음 할 일: 사용자 확인. 피해·추가 효과(마법석 기획)는 아직. 푸시·PR 보류 중.
 
 ## 2026-11-20 — 후면 3타 일관성 (Claude Code)
