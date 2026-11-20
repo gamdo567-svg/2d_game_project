@@ -52,6 +52,16 @@ class Renderer:
         r, g, b = color
         pico2d.draw_rectangle(left, bottom, right - 1, top - 1, r, g, b, filled=True)
 
+    def fill_shade(self, left: float, bottom: float, right: float, top: float, alpha: float) -> None:
+        """[left, right) x [bottom, top) 영역을 검게 alpha(0~1)만큼 덮는다 (뒤가 비치는 그림자).
+        pico2d 사각형은 투명도가 없어 1×1 검은 그림(effects/shade_pixel.png)을 늘려 비치게 그린다."""
+        image = self._image(str(config.EFFECT_IMAGE_DIR / "shade_pixel.png"))
+        if image is None:
+            return
+        image.opacify(max(0.0, min(1.0, alpha)))
+        image.composite_draw(0, "", (left + right) / 2, (bottom + top) / 2, right - left, top - bottom)
+        image.opacify(1.0)
+
     def draw_line(self, x1: float, y1: float, x2: float, y2: float, color: Color) -> None:
         r, g, b = color
         pico2d.draw_line(x1, y1, x2, y2, r, g, b)

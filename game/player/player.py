@@ -666,8 +666,12 @@ class Player:
         sign = -1.0 if flip else 1.0
         rad = math.radians(angle)
         direction = (sign * math.cos(rad), sign * math.sin(rad))
-        for px, py, colour in self.procedural[element].pixels((x / scale, y / scale), direction, shape, along, reach):
-            renderer.fill_rect(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, colour)
+        for px, py, colour, *alpha in self.procedural[element].pixels((x / scale, y / scale), direction, shape,
+                                                                     along, reach):
+            if colour is None:  # 반투명 그림자 (어둠)
+                renderer.fill_shade(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, alpha[0])
+            else:
+                renderer.fill_rect(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, colour)
 
     def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
                          body_path: str, hand_path: str, sword: tuple, art_path: str | None = None,
