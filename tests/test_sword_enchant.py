@@ -124,8 +124,8 @@ class PlayerEnchantTest(unittest.TestCase):
         self.assertEqual(len(effect), 1)
         self.assertTrue(effect[0][1][0].endswith("fire.png"))  # 다 붙은 뒤에는 반복 시트
 
-    def test_burst_and_shake_when_fully_charged_then_flourish_swing(self):
-        # 다 차는 순간 폭발·화면 흔들림, 마지막에 1타 그림으로 휘두름 (2026-11-20 사용자: 더 역동적으로)
+    def test_burst_and_shake_when_fully_charged_then_flick(self):
+        # 다 차는 순간 폭발·화면 흔들림, 마지막에 칼을 털어 내림 (2026-11-20 사용자: 더 역동적으로, 털어내는 느낌)
         self.tap(Action.ENCHANT)
         shook, burst_seen, swing_seen = False, False, False
         for _ in range(round(config.PLAYER_ENCHANT_DURATION * 60)):
@@ -134,14 +134,27 @@ class PlayerEnchantTest(unittest.TestCase):
             shook = shook or bool(self.player.shake_requests)
             renderer = _RecordingRenderer()
             self.player.draw(renderer)
-            if self.player.burst_age is not None and any(c[0] == "fill_rect" for c in renderer.calls):
+            if self.player.fx.active and any(c[0] == "fill_rect" for c in renderer.calls):
                 burst_seen = True
-            if any(c[0] == "draw_sprite_frame" and "sword_attack" in c[1][0] for c in renderer.calls):
-                swing_seen = True
+            if any(c[0] == "draw_sprite_frame" and "enchant" in c[1][0] for c in renderer.calls) and                     self.player.enchant.progress >= config.PLAYER_ENCHANT_FRAME_ENDS[config.PLAYER_ENCHANT_FLICK_FRAME - 1]:
+                swing_seen = True  # 털어내기 장
         self.assertTrue(shook)
         self.assertTrue(burst_seen)
         self.assertTrue(swing_seen)
         self.assertEqual(self.player.enchant.active, "fire")
+
+    def test_flick_sprays_particles(self):
+        self.tap(Action.ENCHANT)
+        renderer = _RecordingRenderer()
+        counts = []
+        for _ in range(round(config.PLAYER_ENCHANT_DURATION * 60) + 20):
+            self.input.begin_frame()
+            self.player.update(1 / 60, self.input)
+            self.player.draw(renderer)
+            counts.append(len(self.player.fx.particles))
+        flick_at = round(config.PLAYER_ENCHANT_FRAME_ENDS[config.PLAYER_ENCHANT_FLICK_FRAME - 1]
+                         * config.PLAYER_ENCHANT_DURATION * 60)
+        self.assertGreater(max(counts[flick_at:flick_at + 5]), 10)  # 털어낼 때 불똥이 흩뿌려짐
 
     def test_flourish_swing_deals_no_damage(self):
         self.tap(Action.ENCHANT)

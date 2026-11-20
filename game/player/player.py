@@ -28,7 +28,7 @@ from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
 from game.player.enchant import SwordEnchant
-from game.player.enchant_burst import BURST_TIME, burst_pixels
+from game.player.enchant_fx import EnchantFX
 from game.player.sword_dark import DarkField
 from game.player.sword_lightning import SWORD_SHAPE, BladeShape, LightningField
 from game.player.state_machine import (ATTACK, DODGE, ENCHANT, FREE_STATES, HURT, IDLE, JUMP, PARRY, WALK,
@@ -164,9 +164,9 @@ class Player:
         self.effect_clock = 0.0  # 검 이펙트 반복 재생 시간
         # 전기·어둠 이펙트는 시트 대신 게임이 도는 동안 계산해 만든다 (SWORD_PROCEDURAL_ELEMENTS)
         self.procedural = {"lightning": LightningField(), "dark": DarkField()}
-        self.burst_age: float | None = None  # 속성이 다 차오른 순간의 폭발 (지난 시간)
-        self.burst_element = ""
-        self._burst_centre: tuple[float, float] | None = None  # 폭발 자리 (화면 좌표, 곧게 세운 칼 가운데)
+        self.fx = EnchantFX()  # 입히기 폭발·털어내기 입자
+        self._pending_fx: list[tuple[str, str]] = []  # 그릴 때 칼 자리를 알고 시작할 (종류, 속성)
+        self._flicked = False  # 이번 입히기에서 털어내기 입자를 냈는지
         self.shake_requests: list[dict] = []  # 장면이 읽어 화면을 흔든다
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
@@ -232,10 +232,7 @@ class Player:
         self.posture.update(dt)
         self.effect_clock += dt
         self.shake_requests = []
-        if self.burst_age is not None:
-            self.burst_age += dt
-            if self.burst_age >= BURST_TIME:
-                self.burst_age = None
+        self.fx.update(dt)
         for index, action in enumerate(ELEMENT_KEYS):
             if input_state.was_pressed(action):
                 self.enchant.select(index)
@@ -319,10 +316,14 @@ class Player:
         elif self.state == ENCHANT and self.enchant.finished:
             self.fsm.trigger("end_enchant")
         if self.enchant.just_applied:  # 다 차오른 순간: 폭발 + 화면 흔들림
-            self.burst_age = 0.0
-            self.burst_element = self.enchant.active or ""
+            self._pending_fx.append(("burst", self.enchant.active or ""))
             self.shake_requests.append(dict(config.PLAYER_ENCHANT_SHAKE))
             self.enchant.just_applied = False
+        if (self.state == ENCHANT and not self._flicked and self.enchant.active is not None
+                and frame_for_progress(self.enchant.progress, config.PLAYER_ENCHANT_FRAME_ENDS)
+                >= config.PLAYER_ENCHANT_FLICK_FRAME):  # 털어 내리는 순간: 칼날의 속성이 흩뿌려짐
+            self._flicked = True
+            self._pending_fx.append(("flick", self.enchant.active))
         elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
             self.fsm.trigger("end_dodge")
             self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
@@ -452,11 +453,17 @@ class Player:
             self.parry_succeeded = False
         if state != ENCHANT:
             self.enchant.interrupt()  # 다 차오르기 전에 끊기면 입히지 않음
+        else:
+            self._flicked = False
         # 새 상태의 애니메이션은 첫 프레임부터 재생한다.
         self.animations[state].reset()
 
     # ----- 그리기 -----
     def draw(self, renderer) -> None:
+        self._draw_body(renderer)
+        self._draw_fx(renderer)  # 입히기 폭발·털어내기 입자는 늘 맨 위에 (동작이 끝난 뒤에도 날아감)
+
+    def _draw_body(self, renderer) -> None:
         if self.perfect_text_left > 0.0:
             vcol, vrow = self.mover.visual_position
             left, bottom, right, _ = self.grid.tile_to_pixel_rect(vcol, vrow)
@@ -627,26 +634,12 @@ class Player:
         없으면 패링 막기 자세(PLAYER_ENCHANT_POSE_FRAME)를 임시로 쓴다."""
         view, _ = sprite_view(self.facing)
         table = config.PLAYER_ENCHANT_SWORD.get(view)
-        progress = self.enchant.progress
-        if table is not None and progress >= config.PLAYER_ENCHANT_FLOURISH_START:
-            # 마지막에 칼을 한번 휘두름 (1타 그림, 피해 없음)
-            q = (progress - config.PLAYER_ENCHANT_FLOURISH_START) / (1 - config.PLAYER_ENCHANT_FLOURISH_START)
-            frame = config.PLAYER_ENCHANT_FLOURISH_FRAMES[frame_for_progress(q, config.PLAYER_ENCHANT_FLOURISH_ENDS)]
-            aview = attack_view(self.facing, 0)
-            shifts = {"front": config.PLAYER_ATTACK_FRAME_SHIFTS_FRONT,
-                      "back": config.PLAYER_ATTACK_FRAME_SHIFTS_BACK}.get(aview, config.PLAYER_ATTACK_FRAME_SHIFTS)
-            self._draw_sword_pose(renderer, center_x, bottom, frame, shifts[0][frame], attack_sheet_path(1, aview),
-                                  attack_hand_sheet_path(1, aview), ATTACK_SWORD_TABLES[aview][0][frame])
-            self._draw_burst(renderer)
-            return True
         if table is not None:
-            frame = frame_for_progress(progress, config.PLAYER_ENCHANT_FRAME_ENDS)
+            frame = frame_for_progress(self.enchant.progress, config.PLAYER_ENCHANT_FRAME_ENDS)
             folder = config.PLAYER_IMAGE_DIR / "enchant"
             self._draw_sword_pose(renderer, center_x, bottom, frame, (0, 0), str(folder / f"{view}.png"),
                                   str(folder / f"{view}_hand.png"), table[frame])
-            if frame == len(config.PLAYER_ENCHANT_FRAME_ENDS) - 1:  # 곧게 세운 칼 가운데 = 폭발 자리
-                self._burst_centre = self._sword_point(center_x, bottom, table[frame], 0.55)
-            self._draw_burst(renderer)
+            self._start_pending_fx(center_x, bottom, table)
             return True
         table = config.PLAYER_PARRY_SWORD.get(view)
         if table is None:
@@ -669,13 +662,32 @@ class Player:
         reach = 24 * along * scale  # 손에서 칼끝까지 24 픽셀
         return canvas_left + x * scale + math.cos(rad) * reach, canvas_top - (hand_y + 0.5) * scale + math.sin(rad) * reach
 
-    def _draw_burst(self, renderer) -> None:
-        """속성이 다 차오른 순간의 폭발 (속성 색 고리·빛줄기, 어둠은 반투명 그림자)."""
-        if self.burst_age is None or self._burst_centre is None:
-            return
+    def _start_pending_fx(self, center_x: float, bottom: float, table: tuple) -> None:
+        """그릴 때 칼 자리를 알아야 하는 입자를 시작한다: 폭발은 곧게 세운 칼, 털어내기는 털어낸 끝 칼과 칼끝이 움직인 쪽."""
         scale = config.RENDER_SCALE
-        cx, cy = self._burst_centre
-        for px, py, colour, *alpha in burst_pixels(self.burst_element, self.burst_age, (cx / scale, cy / scale)):
+        hold = table[config.PLAYER_ENCHANT_FLICK_FRAME - 1]
+        end = table[-1]
+
+        def blade(sword: tuple) -> tuple[tuple[float, float], tuple[float, float]]:
+            hx, hy = self._sword_point(center_x, bottom, sword, 0.0)
+            tx, ty = self._sword_point(center_x, bottom, sword, 1.0)
+            return (hx / scale, hy / scale), (tx / scale, ty / scale)
+
+        for kind, element in self._pending_fx:
+            if kind == "burst":
+                self.fx.burst(element, blade(hold))
+            else:
+                ax, ay = blade(hold)[1]
+                end_blade = blade(end)
+                bx, by = end_blade[1]
+                n = math.hypot(bx - ax, by - ay) or 1
+                self.fx.flick(element, end_blade, ((bx - ax) / n, (by - ay) / n))
+        self._pending_fx = []
+
+    def _draw_fx(self, renderer) -> None:
+        """입히기 폭발·털어내기 입자 (불·전기 = 색 점, 어둠 = 반투명 그림자)."""
+        scale = config.RENDER_SCALE
+        for px, py, colour, *alpha in self.fx.pixels():
             if colour is None:
                 renderer.fill_shade(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, alpha[0])
             else:

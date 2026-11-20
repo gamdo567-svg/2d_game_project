@@ -282,31 +282,31 @@ SWORD_ELEMENTS = ("fire", "lightning", "dark")
 SWORD_ELEMENT_NAMES = {"fire": "불", "lightning": "전기", "dark": "어둠"}
 SWORD_ELEMENT_COLORS = {"fire": (255, 140, 50), "lightning": (120, 200, 255), "dark": (170, 110, 220)}
 # 더 역동적으로 (2026-11-20 사용자: 원소 부여가 심심함, 마지막에 칼을 한번 촥 휘두르게):
-# 칼을 세움 → 이펙트가 빠르게 차오름 → 다 차는 순간 속성 색 폭발 + 화면 흔들림 → 잠깐 멈춤 → 1타 베기 동작으로 휘두름(피해 없음)
+# 칼을 세움 → 이펙트가 빠르게 차오름 → 다 차는 순간 속성 폭발(game/player/enchant_fx.py) + 화면 흔들림 → 잠깐 멈춤
+# → ~~1타 베기 동작으로 휘두름~~ 칼을 한번 털어 내림 (같은 날 사용자: 1타 재탕은 베는 느낌, 털어내는 느낌을 원함),
+#   털어낼 때 칼날의 속성이 털어낸 쪽으로 흩뿌려짐. 피해 없음.
 PLAYER_ENCHANT_DURATION = 1.5  # [임시값] 초. 입히는 동작 전체 (그동안 이동하지 않음)
 PLAYER_ENCHANT_RISE = (0.12, 0.45)  # [임시값] 동작 진행도 중 이펙트가 손잡이에서 칼끝까지 차오르는 구간
-PLAYER_ENCHANT_FLOURISH_START = 0.6  # 이 진행도부터 휘두르기 (1타 그림)
-PLAYER_ENCHANT_FLOURISH_FRAMES = (3, 4, 5, 6, 7)  # 1타 그림 중 쓰는 장: 머리 위로 → 벰 → 마무리
-PLAYER_ENCHANT_FLOURISH_ENDS = (0.15, 0.35, 0.55, 0.78, 1.0)  # 휘두르기 안에서 장이 끝나는 진행도
 PLAYER_ENCHANT_SHAKE = {"amplitude": 3, "duration": 0.18, "frequency": 24}  # 다 차는 순간 화면 흔들림
 # 입히는 자세: 새 그림이 없는 방향은 패링 막기 자세(패링 그림 3번째 장)를 임시로 쓴다.
 PLAYER_ENCHANT_POSE_FRAME = 2
 # 입히는 자세 그림 (2026-11-20, PixelLab: 두 손으로 칼을 곧게 세움, player/enchant/<방향>.png·_hand.png, 96×64 × 6장).
-# 장: 손을 꺼냄 → 칼을 허리 앞에 → 비스듬히 들어 올림 → 곧게 세움(이펙트가 차오르는 동안) → 비스듬히 → 허리 앞.
+# 장: 손을 꺼냄 → 칼을 허리 앞에 → 비스듬히 들어 올림 → 곧게 세움(이펙트가 차오르는 동안)
+#     → 확 털어 내림(잔상) → 내려온 장 → 털어낸 끝 자세 (칼을 몸 옆 아래로).
 # 칼 위치표는 export_to_game.py 가 뽑은 값 (손 x, 손 y, 각도, 몸 뒤[, 칼 길이 비율 0 = 안 그림]).
 PLAYER_ENCHANT_SWORD = {
-    "side": ((63, 40, 0, False, 0), (48, 43, 0, False), (54, 39, 53, False), (57, 35, 90, False), (54, 39, 53, False),
-             (48, 43, 0, False)),
-    # 정면: 칼을 꺼내 왼쪽 위로 비스듬히 → 더 세움 → 얼굴 앞에 곧게
-    "front": ((44, 42, 144, False), (44, 42, 144, False), (45, 38, 118, False), (48, 35, 90, False), (45, 38, 118, False),
-              (44, 42, 144, False)),
-    # 후면: 칼이 몸 앞(보는 사람 반대쪽)이라 몸 뒤에 그려 가려지고 칼끝만 후드 위로
-    "back": ((48, 33, 90, True, 0), (53, 33, 120, True), (47, 31, 90, True), (48, 30, 90, True), (47, 31, 90, True),
-             (53, 33, 120, True)),
+    "side": ((63, 40, 0, False, 0), (48, 43, 0, False), (54, 39, 53, False), (57, 35, 90, False), (57, 38, 22, False),
+             (56, 41, -45, False), (56, 41, -45, False)),
+    # 정면: 칼을 꺼내 왼쪽 위로 비스듬히 → 더 세움 → 얼굴 앞에 곧게 → 왼쪽 아래로 털어 내림
+    "front": ((44, 42, 144, False), (44, 42, 144, False), (45, 38, 118, False), (48, 35, 90, False), (43, 37, 135, False),
+              (39, 39, 180, False), (34, 41, -135, False)),
+    # 후면: 칼이 몸 앞(보는 사람 반대쪽)이라 몸 뒤에 그려 가려지고 칼끝만 후드 위로, 털어 내리면 오른쪽 옆으로 나옴
+    "back": ((48, 33, 90, True, 0), (53, 33, 120, True), (47, 31, 90, True), (48, 30, 90, True), (55, 36, 22, False),
+             (62, 41, -46, False), (62, 41, -46, False)),
 }
 # 장이 끝나는 진행도: 곧게 세운 장이 차오르는 구간(PLAYER_ENCHANT_RISE)을 덮게
-# (휘두르기를 넣어 내리는 장 4·5 번째는 지금 쓰지 않음: 휘두르기 시작까지 곧게 세운 장)
-PLAYER_ENCHANT_FRAME_ENDS = (0.04, 0.08, 0.12, 1.0)
+PLAYER_ENCHANT_FRAME_ENDS = (0.04, 0.08, 0.12, 0.62, 0.67, 0.73, 1.0)
+PLAYER_ENCHANT_FLICK_FRAME = 4  # 털어 내리는 장 (이 장에 들어서는 순간 속성이 흩뿌려짐)
 # 이펙트 시트 (assets/concepts/pixellab/sword_enchant/, 불은 build_fire_flame.py 로 직접 그린 입자 불꽃): 칼 그림과 같은 방향(칼끝 오른쪽)으로
 # 프레임마다 가로로 이어 붙임. 손(칼 그림 한가운데)이 프레임 한가운데. 칼과 같은 손 위치·각도로 돌려 겹쳐 그린다.
 SWORD_EFFECT_DIR = PROJECT_ROOT / "assets" / "images" / "effects" / "sword_enchant"
