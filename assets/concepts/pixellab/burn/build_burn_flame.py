@@ -19,7 +19,7 @@ W, H = 24, 40
 FRAMES = 16
 BASE_Y = H - 4  # 불이 붙은 줄 (위에서부터)
 SEED = 11
-COUNT = 170
+COUNT = 170  # (기본값, VARIANTS 가 덮어씀)
 
 HEAT_COLOURS = [
     (3.0, (255, 248, 214, 255)),  # 흰빛
@@ -30,23 +30,29 @@ HEAT_COLOURS = [
 ]
 
 
-def make_particles():
-    rnd = random.Random(SEED)
+# 모양 3종 (같은 날 사용자: 불꽃이 크기·모양이 다 같아 부자연스러움): 이름 → (덩어리 수, 바닥 퍼짐, 오르는 높이, 반지름, 씨앗)
+VARIANTS = {
+    'tall': (170, 2.0, (24, 36), (2.3, 3.6), 11),   # 가늘고 높게 솟는 혀
+    'wide': (160, 3.6, (16, 28), (2.6, 4.0), 23),   # 넓은 바닥에서 여러 갈래로
+    'lick': (110, 1.6, (12, 22), (1.8, 3.0), 37),   # 작게 날름거리는 불
+}
+
+
+def make_particles(count=COUNT, spread=2.2, rise=(22, 36), radius=(2.4, 3.8), seed=SEED):
+    rnd = random.Random(seed)
     out = []
-    for _ in range(COUNT):
-        x0 = W / 2 + rnd.gauss(0, 2.2)
+    for _ in range(count):
+        x0 = W / 2 + rnd.gauss(0, spread)
         out.append({
             'x0': x0, 'y0': BASE_Y + rnd.uniform(-1, 2),
-            'rise': rnd.uniform(22, 36),  # 일생 동안 오르는 높이
+            'rise': rnd.uniform(*rise),  # 일생 동안 오르는 높이
             'drift': (W / 2 - x0) * rnd.uniform(0.5, 0.9),  # 위로 가며 가운데로 모임 (혀 모양)
-            'r0': rnd.uniform(2.4, 3.8),
+            'r0': rnd.uniform(*radius),
             'life': rnd.uniform(0.25, 0.45),
             'born': rnd.random(),
             'wig': rnd.uniform(1.0, 2.6), 'ph': rnd.uniform(0, 6.28), 'freq': rnd.uniform(6, 11),
         })
     return out
-
-
 def draw_frame(i, parts):
     t = i / FRAMES
     heat = [[0.0] * W for _ in range(H)]
@@ -77,31 +83,14 @@ def draw_frame(i, parts):
 
 
 def main():
-    parts = make_particles()
-    strip = Image.new('RGBA', (W * FRAMES, H), (0, 0, 0, 0))
-    for i in range(FRAMES):
-        strip.alpha_composite(draw_frame(i, parts), (i * W, 0))
     os.makedirs(OUT, exist_ok=True)
-    strip.save(os.path.join(OUT, 'flame.png'))
-    make_glow()
-    print('burn flame', FRAMES)
-
-
-def make_glow():
-    """이글이글 달아오른 열기 (같은 날 사용자: 띄엄띄엄 불꽃이 아니라 이글이글한 느낌): 몸 뒤에 까는 주황빛.
-    가운데가 진하고 바깥으로 단계를 끊어 옅어지는 세로로 긴 타원 (픽셀풍). 게임이 몸 크기에 맞춰 늘리고 깜빡인다."""
-    w, h = 32, 48
-    steps = [(0.5, (255, 190, 80, 150)), (0.78, (255, 140, 50, 105)), (1.0, (255, 100, 40, 60))]
-    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    px = im.load()
-    for y in range(h):
-        for x in range(w):
-            d = math.hypot((x + 0.5 - w / 2) / (w / 2), (y + 0.5 - h * 0.55) / (h * 0.55))
-            for limit, colour in steps:
-                if d <= limit:
-                    px[x, y] = colour
-                    break
-    im.save(os.path.join(OUT, 'glow.png'))
+    for name, (count, spread, rise, radius, seed) in VARIANTS.items():
+        parts = make_particles(count, spread, rise, radius, seed)
+        strip = Image.new('RGBA', (W * FRAMES, H), (0, 0, 0, 0))
+        for i in range(FRAMES):
+            strip.alpha_composite(draw_frame(i, parts), (i * W, 0))
+        strip.save(os.path.join(OUT, f'flame_{name}.png'))
+    print('burn flames', list(VARIANTS), FRAMES)
 
 
 if __name__ == '__main__':

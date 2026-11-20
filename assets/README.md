@@ -66,7 +66,7 @@
 | `images/dummy/stage0~2.png`, `stage0~2_white.png`, `break.png` | 사용자 PixelLab 계정으로 생성한 밀짚 더미(`concepts/pixellab/dummy/`: create_map_object·edit_image·animate_image)를 Claude Code가 정리 (`build_dummy.py`, 2026-11-20). 흰 실루엣은 계산 | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 48×56, 무너지는 그림 × 8. D-053 |
 | `images/maps/test_room_bg.png` | 사용자 PixelLab(pixellab.ai) 계정으로 생성한 지하 미궁 타일(`concepts/pixellab/labyrinth/tiles_v2/`)·바닥 Wang 타일셋(`floor_wang/`)·횃불(`torch_v1.png`)·소품(`props/` 통·상자·해골·돌무더기·기둥·항아리)을 Claude Code가 칸마다 합치고 빛을 계산함 (`build_map_bg.py`, 2026-11-19) | PixelLab 이용약관에 따름 (사용자 계정 생성물) | 1024×576 (맵 32×18칸 × 32). D-052 |
 | `images/maps/torch.png`, `torch_glow.png`, `test_room_walltop.png`, `test_room_torches.json` | 사용자 PixelLab 계정으로 생성한 횃불 불꽃 애니메이션(`concepts/pixellab/labyrinth/torch_anim/`)을 Claude Code가 줄이고 이어 붙임, 빛 고리·솟은 벽 윗면·자리는 `build_map_bg.py` 가 계산 (2026-11-19) | PixelLab 이용약관에 따름 (사용자 계정 생성물) / 계산 그림은 프로젝트 소유 | 횃불 9×28 × 8장. D-052 |
-| `images/effects/burn/flame.png`, `glow.png` | Claude Code가 코드로 직접 그림 (`concepts/pixellab/burn/build_burn_flame.py`, 2026-11-20) | 프로젝트 자체 제작 | 불 붙은 몸의 불꽃 혀, 24×40 × 16장. D-056 |
+| `images/effects/burn/flame_tall.png`, `flame_wide.png`, `flame_lick.png` | Claude Code가 코드로 직접 그림 (`concepts/pixellab/burn/build_burn_flame.py`, 2026-11-20) | 프로젝트 자체 제작 | 불 붙은 몸의 불꽃 모양 3종, 각 24×40 × 16장. D-056 |
 
 > ~~`concepts/player_walk_reference.png`, `images/player/{idle,walk}_{front,back,side}.png`~~ (2026-11-03 v3로 교체하며 삭제. v1/v2 `player_master` 이미지는 커밋하지 않았고 v3 결과와 섞이지 않음)
 

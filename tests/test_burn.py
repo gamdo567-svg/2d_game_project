@@ -47,22 +47,26 @@ class BurnLogicTest(unittest.TestCase):
         self.assertFalse(b.burning)
         self.assertEqual(run(b, 3.0), 0)
 
-    def test_flames_grow_with_burn_time_and_die_out(self):
-        f = BurnFlames(config.BURN_BODY_GOLEM)
-        f.update(0.5, 0.0)
-        self.assertEqual(f.flames(False) + f.flames(True), [])
-        f.update(0.5, config.BURN_SECONDS_PER_HIT)  # 한 대: 아래 자리 몇 곳만
-        few = len(f.flames(False) + f.flames(True))
-        self.assertGreater(few, 0)
-        f.update(0.5, config.BURN_MAX_SECONDS)  # 많이 맞음: 모든 자리
-        self.assertEqual(len(f.flames(False) + f.flames(True)), len(f.anchors))
-        self.assertGreater(len(f.anchors), few)
-        self.assertTrue(f.sparks)
-        for _ in range(120):  # 꺼지면 사그라들고 불티·연기도 사라짐
-            f.update(1 / 60, 0.0)
-        self.assertEqual(f.flames(False) + f.flames(True), [])
-        self.assertEqual(f.spark_pixels(), [])
-        self.assertEqual(f.smoke_puffs(), [])
+    def test_flames_bloom_more_when_burning_longer_and_die_out(self):
+        import random
+        weak = BurnFlames(config.BURN_BODY_GOLEM, random.Random(1))
+        strong = BurnFlames(config.BURN_BODY_GOLEM, random.Random(1))
+        weak.update(0.5, 0.0)
+        self.assertEqual(weak.flames(False) + weak.flames(True), [])
+        for _ in range(60):
+            weak.update(1 / 60, config.BURN_SECONDS_PER_HIT)  # 한 대: 드문드문
+            strong.update(1 / 60, config.BURN_MAX_SECONDS)  # 많이 맞음: 빽빽이
+        count = lambda f: len(f.flames(False) + f.flames(True))
+        self.assertGreater(count(weak), 0)
+        self.assertGreater(count(strong), count(weak))
+        sizes = {round(fl[2], 2) for fl in strong.flames(False) + strong.flames(True)}
+        self.assertGreater(len(sizes), 3)  # 크기가 제각각
+        self.assertEqual({fl[5] for fl in strong.flames(False) + strong.flames(True)}, {"tall", "wide", "lick"})
+        for _ in range(120):  # 꺼지면 새로 피지 않고 사그라들며, 불티·연기도 사라짐
+            strong.update(1 / 60, 0.0)
+        self.assertEqual(count(strong), 0)
+        self.assertEqual(strong.spark_pixels(), [])
+        self.assertEqual(strong.smoke_puffs(), [])
 
 
 class TargetBurnTest(unittest.TestCase):

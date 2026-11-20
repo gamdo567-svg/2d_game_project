@@ -340,24 +340,20 @@ BURN_MAX_SECONDS = 10.0  # 최대 타는 시간
 BURN_DAMAGE_PER_SECOND = 3
 BURN_TICK = 1.0  # 이 간격(초)마다 피해를 나눠 줌 (피해 숫자도 이때 뜸)
 # 불꽃 그림 (2026-11-20 사용자: 불타는 느낌이 없음 → 불꽃 혀 시트를 몸 여러 자리에, concepts/pixellab/burn/build_burn_flame.py)
-BURN_FLAME_SHEET = str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / "flame.png")
+# 불꽃 모양 3종 (같은 날 사용자: 크기·모양이 다 같아 부자연스러움): 가늘고 높은 혀 / 넓은 불 / 작게 날름거리는 불
+BURN_FLAME_SHEETS = {name: str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / f"flame_{name}.png")
+                     for name in ("tall", "wide", "lick")}
 BURN_FLAME_SIZE = (24, 40)  # 한 장 (원본 픽셀)
 BURN_FLAME_FRAMES = 16
-BURN_FLAME_FPS = 14
 BURN_FLAME_BASE_MARGIN = 4  # 시트 아래에서 불이 붙은 줄까지
-BURN_FULL_SECONDS = 6.0  # 이만큼 남았으면 모든 자리에 불이 붙음 (한 대면 아래 자리 몇 곳만)
-BURN_FLARE_TIME = 0.2  # 자리에 불이 피어나는 시간
-BURN_FADE_TIME = 0.45  # 꺼질 때 사그라드는 시간
-BURN_SPARK_RATE = 2.5  # 불 붙은 자리 하나당 초당 불티 수
+BURN_FULL_SECONDS = 6.0  # 이만큼 남았으면 불이 가장 세게 (한 대면 약하게, 드문드문)
+BURN_MIN_INTENSITY = 0.35  # 막 붙었을 때 세기
+BURN_TONGUE_RATE = 4.0  # 가장 셀 때 초당 피어나는 불꽃 수 (몸 넓이 100 원본 픽셀²당)
+BURN_SPARK_RATE = 14.0  # 가장 셀 때 초당 불티 수
 BURN_SPARK_COLORS = ((255, 240, 170), (255, 196, 70), (255, 130, 40), (200, 60, 30))
-BURN_SMOKE_RATE = 5.0  # 초당 연기 덩어리 수
+BURN_SMOKE_RATE = 5.0  # 가장 셀 때 초당 연기 덩어리 수
 BURN_SMOKE_ALPHA = 0.28
-BURN_GLOW_IMAGE = str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / "glow.png")  # 몸 뒤 달아오른 빛
-BURN_GLOW_SIZE = (32, 48)
-# 불이 붙는 몸 크기 (가로, 세로 원본 픽셀, 발 밑 가운데 기준). 이 안을 불꽃 자리로 촘촘히 덮는다 (burn.body_anchors).
-# (같은 날 사용자: 띄엄띄엄 불꽃이 떠서 불타는 느낌이 적음 → 이글이글하게)
-BURN_ROW_STEP = 9  # 불꽃 줄 간격
-BURN_COL_STEP = 8  # 한 줄 안의 불꽃 간격
+# 불이 붙는 몸 크기 (가로, 세로 원본 픽셀, 발 밑 가운데 기준). 이 안에서 불꽃이 피었다 사그라든다.
 BURN_BODY_GOLEM = (30, 74)
 BURN_BODY_DUMMY = (16, 48)
 BURN_BODY_PLAYER = (16, 38)
