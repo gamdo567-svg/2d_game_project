@@ -2,7 +2,7 @@
 
 - 어둠을 입힌 검으로 3타까지 다 때리면 그 자리·그 방향에 그림자 분신이 남는다 (최대 SHADOW_CLONE_MAX 개, 넘으면 가장 오래된 것이 흩어짐).
 - 분신은 움직이지 않고, 주인공이 평타를 치면 자기 자리에서 자기 방향으로 같은 타를 같이 친다 (피해 SHADOW_CLONE_DAMAGE_SCALE 배).
-- 흩어져 사라지는 때: 분신이 있는 칸에 선 채 평타를 침 / 몬스터 공격에 맞음 / 아무것도 안 하고 SHADOW_CLONE_IDLE 초 /
+- 흩어져 사라지는 때: 분신이 있는 칸에 선 채 평타를 침 / 몬스터 공격에 맞음 (주인공이 퍼펙트 회피·패링으로 막은 공격은 제외) / 아무것도 안 하고 SHADOW_CLONE_IDLE 초 /
   주인공이 SHADOW_CLONE_RANGE 칸보다 멀어짐 / 검의 어둠 속성이 풀리거나 바뀜.
 - 그림: 반투명 검은 그림자 (player/shadow/ 그림, 그리기는 player.py), 발밑에 어둠이 일렁이고 위로 어둠 기운이 피어오름.
   흩어질 때는 검은 연기 덩어리로 부서져 흩날린다.
@@ -78,8 +78,11 @@ class ShadowClones:
         return [Strike(c.col, c.row, c.facing.value, strike.reach, damage, strike.width)
                 for c in self.clones if c.key == key]
 
-    def hit_tiles(self, tiles) -> None:
-        """몬스터 공격이 터졌다: 그 범위 안의 분신은 흩어진다."""
+    def hit_tiles(self, tiles, blocked: bool = False) -> None:
+        """몬스터 공격이 터졌다: 그 범위 안의 분신은 흩어진다.
+        blocked = 주인공이 그 공격을 퍼펙트 회피·패링으로 막았음 → 분신도 살아남는다 (2026-11-20 사용자: 잘 막은 보상)."""
+        if blocked:
+            return
         for clone in [c for c in self.clones if (c.col, c.row) in tiles]:
             self.scatter(clone)
 

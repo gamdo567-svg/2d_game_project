@@ -61,6 +61,15 @@ class ShadowCloneLogicTest(unittest.TestCase):
         c.update(DT, (5, 4), False)  # 검의 어둠이 풀림
         self.assertEqual(c.clones, [])
 
+    def test_blocked_attack_spares_clones(self):
+        # 주인공이 퍼펙트 회피·패링으로 막은 공격에는 분신도 살아남음 (2026-11-20 사용자)
+        c = ShadowClones()
+        c.spawn(3, 3, Facing.LEFT)
+        c.hit_tiles(frozenset({(3, 3)}), blocked=True)
+        self.assertEqual(len(c.clones), 1)
+        c.hit_tiles(frozenset({(3, 3)}))
+        self.assertEqual(c.clones, [])
+
     def test_at_most_three_oldest_scatters(self):
         c = ShadowClones()
         for col in range(4):
