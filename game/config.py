@@ -387,11 +387,15 @@ CHARGE_PER_HIT = 0.1  # 한 대에 차는 게이지 (10대면 가득). 방전할
 SHOCK_DAMAGE_FULL = 60  # 게이지가 가득일 때 방전 피해 (게이지에 비례)
 SHOCK_TIME_FULL = 1.5  # 게이지가 가득일 때 감전 시간 (초, 게이지에 비례)
 SHOCK_FLASH = 0.06  # 감전 중 검은 그림자 → 흰 그림 → 원래 그림이 바뀌는 간격 (초)
-SHOCK_ZAP_RATE = 55.0  # 감전 중 몸을 가로지르는 번개 수 (초당)
+SHOCK_ZAP_RATE = 35.0  # 감전 중 몸을 가로지르는 번개 수 (초당)
 STATIC_RATE_MIN = 2.0  # 정전기 번개 수 (초당) = 최소 + 최대 × 게이지
 STATIC_RATE_MAX = 30.0
-STATIC_CORE_COLOR = (236, 248, 255)  # 번개 심
-STATIC_GLOW_COLOR = (110, 190, 255)  # 번개 둘레·식은 번개
+# 번개 빛 겹 (안쪽 → 바깥): 흰 심, 하늘색, 파랑, 보라 (같은 날 사용자: 철권 초풍 같은 전기 스파크)
+SHOCK_LAYER_COLORS = ((255, 255, 255), (150, 232, 255), (64, 140, 255), (118, 72, 236))
+SHOCK_FLASH_TIME = 0.07  # 방전 순간 몸 가운데 섬광 (초)
+SHOCK_BURST_BOLTS = 7  # 방전 순간 사방으로 터지는 굵은 번개 수
+SHOCK_BURST_SPARKS = 28  # 방전 순간 튀는 불티 수
+SHOCK_SHAKE = {"amplitude": 4, "duration": 0.22, "frequency": 30}  # 방전 순간 화면 흔들림
 COLOR_CHARGE_BAR = (80, 170, 255)  # 파란 전기 게이지 막대
 COLOR_SHOCK_TEXT = (140, 210, 255)  # 감전 피해 숫자
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다

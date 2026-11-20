@@ -319,6 +319,7 @@ class Golem:
             return False
         self.hp = max(0, self.hp - damage)
         self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
+        self.static.burst(self.charge.shock_power)  # 방전 순간: 흰 섬광 + 사방으로 터지는 번개·불티
         if self.hp == 0:
             self._die()
         elif self.state in (WINDUP, RECOVER):
@@ -715,14 +716,20 @@ class Golem:
         그 그림을 못 읽으면 서 있는 그림을 쓴다.
         """
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
-        if self.charge.shocked:  # 감전: 서 있는 그림 · 검은 그림자 · 흰 그림을 번갈아, 파르르 떨림 (만화처럼)
+        if self.charge.shocked:
+            # 감전: 서 있는 그림 · 검은 그림자(밝은 뼈) · 흰 그림(진한 뼈)을 번갈아, 몸을 감싼 전기 테두리, 파르르 떨림 (만화처럼)
             look = self.charge.shock_look
-            path = (str(config.GOLEM_IMAGE_DIR / f"shock_{self.view}_{look}.png") if look in (BLACK, WHITE)
-                    else self.sprite_path())
+            base = str(config.GOLEM_IMAGE_DIR / f"shock_{self.view}")
+            layers = {BLACK: [base + "_black.png", base + "_bones_light.png"],
+                      WHITE: [base + "_white.png", base + "_bones_dark.png"]}.get(look, [self.sprite_path()])
+            if self.charge.shock_rim:
+                layers.insert(0, base + "_rim.png")
             jx, jy = self.charge.shock_jitter
-            return bool(renderer.draw_sprite_frame(path, 0, size, size, cx + jx * s,
-                                                   bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s + jy * s,
-                                                   size * s, size * s))
+            foot = bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s + jy * s
+            drawn = False
+            for path in layers:
+                drawn = bool(renderer.draw_sprite_frame(path, 0, size, size, cx + jx * s, foot, size * s, size * s)) or drawn
+            return drawn
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)
         foot = bottom - config.GOLEM_SPRITE_FOOT_MARGIN[self.view] * s

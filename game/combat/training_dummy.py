@@ -157,6 +157,7 @@ class TrainingDummy:
             return False
         self.hp = max(0, self.hp - damage)
         self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
+        self.static.burst(self.charge.shock_power)  # 방전 순간: 흰 섬광 + 사방으로 터지는 번개·불티
         if self.hp == 0:
             self._break()
         return True
@@ -229,15 +230,18 @@ class TrainingDummy:
             a = math.radians(angle)
             cx = px + ox * math.cos(a) - oy * math.sin(a)
             cy = py + ox * math.sin(a) + oy * math.cos(a)
-            image = config.DUMMY_STAGE_IMAGES[self.stage]
-            look = self.charge.shock_look  # 감전: 검은 그림자 · 흰 그림 · 원래 그림을 번갈아, 파르르 떨림
-            if look == BLACK:
-                image = config.DUMMY_STAGE_BLACK[self.stage]
-            elif look == WHITE:
-                image = config.DUMMY_STAGE_WHITE[self.stage]
+            # 감전: 원래 그림 · 검은 그림자(밝은 뼈) · 흰 그림(진한 뼈)을 번갈아, 전기 테두리, 파르르 떨림
+            look = self.charge.shock_look
+            stage = config.DUMMY_IMAGE_DIR / f"stage{self.stage}"
+            layers = {BLACK: [config.DUMMY_STAGE_BLACK[self.stage], f"{stage}_bones_light.png"],
+                      WHITE: [config.DUMMY_STAGE_WHITE[self.stage], f"{stage}_bones_dark.png"]}.get(
+                look, [config.DUMMY_STAGE_IMAGES[self.stage]])
+            if self.charge.shock_rim:
+                layers.insert(0, f"{stage}_rim.png")
             jx, jy = self.charge.shock_jitter
             cx, cy = cx + jx * s, cy + jy * s
-            renderer.draw_image_rotated(image, cx, cy, w * s, h * s * sq, angle)
+            for image in layers:
+                renderer.draw_image_rotated(image, cx, cy, w * s, h * s * sq, angle)
             if self.flash_left > 0.0:
                 renderer.draw_image_rotated(config.DUMMY_STAGE_WHITE[self.stage], cx, cy, w * s, h * s * sq, angle,
                                             opacity=self.flash_left / config.DUMMY_FLASH_TIME * 0.9)
