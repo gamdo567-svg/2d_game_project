@@ -386,6 +386,7 @@ CHARGE_ELEMENT = "lightning"
 CHARGE_PER_HIT = 0.1  # 한 대에 차는 게이지 (10대면 가득). 방전할 때까지 줄지 않음
 SHOCK_DAMAGE_FULL = 60  # 게이지가 가득일 때 방전 피해 (게이지에 비례)
 SHOCK_TIME_FULL = 1.5  # 게이지가 가득일 때 감전 시간 (초, 게이지에 비례)
+SHOCK_TICK = 0.1  # 감전 피해를 나눠 주는 간격 (초): 한 번에 터지지 않고 빠르게 깎임 (2026-11-20 사용자)
 SHOCK_FLASH = 0.06  # 감전 중 검은 그림자 → 흰 그림 → 원래 그림이 바뀌는 간격 (초)
 SHOCK_ZAP_RATE = 22.0  # 감전 중 몸을 가로지르는 번개 수 (초당)
 STATIC_RATE_MIN = 2.0  # 정전기 번개 수 (초당) = 최소 + 최대 × 게이지

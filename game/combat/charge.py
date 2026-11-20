@@ -35,6 +35,9 @@ class Charge:
         self.shock_left = 0.0  # 남은 감전 시간
         self.shock_time = 0.0  # 이번 감전 전체 시간
         self.shock_power = 0.0  # 이번 감전 세기 (방전한 게이지)
+        self.just_burst = False  # 이번 update 에서 모인 전기가 터졌는지 (연출·화면 흔들림 신호)
+        self._pending: list[int] = []  # 감전 동안 SHOCK_TICK 마다 나눠 줄 남은 피해
+        self._tick = 0.0
 
     @property
     def shocked(self) -> bool:
@@ -97,19 +100,36 @@ class Charge:
         self.value = 0.0
         self.gather_left = 0.0
         self.shock_left = 0.0
+        self._pending = []
 
     def update(self, dt: float) -> int:
-        """시간이 흐른다. 모임이 끝나 터지는 순간 그 피해를 돌려준다 (아니면 0)."""
-        self.shock_left = max(0.0, self.shock_left - dt)
-        if not self.gathering:
-            return 0
-        self.gather_left -= dt
-        if self.gather_left > 0.0:
-            return 0
-        self.gather_left = 0.0
-        self.shock_time = config.SHOCK_TIME_FULL * self.shock_power
-        self.shock_left = self.shock_time
-        return max(1, round(config.SHOCK_DAMAGE_FULL * self.shock_power))
+        """시간이 흐른다. 이번에 깎을 감전 피해를 돌려준다.
+
+        한 번에 터져 죽는 느낌보다 감전당하는 느낌 (2026-11-20 사용자): 터지는 순간(just_burst)은 연출만, 피해는 감전 동안
+        SHOCK_TICK 초마다 고르게 나눠 빠르게 깎는다 (가득이면 1.5초 동안 0.1초마다 4 씩 = 60)."""
+        self.just_burst = False
+        damage = 0
+        if self.shocked:
+            self._tick += dt
+            while self._tick >= config.SHOCK_TICK and self._pending:
+                self._tick -= config.SHOCK_TICK
+                damage += self._pending.pop(0)
+            self.shock_left = max(0.0, self.shock_left - dt)
+            if not self.shocked and self._pending:  # 감전이 끝나면 남은 몫을 마저
+                damage += sum(self._pending)
+                self._pending = []
+        if self.gathering:
+            self.gather_left -= dt
+            if self.gather_left <= 0.0:  # 모인 전기가 터짐 → 감전 시작
+                self.gather_left = 0.0
+                self.just_burst = True
+                self.shock_time = config.SHOCK_TIME_FULL * self.shock_power
+                self.shock_left = self.shock_time
+                total = max(1, round(config.SHOCK_DAMAGE_FULL * self.shock_power))
+                n = max(1, round(self.shock_time / config.SHOCK_TICK))
+                self._pending = [total // n + (1 if k < total % n else 0) for k in range(n)]
+                self._tick = 0.0
+        return damage
 
     @property
     def shock_age(self) -> float:

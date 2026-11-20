@@ -16,12 +16,20 @@ DT = 1 / 60
 
 
 def burst(c: Charge) -> int:
-    """방전 뒤 모임이 끝나 터질 때까지 시간을 흘려 그 피해를 돌려준다."""
+    """방전 뒤 모임이 끝나 터질 때까지 시간을 흘린다. 터지는 순간의 피해(늘 0, 피해는 감전 동안 나눠서)를 돌려준다."""
     for _ in range(120):
         damage = c.update(DT)
-        if damage:
+        if c.just_burst:
             return damage
-    return 0
+    raise AssertionError("터지지 않음")
+
+
+def shock_total(c: Charge) -> int:
+    """감전이 끝날 때까지 나눠 받은 피해의 합."""
+    total = 0
+    while c.shocked:
+        total += c.update(DT)
+    return total
 
 
 class ChargeLogicTest(unittest.TestCase):
@@ -33,16 +41,33 @@ class ChargeLogicTest(unittest.TestCase):
         self.assertTrue(c.discharge())
         self.assertEqual(c.value, 0.0)
         self.assertTrue(c.gathering)  # 안의 전기가 모이는 중 (아직 피해 없음)
-        self.assertEqual(burst(c), config.SHOCK_DAMAGE_FULL)
+        self.assertEqual(burst(c), 0)  # 터지는 순간은 연출만
         self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL, delta=DT)
+        self.assertEqual(shock_total(c), config.SHOCK_DAMAGE_FULL)  # 감전 동안 나눠서 다 받음
+
+    def test_shock_damage_drains_in_quick_ticks(self):
+        # 한 번에 터지지 않고 빠르게 깎임 (2026-11-20 사용자)
+        c = Charge()
+        for _ in range(10):
+            c.add()
+        c.discharge()
+        burst(c)
+        ticks = []
+        while c.shocked:
+            d = c.update(DT)
+            if d:
+                ticks.append(d)
+        self.assertGreaterEqual(len(ticks), 10)
+        self.assertLessEqual(max(ticks), 6)
 
     def test_discharge_scales_with_gauge(self):
         c = Charge()
         for _ in range(5):
             c.add()
         c.discharge()
-        self.assertEqual(burst(c), round(config.SHOCK_DAMAGE_FULL * 0.5))
+        burst(c)
         self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL * 0.5, delta=DT)
+        self.assertEqual(shock_total(c), round(config.SHOCK_DAMAGE_FULL * 0.5))
 
     def test_empty_gauge_does_nothing(self):
         c = Charge()
@@ -94,14 +119,16 @@ class TargetShockTest(unittest.TestCase):
         self.assertEqual(g.hp, hp)  # 모이는 동안은 아직 피해 없음
         spot = (g.col, g.row)
         bursts = 0
-        for _ in range(round((config.SHOCK_GATHER_TIME + config.SHOCK_TIME_FULL) / DT) - 2):  # 모임·감전 동안 굳어 있음
+        for _ in range(round((config.SHOCK_GATHER_TIME + config.SHOCK_TIME_FULL) / DT) - 3):  # 모임·감전 동안 굳어 있음
             g.update(DT, (5, 9), lambda c, r: True)
             bursts += g.burst_now
-            if g.burst_now:
+            if g.hp < hp:
                 self.assertEqual(g.popups[-1].color, config.COLOR_SHOCK_TEXT)
             self.assertEqual((g.col, g.row), spot)
             self.assertEqual(g.attacks, [])
         self.assertEqual(bursts, 1)
+        for _ in range(10):
+            g.update(DT, (5, 9), lambda c, r: True)
         self.assertEqual(g.hp, hp - config.SHOCK_DAMAGE_FULL)
 
     def test_dummy_shock(self):
@@ -111,8 +138,10 @@ class TargetShockTest(unittest.TestCase):
         self.assertFalse(d.discharge())  # 게이지를 다 썼음
         for _ in range(round(config.SHOCK_GATHER_TIME / DT) + 2):
             d.update(DT)
-        self.assertEqual(d.hp, d.max_hp - round(config.SHOCK_DAMAGE_FULL * config.CHARGE_PER_HIT))
         self.assertTrue(d.charge.shocked)
+        for _ in range(round(config.SHOCK_TIME_FULL / DT)):
+            d.update(DT)
+        self.assertEqual(d.hp, d.max_hp - round(config.SHOCK_DAMAGE_FULL * config.CHARGE_PER_HIT))
 
 
 ROOM = """
@@ -163,6 +192,7 @@ class LightningSwordTest(unittest.TestCase):
         self.assertEqual(self.dummy.charge.value, 0.0)
         self.run_for(config.SHOCK_GATHER_TIME + 0.05)
         self.assertTrue(self.dummy.charge.shocked)
+        self.run_for(config.SHOCK_TIME_FULL)
         self.assertLess(self.dummy.hp, hp)
 
 

@@ -321,12 +321,15 @@ class Golem:
             self.beam_tiles = frozenset()
         return True
 
-    def _shock_burst(self, damage: int) -> None:
-        """모인 전기가 터짐: 피해 + 흰 섬광·사방으로 터지는 번개·불티 (장면이 burst_now 를 보고 화면을 흔듦)."""
+    def _shock_burst(self) -> None:
+        """모인 전기가 터짐: 흰 섬광·사방으로 터지는 번개·불티 (장면이 burst_now 를 보고 화면을 흔듦). 피해는 감전 동안 나눠서."""
         self.burst_now = True
+        self.static.burst(self.charge.shock_power)
+
+    def _shock_damage(self, damage: int) -> None:
+        """감전 동안 빠르게 나눠 깎이는 피해 (하늘색 숫자가 연달아 튐)."""
         self.hp = max(0, self.hp - damage)
         self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
-        self.static.burst(self.charge.shock_power)
         if self.hp == 0:
             self._die()
 
@@ -390,8 +393,10 @@ class Golem:
         self.flames.update(dt, self.burn.time_left)
         self.burst_now = False
         damage = self.charge.update(dt)
+        if self.charge.just_burst and self.alive:
+            self._shock_burst()
         if damage and self.alive:
-            self._shock_burst(damage)
+            self._shock_damage(damage)
         self.static.update(dt, self.charge.value, self.charge.shocked, self.charge.gather_progress, self.charge.release)
         if self.charge.frozen and self.alive:
             return  # 전기가 모이는 동안·감전: 그 자리에 굳어 아무것도 하지 않음 (걷던 칸도 멈춤)

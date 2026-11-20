@@ -153,12 +153,15 @@ class TrainingDummy:
         """주인공이 검의 번개를 껐다: 쌓인 전기가 모이기 시작한다 (모임이 끝나면 update 에서 터지며 피해·감전). 게이지가 있었으면 True."""
         return not self.is_down and self.charge.discharge()
 
-    def _shock_burst(self, damage: int) -> None:
-        """모인 전기가 터짐: 피해 + 흰 섬광·사방으로 터지는 번개·불티 (장면이 burst_now 를 보고 화면을 흔듦)."""
+    def _shock_burst(self) -> None:
+        """모인 전기가 터짐: 흰 섬광·사방으로 터지는 번개·불티 (장면이 burst_now 를 보고 화면을 흔듦). 피해는 감전 동안 나눠서."""
         self.burst_now = True
+        self.static.burst(self.charge.shock_power)
+
+    def _shock_damage(self, damage: int) -> None:
+        """감전 동안 빠르게 나눠 깎이는 피해 (하늘색 숫자가 연달아 튐)."""
         self.hp = max(0, self.hp - damage)
         self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
-        self.static.burst(self.charge.shock_power)
         if self.hp == 0:
             self._break()
 
@@ -186,8 +189,10 @@ class TrainingDummy:
         self.flames.update(dt, self.burn.time_left)
         self.burst_now = False
         damage = self.charge.update(dt)
+        if self.charge.just_burst and not self.is_down:
+            self._shock_burst()
         if damage and not self.is_down:
-            self._shock_burst(damage)
+            self._shock_damage(damage)
         self.static.update(dt, self.charge.value, self.charge.shocked, self.charge.gather_progress, self.charge.release)
         self.lean.update(dt)
         self.squash.update(dt)
