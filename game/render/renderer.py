@@ -175,6 +175,42 @@ class Renderer:
         image.clip_composite_draw(left, bottom, frame_width, frame_height, 0, "", x, y, draw_width, draw_height)
         return True
 
+    def draw_frame_rotated(
+        self,
+        path: str,
+        frame_index: int,
+        frame_width: int,
+        frame_height: int,
+        center_x: float,
+        center_y: float,
+        scale: int,
+        angle_degrees: float,
+        flip_horizontal: bool = False,
+        visible_width: int | None = None,
+    ) -> bool:
+        """가로로 이어 붙인 시트의 frame_index 번째 프레임을, 프레임 가운데를 (center_x, center_y) 에 두고
+        angle_degrees(반시계 +) 만큼 돌려 scale 배로 그린다 (draw_image_rotated 와 같은 규칙: 뒤집은 뒤 돌림).
+
+        visible_width 를 주면 프레임 왼쪽부터 그 너비만 그린다 (나머지는 비움, 위치는 그대로).
+        검 이펙트가 손잡이 쪽부터 칼끝 쪽으로 차오를 때 쓴다. 그림을 못 읽으면 False.
+        """
+        image = self._image(path)
+        if image is None:
+            return False
+        width = frame_width if visible_width is None else max(0, min(frame_width, visible_width))
+        if width <= 0:
+            return True
+        # 잘라 낸 부분의 가운데가 프레임 가운데에서 떨어진 만큼 (그림 x 방향) 화면에서 옮긴다
+        shift = (width / 2 - frame_width / 2) * scale
+        rad = math.radians(angle_degrees)
+        direction = -1.0 if flip_horizontal else 1.0  # 뒤집으면 그림의 +x 가 화면 -x 쪽
+        x = center_x + direction * shift * math.cos(rad)
+        y = center_y + direction * shift * math.sin(rad)
+        flip = "h" if flip_horizontal else ""
+        image.clip_composite_draw(frame_index * frame_width, 0, width, frame_height, rad, flip,
+                                  x, y, width * scale, frame_height * scale)
+        return True
+
     def draw_image_rotated(
         self,
         path: str,

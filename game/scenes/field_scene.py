@@ -232,3 +232,9 @@ class FieldScene:
         renderer.fill_rect(48, top - 32, 48 + 200 * player.hp / player.max_hp, top - 18, config.COLOR_PLAYER_HP)
         renderer.fill_rect(48, top - 40, 248, top - 34, config.COLOR_BAR_BACK)
         renderer.fill_rect(48, top - 40, 48 + 200 * player.posture.value, top - 34, config.COLOR_POSTURE)
+        # 검 속성 (2026-11-20): 1·2·3 으로 고른 속성, 검에 입혀져 있으면 표시
+        enchant = player.enchant
+        label = f"속성 {config.SWORD_ELEMENT_NAMES[enchant.selected]}"
+        if enchant.active is not None:
+            label += f" · 검: {config.SWORD_ELEMENT_NAMES[enchant.active]}"
+        renderer.draw_text(16, top - 58, label, config.SWORD_ELEMENT_COLORS[enchant.selected])

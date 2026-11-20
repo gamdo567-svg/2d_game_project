@@ -274,6 +274,24 @@ PLAYER_ATTACK_FRAME_SHIFTS_BACK = (
 PLAYER_SWORD_SPRITE_WIDTH = 56
 PLAYER_SWORD_SPRITE_HEIGHT = 10
 PLAYER_WEAPON = "old_sword"  # 시작 장비: 낡은 검
+
+# ----- 검 속성 입히기 (2026-11-20 사용자 결정) -----
+# 1·2·3 으로 속성을 고르고 E 로 입힌다. 두 손으로 검을 세우면 이펙트가 검날 아래에서 위로 차오르고, 다 차면 검에 남는다.
+# 같은 속성으로 다시 E 를 누르면 풀린다. 지금은 그림만 (피해·추가 효과는 마법석 기획이 정해지면).
+SWORD_ELEMENTS = ("fire", "lightning", "dark")
+SWORD_ELEMENT_NAMES = {"fire": "불", "lightning": "전기", "dark": "어둠"}
+SWORD_ELEMENT_COLORS = {"fire": (255, 140, 50), "lightning": (120, 200, 255), "dark": (170, 110, 220)}
+PLAYER_ENCHANT_DURATION = 1.2  # [임시값] 초. 입히는 동작 전체 (그동안 이동하지 않음)
+PLAYER_ENCHANT_RISE = (0.2, 0.75)  # [임시값] 동작 진행도 중 이펙트가 손잡이에서 칼끝까지 차오르는 구간
+# 입히는 자세: 새 그림(PixelLab, 측면부터)을 만들 때까지 패링 막기 자세(패링 그림 3번째 장)를 임시로 쓴다.
+PLAYER_ENCHANT_POSE_FRAME = 2
+# 이펙트 시트 (assets/concepts/pixellab/sword_enchant/build_effect.py): 칼 그림과 같은 방향(칼끝 오른쪽)으로
+# 프레임마다 가로로 이어 붙임. 손(칼 그림 한가운데)이 프레임 한가운데. 칼과 같은 손 위치·각도로 돌려 겹쳐 그린다.
+SWORD_EFFECT_DIR = PROJECT_ROOT / "assets" / "images" / "effects" / "sword_enchant"
+SWORD_EFFECT_FRAME_SIZE = (80, 24)
+SWORD_EFFECT_FRAMES = 24
+SWORD_EFFECT_FPS = 12
+SWORD_EFFECT_RISE_X = (44, 80)  # 프레임에서 차오르기가 시작하는 x(칼 가드)와 끝나는 x(이펙트 끝)
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 칼집째 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.

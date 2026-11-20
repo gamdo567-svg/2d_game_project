@@ -1,6 +1,6 @@
 """주인공 상태 머신 (Python transitions 라이브러리 사용).
 
-현재 구현한 상태는 idle, walk, jump, parry, sword_attack, dodge, hurt 일곱 가지다.
+현재 구현한 상태는 idle, walk, jump, parry, sword_attack, dodge, hurt, enchant(검 속성 입히기) 여덟 가지다.
 PRE-PRD 2.7 의 stun 은
 해당 기능을 개발할 때 STATES 와 TRANSITIONS 에 추가한다.
 
@@ -20,8 +20,9 @@ PARRY = "parry"
 ATTACK = "sword_attack"
 DODGE = "dodge"
 HURT = "hurt"
+ENCHANT = "enchant"  # 검에 속성 입히기 (2026-11-20)
 
-STATES: list[str] = [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT]
+STATES: list[str] = [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT, ENCHANT]
 # 서 있거나 걷는 중에만 새 행동(점프, 패링, 공격)을 시작할 수 있다.
 FREE_STATES: list[str] = [IDLE, WALK]
 
@@ -39,8 +40,11 @@ TRANSITIONS: list[dict[str, str | list[str]]] = [
     {"trigger": "end_attack", "source": ATTACK, "dest": IDLE},
     {"trigger": "dodge", "source": FREE_STATES + [ATTACK], "dest": DODGE},
     {"trigger": "end_dodge", "source": DODGE, "dest": IDLE},
+    # 검에 속성 입히기 (E): 서 있거나 걷는 중에만, 그동안 이동하지 않음
+    {"trigger": "enchant", "source": FREE_STATES, "dest": ENCHANT},
+    {"trigger": "end_enchant", "source": ENCHANT, "dest": IDLE},
     # 맞으면 짧게 경직 (회피 무적으로 피하지 못하는 공격은 회피 중에도 맞는다)
-    {"trigger": "hurt", "source": [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT], "dest": HURT},
+    {"trigger": "hurt", "source": [IDLE, WALK, JUMP, PARRY, ATTACK, DODGE, HURT, ENCHANT], "dest": HURT},
     {"trigger": "end_hurt", "source": HURT, "dest": IDLE},
 ]
 

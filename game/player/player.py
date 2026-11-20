@@ -25,7 +25,9 @@ from game.player.actions import Dodge, Jump, Parry, SwordCombo, TimedAction, fra
 from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
-from game.player.state_machine import ATTACK, DODGE, FREE_STATES, HURT, IDLE, JUMP, PARRY, WALK, PlayerStateMachine
+from game.player.enchant import SwordEnchant
+from game.player.state_machine import (ATTACK, DODGE, ENCHANT, FREE_STATES, HURT, IDLE, JUMP, PARRY, WALK,
+                                       PlayerStateMachine)
 from game.world.grid import Grid
 
 
@@ -121,9 +123,10 @@ def weapon_view_art_path(weapon: str, view: str, hit_number: int) -> str:
 
 SHADOW_PATH = str(config.PLAYER_IMAGE_DIR / "shadow.png")
 # 입력을 기억해 두는 행동 (PLAYER_INPUT_BUFFER_TIME)
-BUFFERED_ACTIONS = (Action.ATTACK, Action.PARRY, Action.DODGE, Action.JUMP)
+BUFFERED_ACTIONS = (Action.ATTACK, Action.PARRY, Action.DODGE, Action.JUMP, Action.ENCHANT)
+ELEMENT_KEYS = (Action.ELEMENT_1, Action.ELEMENT_2, Action.ELEMENT_3)  # 속성 고르기 (불·전기·어둠)
 # 전용 그림이 아직 없는 상태 -> 대신 쓸 그림 상태. 패링은 공격 모션과 함께 만들 때까지 서 있는 그림(첫 프레임).
-SPRITE_FALLBACK = {PARRY: IDLE, HURT: IDLE}
+SPRITE_FALLBACK = {PARRY: IDLE, HURT: IDLE, ENCHANT: IDLE}  # 속성 입히기는 패링 막기 자세(그림이 없으면 서기)
 # 대신 쓰는 그림을 자기 애니메이션 프레임으로 재생하는 상태 (나머지는 첫 프레임에 멈춤)
 ANIMATED_FALLBACK = {DODGE}
 # 좌우가 비대칭인 상태: 왼쪽을 볼 때 측면을 뒤집지 않고 전용 그림(side_left)을 쓴다.
@@ -152,6 +155,8 @@ class Player:
         self._trail_clock = 0.0
         self.afterimages: list[Afterimage] = []
         self.hurt = TimedAction(config.PLAYER_HURT_TIME, 1)
+        self.enchant = SwordEnchant()  # 검 속성 (1·2·3 고르기, E 입히기)
+        self.effect_clock = 0.0  # 검 이펙트 반복 재생 시간
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
         self.posture = PostureGauge()
@@ -173,6 +178,7 @@ class Player:
             ATTACK: self.combo,
             DODGE: self.dodge,
             HURT: self.hurt,
+            ENCHANT: self.enchant,
         }
         self._buffer: dict[Action, float] = {}  # 입력 기억: 행동 → 남은 시간
         self.fsm = PlayerStateMachine(on_state_changed=self._on_state_changed)
@@ -213,6 +219,10 @@ class Player:
         self.perfect_text_left = max(0.0, self.perfect_text_left - dt)
         self._since_dodge += dt
         self.posture.update(dt)
+        self.effect_clock += dt
+        for index, action in enumerate(ELEMENT_KEYS):
+            if input_state.was_pressed(action):
+                self.enchant.select(index)
         # 입력 기억: 이번 프레임에 누른 행동을 PLAYER_INPUT_BUFFER_TIME 동안 기억한다
         for action in BUFFERED_ACTIONS:
             if input_state.was_pressed(action):
@@ -240,6 +250,12 @@ class Player:
             elif self._buffered(Action.DODGE) and self.dodge_cooldown_left <= 0.0:
                 self._consume(Action.DODGE)
                 self._start_dodge(input_state)
+            elif self._buffered(Action.ENCHANT):
+                # 검 속성 입히기 (같은 속성이 이미 입혀져 있으면 동작 없이 풀림)
+                self._consume(Action.ENCHANT)
+                if self.enchant.press():
+                    self.combo.cancel_window()
+                    self.fsm.trigger("enchant")
             elif self._buffered(Action.JUMP):
                 # 걷던 중이면 그 한 칸은 공중에서 마저 간다 (2026-11-17 사용자 결정: 바로 점프)
                 self._consume(Action.JUMP)
@@ -284,6 +300,8 @@ class Player:
                 self.fsm.trigger("attack")
         elif self.state == HURT and self.hurt.finished:
             self.fsm.trigger("end_hurt")
+        elif self.state == ENCHANT and self.enchant.finished:
+            self.fsm.trigger("end_enchant")
         elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
             self.fsm.trigger("end_dodge")
             self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
@@ -408,6 +426,8 @@ class Player:
     def _on_state_changed(self, state: str) -> None:
         if state == PARRY:
             self.parry_succeeded = False
+        if state != ENCHANT:
+            self.enchant.interrupt()  # 다 차오르기 전에 끊기면 입히지 않음
         # 새 상태의 애니메이션은 첫 프레임부터 재생한다.
         self.animations[state].reset()
 
@@ -441,6 +461,8 @@ class Player:
             self._draw_attack(renderer, center_x, bottom)
             return
         if self.state == PARRY and self._draw_parry(renderer, center_x, bottom):
+            return
+        if self.state == ENCHANT and self._draw_enchant(renderer, center_x, bottom):
             return
 
         if self.state == DODGE or (self.state == IDLE and self.dodge_tail_left > 0.0):
@@ -568,6 +590,44 @@ class Player:
                               parry_sheet_path(view), parry_hand_sheet_path(view), table[frame])
         return True
 
+    def _draw_enchant(self, renderer, center_x: float, bottom: float) -> bool:
+        """검 속성 입히기 자세. 새 그림을 만들 때까지 패링 막기 자세(PLAYER_ENCHANT_POSE_FRAME)를 임시로 쓴다."""
+        view, _ = sprite_view(self.facing)
+        table = config.PLAYER_PARRY_SWORD.get(view)
+        if table is None:
+            return False
+        frame = config.PLAYER_ENCHANT_POSE_FRAME
+        self._draw_sword_pose(renderer, center_x, bottom, frame, (0, 0),
+                              parry_sheet_path(view), parry_hand_sheet_path(view), table[frame])
+        return True
+
+    @property
+    def sword_effect(self) -> tuple[str, float] | None:
+        """지금 칼에 그릴 속성 이펙트 (속성, 차오른 정도 0~1). 없으면 None.
+
+        입히는 중에는 새 속성이 손잡이에서 칼끝으로 차오르고, 그 밖에는 검에 입힌 속성이 칼 전체에.
+        """
+        if self.state == ENCHANT and self.enchant.pending is not None:
+            return self.enchant.pending, self.enchant.rise
+        if self.enchant.active is not None:
+            return self.enchant.active, 1.0
+        return None
+
+    def _draw_sword_effect(self, renderer, x: float, y: float, angle: float, flip: bool) -> None:
+        """칼 이펙트 시트를 칼과 같은 손 위치·각도로 겹친다 (차오르는 중이면 손잡이 쪽부터 그 만큼만)."""
+        effect = self.sword_effect
+        if effect is None:
+            return
+        element, rise = effect
+        if rise <= 0.0:
+            return
+        start, end = config.SWORD_EFFECT_RISE_X
+        visible = None if rise >= 1.0 else round(start + (end - start) * rise)
+        frame = int(self.effect_clock * config.SWORD_EFFECT_FPS) % config.SWORD_EFFECT_FRAMES
+        w, h = config.SWORD_EFFECT_FRAME_SIZE
+        renderer.draw_frame_rotated(str(config.SWORD_EFFECT_DIR / f"{element}.png"), frame, w, h, x, y,
+                                    config.RENDER_SCALE, angle, flip_horizontal=flip, visible_width=visible)
+
     def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
                          body_path: str, hand_path: str, sword: tuple, art_path: str | None = None) -> None:
         """칼을 든 자세 한 프레임 (공격·패링): 몸 → 칼 → 오른손 레이어. 칼이 몸 뒤면 칼 → 몸 → 손.
@@ -626,3 +686,6 @@ class Player:
             -angle if flip else angle,
             flip_horizontal=flip,
         )
+        if length >= 1.0:  # 원근으로 짧게 그린 칼(찌르기)에는 아직 이펙트를 붙이지 않음
+            self._draw_sword_effect(renderer, canvas_left + x * scale, canvas_top - (hand_y + 0.5) * scale,
+                                    -angle if flip else angle, flip)

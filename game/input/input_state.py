@@ -24,6 +24,10 @@ class Action(Enum):
     PARRY = auto()
     ATTACK = auto()  # 검 공격 (현재 마우스 왼쪽 클릭)
     DODGE = auto()  # 회피 (현재 Q)
+    ENCHANT = auto()  # 고른 속성을 검에 입힘 (현재 E, 2026-11-20)
+    ELEMENT_1 = auto()  # 속성 고르기: 불 (현재 1)
+    ELEMENT_2 = auto()  # 속성 고르기: 전기 (현재 2)
+    ELEMENT_3 = auto()  # 속성 고르기: 어둠 (현재 3)
 
 
 # 이동 행동 -> 칸 좌표 방향 (dx, dy). dy 는 위쪽이 +1.
