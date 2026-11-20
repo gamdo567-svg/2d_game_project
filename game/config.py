@@ -341,11 +341,13 @@ BURN_DAMAGE_PER_SECOND = 3
 BURN_TICK = 1.0  # 이 간격(초)마다 피해를 나눠 줌 (피해 숫자도 이때 뜸)
 # 불꽃 그림 (2026-11-20 사용자: 불타는 느낌이 없음 → 불꽃 혀 시트를 몸 여러 자리에, concepts/pixellab/burn/build_burn_flame.py)
 # 불꽃 모양 3종 (같은 날 사용자: 크기·모양이 다 같아 부자연스러움): 가늘고 높은 혀 / 넓은 불 / 작게 날름거리는 불
-BURN_FLAME_SHEETS = {name: str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / f"flame_{name}.png")
-                     for name in ("tall", "wide", "lick")}
-BURN_FLAME_SIZE = (24, 40)  # 한 장 (원본 픽셀)
+# 크기 4단계를 따로 그린 시트 (같은 날 사용자: 진짜 불 같은 픽셀 불, 2% 부족 → 늘리거나 줄이지 않아 점 크기가 캐릭터와 같게).
+# 크기 이름 → (기준 대비 배율, 한 장 가로, 세로, 아래에서 불이 붙은 줄까지). build_burn_flame.py SIZES 와 같게.
+BURN_FLAME_SIZES = {"s": (0.45, 12, 18, 2), "m": (0.65, 16, 26, 3), "l": (0.9, 22, 36, 4), "xl": (1.2, 30, 48, 5)}
+BURN_FLAME_SHEETS = {(name, size): str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / f"flame_{name}_{size}.png")
+                     for name in ("tall", "wide", "lick") for size in BURN_FLAME_SIZES}
+BURN_FLAME_MIN_SCALE = 0.3  # 이보다 작으면 (피어나는 첫 순간·사그라드는 끝) 그리지 않음
 BURN_FLAME_FRAMES = 16
-BURN_FLAME_BASE_MARGIN = 4  # 시트 아래에서 불이 붙은 줄까지
 BURN_FULL_SECONDS = 10.0  # 이만큼 남았으면 불이 가장 세게. 남은 시간에 비례 (같은 날 사용자: 많이 때릴수록 더)
 BURN_MIN_INTENSITY = 0.15  # 막 붙었을 때 가장 약한 세기
 # 불타는 곳 (같은 날 사용자: 이펙트 떡칠은 싫지만 이글거림은 약해지면 안 됨): 몸 전체가 아니라 몇 군데에 모여 세게 탐

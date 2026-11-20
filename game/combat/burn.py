@@ -360,12 +360,14 @@ class BurnFlames:
 def draw_burn(renderer, flames: BurnFlames, cx: float, bottom: float, behind: bool) -> None:
     """불꽃을 화면에 그린다 (cx, bottom = 대상 발 밑 가운데 화면 좌표). 몸 뒤 불꽃은 몸 전에, 나머지와 불티·연기는 몸 다음에."""
     s = config.RENDER_SCALE
-    w, h = config.BURN_FLAME_SIZE
-    foot = config.BURN_FLAME_BASE_MARGIN
-    for x, y, size, frame, flip, variant in flames.flames(behind):
-        dw, dh = max(1, round(w * s * size)), max(1, round(h * s * size))
-        renderer.draw_sprite_frame(config.BURN_FLAME_SHEETS[variant], frame, w, h, cx + x * s,
-                                   bottom + (y - foot * size) * s, dw, dh, flip_horizontal=flip)
+    for x, y, scale, frame, flip, variant in flames.flames(behind):
+        if scale < config.BURN_FLAME_MIN_SCALE:
+            continue
+        # 늘리거나 줄이지 않고 가장 가까운 크기 단계의 그림을 그대로 (점 크기가 캐릭터와 같게)
+        size = min(config.BURN_FLAME_SIZES, key=lambda k: abs(config.BURN_FLAME_SIZES[k][0] - scale))
+        _, w, h, foot = config.BURN_FLAME_SIZES[size]
+        renderer.draw_sprite_frame(config.BURN_FLAME_SHEETS[(variant, size)], frame, w, h, cx + round(x) * s,
+                                   bottom + (round(y) - foot) * s, w * s, h * s, flip_horizontal=flip)
     if behind:
         return
     for x, y, alpha in flames.steam_pixels():  # 식을 때 김 (뒤가 비치는 흰 증기)
