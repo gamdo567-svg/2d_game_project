@@ -574,10 +574,12 @@ class Player:
         art_path = weapon_view_art_path(config.PLAYER_WEAPON, view, self.combo.hit_number)
         use_art = (frame in config.PLAYER_WEAPON_VIEW_ART.get((view, self.combo.hit_number), ())
                    and os.path.exists(art_path))
+        art_effect = config.PLAYER_WEAPON_VIEW_ART_EFFECT.get((view, self.combo.hit_number), {}).get(frame)
         self._draw_sword_pose(renderer, center_x, bottom, frame, (shift_x, shift_y),
                               attack_sheet_path(self.combo.hit_number, view),
                               attack_hand_sheet_path(self.combo.hit_number, view),
-                              ATTACK_SWORD_TABLES[view][self.combo.index][frame], art_path if use_art else None)
+                              ATTACK_SWORD_TABLES[view][self.combo.index][frame], art_path if use_art else None,
+                              art_effect if use_art else None)
 
     def _draw_parry(self, renderer, center_x: float, bottom: float) -> bool:
         """패링 그림(공격과 같은 96×64 칸, 칼 분리)을 그린다. 이 방향 그림이 없으면 False (서 있는 그림을 쓴다)."""
@@ -613,7 +615,8 @@ class Player:
             return self.enchant.active, 1.0
         return None
 
-    def _draw_sword_effect(self, renderer, x: float, y: float, angle: float, flip: bool) -> None:
+    def _draw_sword_effect(self, renderer, x: float, y: float, angle: float, flip: bool,
+                           along: float = 1.0) -> None:
         """칼 이펙트 시트를 칼과 같은 손 위치·각도로 겹친다 (입히는 중이면 점화 시트의 그 순간 장)."""
         effect = self.sword_effect
         if effect is None:
@@ -628,10 +631,16 @@ class Player:
             path = config.SWORD_EFFECT_DIR / f"{element}.png"
             frame = int(self.effect_clock * config.SWORD_EFFECT_FPS) % config.SWORD_EFFECT_FRAMES
         w, h = config.SWORD_EFFECT_FRAME_SIZE
-        renderer.draw_frame_rotated(str(path), frame, w, h, x, y, config.RENDER_SCALE, angle, flip_horizontal=flip)
+        scale = config.RENDER_SCALE
+        if along == 1.0:
+            renderer.draw_frame_rotated(str(path), frame, w, h, x, y, scale, angle, flip_horizontal=flip)
+        else:  # 원근으로 짧게 그린 칼: 칼 방향으로만 줄임 (손 자리가 프레임 한가운데라 줄여도 손은 그대로)
+            renderer.draw_frame_rotated(str(path), frame, w, h, x, y, scale * along, angle, flip_horizontal=flip,
+                                        scale_y=scale)
 
     def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
-                         body_path: str, hand_path: str, sword: tuple, art_path: str | None = None) -> None:
+                         body_path: str, hand_path: str, sword: tuple, art_path: str | None = None,
+                         art_effect: str | None = None) -> None:
         """칼을 든 자세 한 프레임 (공격·패링): 몸 → 칼 → 오른손 레이어. 칼이 몸 뒤면 칼 → 몸 → 손.
 
         발끝이 칸 아래 가운데에 오고, 왼쪽을 볼 때는 측면 그림을 좌우 반전한다.
@@ -658,6 +667,12 @@ class Player:
             draw_layer(body_path)
         if art_path:
             draw_layer(art_path)
+            effect = self.sword_effect
+            if art_effect is not None and effect is not None:  # 찌르기용 칼 그림 전용 불 (그 칼날 윤곽에서 피어오름)
+                frame_loop = int(self.effect_clock * config.SWORD_EFFECT_FPS) % config.SWORD_EFFECT_FRAMES
+                renderer.draw_sprite_frame(str(config.SWORD_EFFECT_DIR / f"{effect[0]}_{art_effect}.png"), frame_loop,
+                                           width, height, canvas_x, canvas_bottom, width * scale, height * scale,
+                                           flip_horizontal=flip)
         else:
             self._draw_sword(renderer, canvas_x, canvas_bottom, hand_x, hand_y, angle, flip, length)
         if behind:
@@ -688,6 +703,6 @@ class Player:
             -angle if flip else angle,
             flip_horizontal=flip,
         )
-        if length >= 1.0:  # 원근으로 짧게 그린 칼(찌르기)에는 아직 이펙트를 붙이지 않음
-            self._draw_sword_effect(renderer, canvas_left + x * scale, canvas_top - (hand_y + 0.5) * scale,
-                                    -angle if flip else angle, flip)
+        # 원근으로 짧게 그린 칼은 이펙트도 같은 비율로 짧게
+        self._draw_sword_effect(renderer, canvas_left + x * scale, canvas_top - (hand_y + 0.5) * scale,
+                                -angle if flip else angle, flip, along=length)

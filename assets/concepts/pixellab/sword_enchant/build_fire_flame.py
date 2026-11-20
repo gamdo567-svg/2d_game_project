@@ -156,3 +156,87 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ----- 찌르기용 칼 그림의 불 (2026-11-20 사용자: 정면 찌르기 때 이펙트가 안 입혀짐) -----
+# 정면 3타 찌르는 순간은 보는 사람 쪽으로 내민 큰 칼 그림(weapons/old_sword_front_3.png, 96×64 공격 칸)을 쓴다.
+# 옆모습 칼용 불을 늘려 붙이면 뭉툭하고 테두리가 U 자로 보여, 그 그림의 칼날 윤곽에서 직접 불덩이를 피워 올린다
+# (칼이 보는 사람 쪽이라 불은 화면 위로 타오름). 출력: fire_front_3_f<장>.png (96×64 × FRAMES, 공격 칸과 같은 자리).
+ART = os.path.join(ROOT, 'assets', 'images', 'player', 'weapons', 'old_sword_front_3.png')
+ART_BLADE_TOP = {5: 36, 6: 33}  # 장 → 이 줄부터 아래가 칼날 (위는 손·손잡이·가드)
+
+
+def art_blade(k):
+    art = Image.open(ART).convert('RGBA')
+    cell = art.crop((k * 96, 0, (k + 1) * 96, 64))
+    px = cell.load()
+    return {(x, y) for y in range(ART_BLADE_TOP[k], 64) for x in range(96) if px[x, y][3] > 100}
+
+
+def art_particles(blade):
+    rnd = random.Random(SEED + 1)
+    edge = sorted({(x + dx, y + dy) for x, y in blade for dx, dy in ((1, 0), (-1, 0), (0, 1))
+                   if (x + dx, y + dy) not in blade})
+    cx = sum(x for x, _ in blade) / len(blade)
+    out = []
+    for _ in range(max(60, len(edge) * 3)):
+        ex, ey = rnd.choice(edge)
+        side = 1 if ex >= cx else -1
+        out.append({
+            'x0': ex + 0.5, 'y0': ey + 0.5, 'vx': side * rnd.uniform(1.0, 3.5), 'vy': -rnd.uniform(5, 11),
+            'r0': rnd.uniform(2.4, 3.8), 'life': rnd.uniform(0.18, 0.3), 'born': rnd.random(),
+            'wig': rnd.uniform(0.4, 1.2), 'ph': rnd.uniform(0, 6.28),
+        })
+    return out
+
+
+def draw_art_frame(i, blade, parts):
+    t = i / FRAMES
+    w, h = 96, 64
+    heat = [[0.0] * w for _ in range(h)]
+    for p in parts:
+        age = ((t - p['born']) % 1.0) / p['life']
+        if age >= 1.0:
+            continue
+        cx = p['x0'] + p['vx'] * age + p['wig'] * math.sin(p['ph'] + age * 9) * age
+        cy = p['y0'] + p['vy'] * age ** 1.1
+        r = p['r0'] * (1 - 0.7 * age)
+        strength = 1.25 * (1 - age) ** 0.7
+        for y in range(max(0, int(cy - r - 1)), min(h, int(cy + r + 2))):
+            for x in range(max(0, int(cx - r - 1)), min(w, int(cx + r + 2))):
+                d = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
+                if d < r:
+                    heat[y][x] += (1 - d / r) * strength
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    px = im.load()
+    for x, y in blade:  # 칼날 둘레 옅은 빛
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (2, 0), (-2, 0)):
+            q = (x + dx, y + dy)
+            if q not in blade and 0 <= q[0] < w and 0 <= q[1] < h:
+                c = GLOW[0] if abs(dx) + abs(dy) == 1 else GLOW[1]
+                if px[q][3] < c[3]:
+                    px[q] = c
+    for y in range(h):
+        for x in range(w):
+            if (x, y) in blade:
+                continue
+            for limit, colour in HEAT_COLOURS:
+                if heat[y][x] >= limit:
+                    px[x, y] = colour
+                    break
+    return im
+
+
+def build_art():
+    for k in ART_BLADE_TOP:
+        blade = art_blade(k)
+        parts = art_particles(blade)
+        strip = Image.new('RGBA', (96 * FRAMES, 64), (0, 0, 0, 0))
+        for i in range(FRAMES):
+            strip.alpha_composite(draw_art_frame(i, blade, parts), (i * 96, 0))
+        strip.save(os.path.join(OUT, f'fire_front_3_f{k}.png'))
+    print('fire front_3', list(ART_BLADE_TOP))
+
+
+if __name__ == '__main__':
+    build_art()

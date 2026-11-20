@@ -187,12 +187,14 @@ class Renderer:
         angle_degrees: float,
         flip_horizontal: bool = False,
         visible_width: int | None = None,
+        scale_y: float | None = None,
     ) -> bool:
         """가로로 이어 붙인 시트의 frame_index 번째 프레임을, 프레임 가운데를 (center_x, center_y) 에 두고
         angle_degrees(반시계 +) 만큼 돌려 scale 배로 그린다 (draw_image_rotated 와 같은 규칙: 뒤집은 뒤 돌림).
 
         visible_width 를 주면 프레임 왼쪽부터 그 너비만 그린다 (나머지는 비움, 위치는 그대로).
-        검 이펙트가 손잡이 쪽부터 칼끝 쪽으로 차오를 때 쓴다. 그림을 못 읽으면 False.
+        검 이펙트가 손잡이 쪽부터 칼끝 쪽으로 차오를 때 쓴다. scale_y 를 주면 세로(칼 폭 방향)는 그 배율로
+        (원근으로 크게 그린 찌르기 칼처럼 칼 폭이 다를 때). 그림을 못 읽으면 False.
         """
         image = self._image(path)
         if image is None:
@@ -208,7 +210,7 @@ class Renderer:
         y = center_y + direction * shift * math.sin(rad)
         flip = "h" if flip_horizontal else ""
         image.clip_composite_draw(frame_index * frame_width, 0, width, frame_height, rad, flip,
-                                  x, y, width * scale, frame_height * scale)
+                                  x, y, width * scale, frame_height * (scale if scale_y is None else scale_y))
         return True
 
     def draw_image_rotated(

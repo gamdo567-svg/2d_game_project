@@ -124,6 +124,24 @@ class PlayerEnchantTest(unittest.TestCase):
         self.assertEqual(len(effect), 1)
         self.assertTrue(effect[0][1][0].endswith("fire.png"))  # 다 붙은 뒤에는 반복 시트
 
+    def test_effect_on_front_thrust_art(self):
+        # 정면 3타 찌르는 순간은 찌르기용 칼 그림을 쓰는데, 거기에도 이펙트가 붙어야 함 (2026-11-20 사용자 지적)
+        self.tap(Action.ENCHANT)
+        self.run_for(config.PLAYER_ENCHANT_DURATION + 0.1)
+        self.input.begin_frame()
+        self.input.press(Action.ATTACK)  # 누르고 있으면 1 → 2 → 3타
+        found = False
+        for _ in range(int(2.2 * 60)):
+            self.player.update(1 / 60, self.input)
+            self.input.begin_frame()
+            renderer = _RecordingRenderer()
+            self.player.draw(renderer)
+            paths = [c[1][0] for c in renderer.calls if c[0] == "draw_sprite_frame"]
+            if any(p.endswith("old_sword_front_3.png") for p in paths):
+                self.assertTrue(any("fire_front_3_f" in p for p in paths))  # 그 칼 전용 불 시트
+                found = True
+        self.assertTrue(found)
+
 
 if __name__ == "__main__":
     unittest.main()
