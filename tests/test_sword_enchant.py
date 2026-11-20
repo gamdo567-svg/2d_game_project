@@ -4,7 +4,7 @@ import unittest
 from game import config
 from game.input.input_state import Action, InputState
 from game.player.enchant import SwordEnchant
-from game.player.state_machine import ENCHANT, HURT, IDLE
+from game.player.state_machine import ATTACK, ENCHANT, HURT, IDLE
 from tests.test_player import _RecordingRenderer, make_player
 
 
@@ -173,6 +173,45 @@ class PlayerEnchantTest(unittest.TestCase):
         effect = [c for c in renderer.calls if c[0] == "draw_frame_rotated"]
         self.assertEqual(len(effect), 1)
         self.assertEqual(effect[0][1][7], config.PLAYER_BACK_SWORD_HAND["front"][2])  # 등 칼과 같은 각도
+
+    def test_sheathe_frames_draw_back_sword(self):
+        # 등에 다시 꽂기 (2026-11-20): 마지막 장들은 손의 칼 대신 등 칼을 그림
+        self.tap(Action.ENCHANT)
+        sheathed = config.PLAYER_ENCHANT_FRAME_ENDS[config.PLAYER_ENCHANT_SHEATHED_FROM - 1]
+        self.run_for(config.PLAYER_ENCHANT_DURATION * sheathed + 0.03)
+        self.assertEqual(self.player.state, ENCHANT)
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        paths = [c[1][0] for c in renderer.calls if c[0] == "draw_sprite_frame"]
+        self.assertTrue(any("_back_front" in p for p in paths))  # 등 칼 그림
+
+    def test_move_cancels_tail_after_applied(self):
+        # 속성이 입혀진 뒤의 털어내기·힘 풀기·꽂기는 이동으로 끊을 수 있음
+        self.tap(Action.ENCHANT)
+        self.run_for(config.PLAYER_ENCHANT_DURATION * config.PLAYER_ENCHANT_RISE[1] + 0.05)
+        self.assertEqual(self.player.enchant.active, "fire")
+        self.assertEqual(self.player.state, ENCHANT)
+        self.input.begin_frame()
+        self.input.press(Action.MOVE_RIGHT)
+        self.player.update(1 / 60, self.input)
+        self.assertNotEqual(self.player.state, ENCHANT)
+        self.assertEqual(self.player.enchant.active, "fire")
+        self.assertTrue(self.player.mover.is_moving)
+
+    def test_attack_cancels_tail_after_applied(self):
+        self.tap(Action.ENCHANT)
+        self.run_for(config.PLAYER_ENCHANT_DURATION * config.PLAYER_ENCHANT_RISE[1] + 0.05)
+        self.tap(Action.ATTACK)
+        self.assertEqual(self.player.state, ATTACK)
+
+    def test_cannot_cancel_while_charging(self):
+        self.tap(Action.ENCHANT)
+        self.run_for(config.PLAYER_ENCHANT_DURATION * config.PLAYER_ENCHANT_RISE[0] + 0.05)
+        self.input.begin_frame()
+        self.input.press(Action.MOVE_RIGHT)
+        self.player.update(1 / 60, self.input)
+        self.assertEqual(self.player.state, ENCHANT)
+        self.assertIsNone(self.player.enchant.active)
 
     def test_effect_on_front_thrust_art(self):
         # 정면 3타 찌르는 순간은 찌르기용 칼 그림을 쓰는데, 거기에도 이펙트가 붙어야 함 (2026-11-20 사용자 지적)

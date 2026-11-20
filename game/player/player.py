@@ -246,6 +246,8 @@ class Player:
         if input_state.is_held(Action.ATTACK) and self.state != ATTACK:
             self._buffer[Action.ATTACK] = config.PLAYER_INPUT_BUFFER_TIME
         attack_waiting = False  # 걷던 칸을 마저 가는 중 (도착하면 공격)
+        if self.state == ENCHANT and self._enchant_tail_cancelled(input_state):
+            self.fsm.trigger("end_enchant")  # 아래에서 바로 그 행동을 시작한다
         if self.state in FREE_STATES:
             if self._buffered(Action.ATTACK) and self.combo.can_start and self.mover.is_moving:
                 # 걷는 중 공격: 걷던 칸을 평소 속도로 마저 가서 칸에 선 뒤 공격 (2026-11-18 사용자 요청: 재빨리 가지 않음).
@@ -315,6 +317,10 @@ class Player:
             self.fsm.trigger("end_hurt")
         elif self.state == ENCHANT and self.enchant.finished:
             self.fsm.trigger("end_enchant")
+        elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
+            self.fsm.trigger("end_dodge")
+            self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
+            self.dodge_tail_left = config.PLAYER_DODGE_TAIL_TIME
         if self.enchant.just_applied:  # 다 차오른 순간: 폭발 + 화면 흔들림
             self._pending_fx.append(("burst", self.enchant.active or ""))
             self.shake_requests.append(dict(config.PLAYER_ENCHANT_SHAKE))
@@ -324,10 +330,6 @@ class Player:
                 >= config.PLAYER_ENCHANT_FLICK_FRAME):  # 털어 내리는 순간: 칼날의 속성이 흩뿌려짐
             self._flicked = True
             self._pending_fx.append(("flick", self.enchant.active))
-        elif self.state == DODGE and self.dodge.finished and not self.mover.is_moving:
-            self.fsm.trigger("end_dodge")
-            self.dodge_cooldown_left = 0.0 if self._perfect_this_dodge else config.PLAYER_DODGE_COOLDOWN
-            self.dodge_tail_left = config.PLAYER_DODGE_TAIL_TIME
         if self.state != IDLE:
             self.dodge_tail_left = 0.0  # 걷기·공격 등 다른 행동을 시작하면 멈춤 그림은 바로 끊긴다
         effect = self.sword_effect
@@ -356,6 +358,15 @@ class Player:
         else:
             return False
         return True
+
+    def _enchant_tail_cancelled(self, input_state: InputState) -> bool:
+        """속성이 입혀진 뒤의 보여 주기 동작(털어내기·힘 풀기·등에 꽂기)을 이동·행동 입력으로 끊는지.
+        차오르는 중(pending)에는 끊지 않는다. E 는 끊지 않는다 (다시 누르면 같은 속성이라 풀려 버림)."""
+        if self.enchant.pending is not None or self.enchant.active is None:
+            return False
+        if input_state.move_direction() != (0, 0):
+            return True
+        return any(self._buffered(a) for a in (Action.ATTACK, Action.PARRY, Action.DODGE, Action.JUMP))
 
     def _buffered(self, action: Action) -> bool:
         return action in self._buffer
@@ -453,6 +464,7 @@ class Player:
             self.parry_succeeded = False
         if state != ENCHANT:
             self.enchant.interrupt()  # 다 차오르기 전에 끊기면 입히지 않음
+            self._pending_fx = []  # 그리기 전에 끊겼으면 다음 입히기로 넘기지 않음
         else:
             self._flicked = False
         # 새 상태의 애니메이션은 첫 프레임부터 재생한다.
@@ -632,13 +644,20 @@ class Player:
     def _draw_enchant(self, renderer, center_x: float, bottom: float) -> bool:
         """검 속성 입히기 자세: 그 방향 그림(PLAYER_ENCHANT_SWORD)이 있으면 칼을 곧게 세우는 동작,
         없으면 패링 막기 자세(PLAYER_ENCHANT_POSE_FRAME)를 임시로 쓴다."""
-        view, _ = sprite_view(self.facing)
+        view, flip = sprite_view(self.facing)
         table = config.PLAYER_ENCHANT_SWORD.get(view)
         if table is not None:
             frame = frame_for_progress(self.enchant.progress, config.PLAYER_ENCHANT_FRAME_ENDS)
             folder = config.PLAYER_IMAGE_DIR / "enchant"
-            self._draw_sword_pose(renderer, center_x, bottom, frame, (0, 0), str(folder / f"{view}.png"),
-                                  str(folder / f"{view}_hand.png"), table[frame])
+
+            def draw_body() -> None:
+                self._draw_sword_pose(renderer, center_x, bottom, frame, (0, 0), str(folder / f"{view}.png"),
+                                      str(folder / f"{view}_hand.png"), table[frame])
+
+            if frame >= config.PLAYER_ENCHANT_SHEATHED_FROM:  # 칼을 등에 꽂은 뒤: 등 칼과 함께
+                self._with_back_sword(renderer, view, flip, center_x, bottom, ENCHANT, 0, draw_body)
+            else:
+                draw_body()
             self._start_pending_fx(center_x, bottom, table)
             return True
         table = config.PLAYER_PARRY_SWORD.get(view)

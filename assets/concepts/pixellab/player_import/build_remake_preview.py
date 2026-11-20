@@ -63,6 +63,15 @@ OVERRIDES = {
     # PixelLab 그림대로 칼은 잔상 앞쪽 끝을 따라 아래로 (측면·후면 -70·-60°, 정면 왼쪽 아래 -135°).
     ('enchant_side', 5): (42, 43, -70, False), ('enchant_back', 5): (43, 41, -60, False),
     ('enchant_front', 5): (23, 43, -135, False), ('enchant_front', 6): (20, 44, -140, False),
+    # 등에 다시 꽂기 마지막 2장 (2026-11-20): 칼은 이미 등에 (게임이 등 칼을 그림) → 손의 칼은 그리지 않음
+    **{(f'enchant_{v}', k): (48, 43, 0, False, 0) for v in ('side', 'front', 'back') for k in (15, 16)},
+    # 꽂으러 칼을 어깨 위로 넘기는 3장: 칼이 작고 머리 뒤로 가려 어림이 틀림 → PixelLab 파란 칼을 보고 직접 적음
+    ('enchant_side', 12): (41, 33, 68, False), ('enchant_side', 13): (29, 29, 117, True),
+    ('enchant_side', 14): (27, 31, 137, True),
+    ('enchant_front', 12): (19, 41, -160, False), ('enchant_front', 13): (20, 34, 108, False),
+    ('enchant_front', 14): (21, 31, 38, True),
+    ('enchant_back', 12): (41, 39, 20, False), ('enchant_back', 13): (41, 34, 69, False),
+    ('enchant_back', 14): (39, 30, 90, True),
     # 패링 정면 (2026-11-18, C안): 2번째는 쳐올리는 잔상 속 칼 (오른쪽 위로)
     ('parry_front', 2): (37, 41, 60, False),
     # 패링 후면 (2026-11-18, ChatGPT 핵심 자세): 두 손이 몸 앞이라 칼은 늘 몸 뒤(가려짐), 보이는 칼날 방향으로 맞춤.
@@ -128,9 +137,9 @@ OVERRIDES = {
 # 쓰는 원본 프레임 (1~8). 2타 8번은 자세가 어정쩡해 7번을 한 번 더 쓴다 (2026-11-17 사용자 지적).
 FRAME_PICK = {
     'parry_side': [1, 2, 3, 4, 5],
-    'enchant_side': list(range(1, 12)),  # 검 속성 입히기 (2026-11-20, 마지막 3장 = 털어내기)
-    'enchant_front': list(range(1, 12)),
-    'enchant_back': list(range(1, 12)),
+    'enchant_side': list(range(1, 17)),  # 검 속성 입히기 (2026-11-20, 마지막 3장 = 털어내기)
+    'enchant_front': list(range(1, 17)),
+    'enchant_back': list(range(1, 17)),
     'parry_front': [1, 2, 3, 4, 5],  # 패링: 당김, 쳐올림, 막기, 막기, 당김(복귀)
     'parry_back': [1, 2, 3, 4, 5],
     'backgpt1': [1, 2, 3, 4, 5, 6, 7, 8],

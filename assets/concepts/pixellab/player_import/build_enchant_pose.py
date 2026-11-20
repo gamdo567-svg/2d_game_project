@@ -26,13 +26,20 @@ VIEWS = {'side': ('east', 'side_raise_v1'), 'front': ('south', 'south_raise_v1')
 # 1차(flick_v1)는 "피를 털어내듯" 이라고 써서 PixelLab 이 빨간 피를 그려 버림 → 그 말을 빼고 다시.
 # 장 순서 (7장): 들어 올림 f1~f3 → 곧게 세움 → 확 털어 내림(크게 휘두른 잔상) → 내려온 장 → 털어낸 끝 자세
 # 힘 풀기 (같은 날 사용자: 털고 난 뒤 힘을 푸는 동작을 살짝): 끝 자세에서 pixminimax 4장 (<방향>_relax_v1, 끝 지정 없음) → 11장.
+#   몸을 살짝 펴고 칼 쥔 팔이 느슨해지며 칼끝이 조금 처짐.
+# 등에 다시 꽂기 (같은 날 사용자 승인): 힘 푼 끝 장 → 서 있는 그림을 pixminimax 8장으로 (<방향>_sheathe_v1, f0 = 시작),
+#   칼을 오른쪽 어깨 위로 넘겨 등에 꽂음. 그중 5장을 골라 씀 → 16장. 마지막 2장은 게임이 등 칼을 그린다.
+#   후면은 PixelLab 이 왼쪽 어깨로 넘겨 f3·f4·f7 을 좌우로 뒤집어 씀 (m3·m4·m7, 등 칼 손잡이는 오른쪽 어깨).
+SHEATHE = {'east': ('f2', 'f3', 'f4', 'f5', 'f7'), 'south': ('f1', 'f2', 'f3', 'f6', 'f7'),
+           'north': ('f1', 'f2', 'm3', 'm4', 'm7')}
 #   몸을 살짝 펴고 칼 쥔 팔이 느슨해지며 칼끝이 조금 더 처짐.
 
 
 def order(direction, folder):
     return [f'{folder}/f1.png', f'{folder}/f2.png', f'{folder}/f3.png', f'hold_{direction}_64.png',
             f'{direction}_flick_v2/f1.png', f'{direction}_flick_v2/f2.png', f'flick_{direction}_64.png'] + [
-            f'{direction}_relax_v1/f{k}.png' for k in (1, 2, 3, 4)]
+            f'{direction}_relax_v1/f{k}.png' for k in (1, 2, 3, 4)] + [
+            f'{direction}_sheathe_v1/{k}.png' for k in SHEATHE[direction]]
 
 
 def main():
