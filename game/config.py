@@ -387,11 +387,14 @@ CHARGE_PER_HIT = 0.1  # 한 대에 차는 게이지 (10대면 가득). 방전할
 SHOCK_DAMAGE_FULL = 60  # 게이지가 가득일 때 방전 피해 (게이지에 비례)
 SHOCK_TIME_FULL = 1.5  # 게이지가 가득일 때 감전 시간 (초, 게이지에 비례)
 SHOCK_FLASH = 0.06  # 감전 중 검은 그림자 → 흰 그림 → 원래 그림이 바뀌는 간격 (초)
-SHOCK_ZAP_RATE = 35.0  # 감전 중 몸을 가로지르는 번개 수 (초당)
+SHOCK_ZAP_RATE = 22.0  # 감전 중 몸을 가로지르는 번개 수 (초당)
 STATIC_RATE_MIN = 2.0  # 정전기 번개 수 (초당) = 최소 + 최대 × 게이지
 STATIC_RATE_MAX = 30.0
-# 번개 빛 겹 (안쪽 → 바깥): 흰 심, 하늘색, 파랑, 보라 (같은 날 사용자: 철권 초풍 같은 전기 스파크)
-SHOCK_LAYER_COLORS = ((255, 255, 255), (150, 232, 255), (64, 140, 255), (118, 72, 236))
+# 번개 (같은 날 사용자: 철권 초풍 같은 전기 → 방출 번개가 조잡함, 세련되게): 흰 심 1 픽셀 + 뒤가 비치는 푸른 번짐
+# (effects/glow_pixel.png, Renderer.fill_glow). 모양은 큰 꺾임 안에 작은 꺾임, SHOCK_RESHAPE 초마다 다시 꺾여 지직거림.
+SHOCK_CORE_COLOR = (255, 255, 255)
+SHOCK_COOL_COLOR = (160, 228, 255)  # 끝무렵 식은 심·불티
+SHOCK_RESHAPE = 0.03
 SHOCK_FLASH_TIME = 0.07  # 방전 순간 몸 가운데 섬광 (초)
 SHOCK_BURST_BOLTS = 7  # 방전 순간 사방으로 터지는 굵은 번개 수
 SHOCK_BURST_SPARKS = 28  # 방전 순간 튀는 불티 수

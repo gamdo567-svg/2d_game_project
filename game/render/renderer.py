@@ -72,6 +72,16 @@ class Renderer:
         image.composite_draw(0, "", (left + right) / 2, (bottom + top) / 2, right - left, top - bottom)
         image.opacify(1.0)
 
+    def fill_glow(self, left: float, bottom: float, right: float, top: float, alpha: float) -> None:
+        """[left, right) x [bottom, top) 영역을 푸른 빛으로 alpha(0~1)만큼 덮는다 (번개 둘레 번짐, 2026-11-20).
+        1×1 푸른 그림(effects/glow_pixel.png)을 늘려 비치게 그린다 (fill_shade 와 같은 방법)."""
+        image = self._image(str(config.EFFECT_IMAGE_DIR / "glow_pixel.png"))
+        if image is None:
+            return
+        image.opacify(max(0.0, min(1.0, alpha)))
+        image.composite_draw(0, "", (left + right) / 2, (bottom + top) / 2, right - left, top - bottom)
+        image.opacify(1.0)
+
     def draw_line(self, x1: float, y1: float, x2: float, y2: float, color: Color) -> None:
         r, g, b = color
         pico2d.draw_line(x1, y1, x2, y2, r, g, b)

@@ -141,8 +141,10 @@ class Charge:
 class Arc:
     points: list[tuple[int, int]]  # 원본 픽셀 꺾은선
     life: float
-    weight: int = 0  # 0 = 정전기(가늘게), 1 = 감전 번개, 2 = 방전 폭발 번개 (굵고 빛이 넓게)
+    weight: int = 0  # 0 = 정전기(가늘게), 1 = 감전 번개, 2 = 방전 폭발 번개 (뿌리가 굵고 빛이 넓게)
+    rough: float = 0.0  # 꺾임 세기 (0 이 아니면 SHOCK_RESHAPE 초마다 같은 두 끝 사이에서 모양을 다시 만듦: 지직거림)
     age: float = 0.0
+    reshape: float = 0.0
 
 
 @dataclass
@@ -156,8 +158,9 @@ class Spark:
     age: float = 0.0
 
 
-# 빛 겹 (안쪽 → 바깥): 흰 심, 하늘색, 파랑, 보라. 큰 번개일수록 바깥 겹까지 (2026-11-20 사용자: 철권 초풍처럼)
-LAYERS_BY_WEIGHT = {0: (0, 1), 1: (0, 1, 2), 2: (0, 1, 2, 3)}  # 줄기에서 떨어진 거리(맨해튼) → 겹 번호 (심은 늘 1 픽셀)
+# 세련되게 (2026-11-20 사용자: 방출되는 번개가 조잡함): 불투명한 색 테두리 대신 흰 심 1 픽셀 + 뒤가 비치는 푸른 번짐.
+# 무게별 (번짐 반지름, 가장 안쪽 번짐 불투명도)
+GLOW_BY_WEIGHT = {0: (1, 0.45), 1: (2, 0.5), 2: (3, 0.55)}
 
 
 @dataclass
@@ -180,6 +183,11 @@ class StaticField:
         """value = 게이지, shocked = 감전 중, gather = 모임 진행도(0 이면 모이지 않음), release = 감전 중 남은 전기."""
         for a in self.arcs:
             a.age += dt
+            a.reshape -= dt
+            if a.rough and a.reshape <= 0.0:  # 지직거림: 같은 두 끝 사이에서 모양을 다시 만듦
+                (x0, y0), (x1, y1) = a.points[0], a.points[-1]
+                a.points = self._jagged(x0, y0, x1, y1, len(a.points) - 1, a.rough)
+                a.reshape = config.SHOCK_RESHAPE
         self.arcs = [a for a in self.arcs if a.age < a.life]
         for p in self.sparks:
             p.age += dt
@@ -218,9 +226,9 @@ class StaticField:
         for k in range(config.SHOCK_BURST_BOLTS):
             a = 2 * math.pi * (k + rng.uniform(-0.3, 0.3)) / config.SHOCK_BURST_BOLTS
             length = (max(w, h) * 0.3 + rng.uniform(4, 12)) * (0.6 + 0.4 * power)
-            pts = self._jagged(cx, cy, cx + math.cos(a) * length, cy + math.sin(a) * length, 7, 3.5)
+            pts = self._jagged(cx, cy, cx + math.cos(a) * length, cy + math.sin(a) * length, 8, 3.5)
             life = rng.uniform(0.12, 0.22)
-            self.arcs.append(Arc(pts, life, 2))
+            self.arcs.append(Arc(pts, life, 2, 3.5))
             bx, by = pts[rng.randrange(2, 6)]
             b = a + rng.choice((-1, 1)) * rng.uniform(0.5, 1.0)
             n = length * rng.uniform(0.25, 0.45)
@@ -237,19 +245,21 @@ class StaticField:
         return w / 2 * math.cos(a), h / 2 + h / 2 * math.sin(a), a
 
     def _jagged(self, x0: float, y0: float, x1: float, y1: float, steps: int, wobble: float) -> list[tuple[int, int]]:
-        """날카롭게 꺾이는 꺾은선 (마디마다 옆으로 번갈아 튐)."""
+        """실제 번개 같은 꺾은선: 가운데 점을 옆으로 밀어 나누기를 되풀이한다 (큰 꺾임 안에 작은 꺾임).
+        steps 는 대략의 마디 수(2 의 거듭제곱으로 올림), wobble 은 꺾임 세기(원본 픽셀)."""
         rng = self.rng
-        pts = []
-        nx, ny = -(y1 - y0), x1 - x0
-        n = math.hypot(nx, ny) or 1
-        nx, ny = nx / n, ny / n
-        sign = rng.choice((-1, 1))
-        for k in range(steps + 1):
-            t = k / steps
-            off = 0 if k in (0, steps) else sign * rng.uniform(0.3, 1.0) * wobble
-            sign = -sign
-            pts.append((math.floor(x0 + (x1 - x0) * t + nx * off), math.floor(y0 + (y1 - y0) * t + ny * off)))
-        return pts
+        pts = [(x0, y0), (x1, y1)]
+        spread = wobble * 1.4
+        while len(pts) - 1 < max(2, steps):
+            out = [pts[0]]
+            for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+                nx, ny = -(by - ay), bx - ax
+                n = math.hypot(nx, ny) or 1
+                off = rng.gauss(0, spread)
+                out += [((ax + bx) / 2 + nx / n * off, (ay + by) / 2 + ny / n * off), (bx, by)]
+            pts = out
+            spread *= 0.55
+        return [(math.floor(x), math.floor(y)) for x, y in pts]
 
     def _spawn_static(self, value: float) -> None:
         rng = self.rng
@@ -258,7 +268,7 @@ class StaticField:
         a += rng.uniform(-0.8, 0.8)
         x1, y1 = x + math.cos(a) * length, y + math.sin(a) * length
         self.arcs.append(Arc(self._jagged(x, y, x1, y1, max(2, round(length / 2.5)), 1.5),
-                             rng.uniform(0.05, 0.11), 1 if value >= 0.7 and rng.random() < 0.4 else 0))
+                             rng.uniform(0.05, 0.11), 1 if value >= 0.7 and rng.random() < 0.4 else 0, 1.5))
         if value >= 0.5 and rng.random() < value * 0.5:  # 많이 찼으면 불티도 톡톡
             self.sparks.append(Spark(x1, y1, math.cos(a) * 40, math.sin(a) * 40, rng.uniform(0.1, 0.2)))
 
@@ -283,7 +293,7 @@ class StaticField:
         x0, y0, a = self._edge_point()
         x0, y0 = x0 + math.cos(a) * rng.uniform(3, 9), y0 + math.sin(a) * rng.uniform(3, 9)
         cx, cy = rng.gauss(0, 2), h * 0.55 + rng.gauss(0, 2)
-        self.arcs.append(Arc(self._jagged(x0, y0, cx, cy, 6, 2.5), rng.uniform(0.04, 0.08), 1))
+        self.arcs.append(Arc(self._jagged(x0, y0, cx, cy, 8, 2.5), rng.uniform(0.04, 0.08), 1, 2.5))
         v = rng.uniform(80, 140)
         d = math.hypot(cx - x0, cy - y0) or 1
         self.sparks.append(Spark(x0, y0, (cx - x0) / d * v, (cy - y0) / d * v + 60 * 0.12, d / v))
@@ -296,9 +306,9 @@ class StaticField:
         _, _, a = self._edge_point()
         reach = (max(w, h) * 0.45 + rng.uniform(2, 10)) * (0.55 + 0.45 * release)
         x1, y1 = x0 + math.cos(a) * reach, y0 + math.sin(a) * reach
-        main = self._jagged(x0, y0, x1, y1, 7, 3.0)
-        life = rng.uniform(0.04, 0.09)
-        self.arcs.append(Arc(main, life, 2 if release > 0.6 and rng.random() < 0.3 else 1))
+        main = self._jagged(x0, y0, x1, y1, 8, 3.0)
+        life = rng.uniform(0.06, 0.12)
+        self.arcs.append(Arc(main, life, 2 if release > 0.6 and rng.random() < 0.3 else 1, 3.0))
         if rng.random() < 0.6:  # 갈래: 줄기 중간에서 짧게 뻗음
             bx, by = main[rng.randrange(2, len(main) - 2)]
             b = a + rng.choice((-1, 1)) * rng.uniform(0.4, 1.0)
@@ -308,49 +318,72 @@ class StaticField:
             v = rng.uniform(60, 120)
             self.sparks.append(Spark(x1, y1, math.cos(a) * v, math.sin(a) * v, rng.uniform(0.15, 0.3)))
 
-    def pixels(self) -> list[tuple[int, int, tuple[int, int, int]]]:
-        """그릴 점 (x, y, 색). 겹마다 바깥부터 그리도록 순서를 맞춘다 (흰 심이 맨 위)."""
-        layer: dict[tuple[int, int], int] = {}
+    def pixels(self) -> list[tuple[int, int, tuple[int, int, int] | None, float]]:
+        """그릴 점 (x, y, 색, 불투명도). 색이 None 이면 푸른 번짐(반투명, fill_glow), 아니면 불투명한 심.
+        번짐을 먼저, 심을 나중에 그리도록 순서를 맞춘다."""
+        core: dict[tuple[int, int], tuple[int, int, int]] = {}
+        glow: dict[tuple[int, int], float] = {}
+        white, cyan = config.SHOCK_CORE_COLOR, config.SHOCK_COOL_COLOR
 
-        def mark(x: int, y: int, k: int) -> None:
-            if k < layer.get((x, y), 99):
-                layer[(x, y)] = k
+        def halo(x: int, y: int, radius: int, strength: float) -> None:
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    d = abs(dx) + abs(dy)
+                    if 0 < d <= radius:
+                        a = strength * (1 - (d - 1) / radius)
+                        key = (x + dx, y + dy)
+                        if a > glow.get(key, 0.0):
+                            glow[key] = a
 
-        for a in self.arcs:
-            cooling = 1 if a.age > a.life * 0.6 else 0  # 끝무렵엔 흰 심이 식어 한 겹 바깥 색
-            reach = LAYERS_BY_WEIGHT[a.weight]
+        for arc in self.arcs:
+            fade = 1.0 - max(0.0, (arc.age / arc.life - 0.5) * 2)  # 뒤 절반에 걸쳐 번짐이 옅어짐
+            colour = white if arc.age < arc.life * 0.6 else cyan  # 끝무렵엔 심이 식음
+            radius, strength = GLOW_BY_WEIGHT[arc.weight]
             line = []
-            for p, q in zip(a.points, a.points[1:]):
-                line += _line(p, q)
-            for x, y in line:
-                for d, k in enumerate(reach):
-                    for dx in range(-d, d + 1):
-                        dy = d - abs(dx)
-                        for yy in {dy, -dy}:
-                            mark(x + dx, y + yy, min(3, k + cooling))
+            for p, q in zip(arc.points, arc.points[1:]):
+                line += _line(p, q)[:-1]
+            line.append(arc.points[-1])
+            thick = len(line) * 0.4 if arc.weight == 2 else 0  # 큰 번개는 뿌리 쪽이 굵음 (끝으로 갈수록 가늘게)
+            for k, (x, y) in enumerate(line):
+                core[(x, y)] = colour
+                if k < thick:
+                    core[(x + 1, y)] = colour
+                halo(x, y, radius, strength * fade)
         for p in self.sparks:
-            k = min(3, int(p.age / p.life * 3))
-            mark(math.floor(p.x), math.floor(p.y), k)
-            mark(math.floor(p.x - p.vx * 0.012), math.floor(p.y - p.vy * 0.012), min(3, k + 1))
-        if self.flash > 0.0:  # 방전 섬광: 몸 가운데 작은 흰 빛이 번쩍 (하늘색 테만 두르고 바로 사그라듦)
+            life = p.age / p.life
+            x, y = math.floor(p.x), math.floor(p.y)
+            core[(x, y)] = white if life < 0.5 else cyan
+            halo(x, y, 1, 0.5 * (1 - life))
+            tx, ty = math.floor(p.x - p.vx * 0.015), math.floor(p.y - p.vy * 0.015)
+            if (tx, ty) != (x, y):
+                glow[(tx, ty)] = max(glow.get((tx, ty), 0.0), 0.6 * (1 - life))
+        if self.flash > 0.0:  # 방전 섬광: 몸 가운데 둥근 흰빛이 번쩍, 둘레는 푸른 번짐으로 퍼지며 사그라듦
             w, h = self.body
             t = 1 - self.flash / config.SHOCK_FLASH_TIME
-            r = min(w, h) * (0.35 + 0.25 * t)
+            r = min(w, h) * (0.35 + 0.35 * t)
             cy = h * 0.55
             for y in range(math.floor(cy - r), math.ceil(cy + r) + 1):
                 for x in range(math.floor(-r), math.ceil(r) + 1):
                     d = math.hypot(x + 0.5, y + 0.5 - cy) / r
-                    if d < 1:
-                        mark(x, y, 0 if d < 0.75 - t * 0.5 else 1)
-        colours = config.SHOCK_LAYER_COLORS
-        return [(x, y, colours[k]) for (x, y), k in sorted(layer.items(), key=lambda item: -item[1])]
+                    if d < 0.45 * (1 - t):
+                        core[(x, y)] = white
+                    elif d < 1:
+                        glow[(x, y)] = max(glow.get((x, y), 0.0), 0.7 * (1 - d) * (1 - t * 0.6))
+        out: list[tuple[int, int, tuple[int, int, int] | None, float]] = [
+            (x, y, None, a) for (x, y), a in glow.items() if (x, y) not in core and a > 0.04]
+        out += [(x, y, c, 1.0) for (x, y), c in core.items()]
+        return out
 
 
 def draw_static(renderer, static: StaticField, cx: float, bottom: float) -> None:
-    """정전기·감전 번개를 화면에 그린다 (cx, bottom = 대상 발 밑 가운데 화면 좌표)."""
+    """정전기·감전 번개를 화면에 그린다 (cx, bottom = 대상 발 밑 가운데 화면 좌표): 푸른 번짐 먼저, 흰 심은 위에."""
     s = config.RENDER_SCALE
-    for x, y, colour in static.pixels():
-        renderer.fill_rect(cx + x * s, bottom + y * s, cx + (x + 1) * s, bottom + (y + 1) * s, colour)
+    for x, y, colour, alpha in static.pixels():
+        left, bottom_y = cx + x * s, bottom + y * s
+        if colour is None:
+            renderer.fill_glow(left, bottom_y, left + s, bottom_y + s, alpha)
+        else:
+            renderer.fill_rect(left, bottom_y, left + s, bottom_y + s, colour)
 
 
 def draw_charge_glow(renderer, charge: Charge, path: str, frame: int, size: tuple[int, int], cx: float, bottom: float,
