@@ -47,14 +47,22 @@ class BurnLogicTest(unittest.TestCase):
         self.assertFalse(b.burning)
         self.assertEqual(run(b, 3.0), 0)
 
-    def test_flames_only_while_burning(self):
-        f = BurnFlames(14, 34)
-        f.update(0.5, burning=False)
-        self.assertEqual(f.pixels(), [])
-        f.update(0.5, burning=True)
-        self.assertTrue(f.pixels())
-        f.update(1.0, burning=False)  # 꺼지면 남은 불꽃도 곧 사라짐
-        self.assertEqual(f.pixels(), [])
+    def test_flames_grow_with_burn_time_and_die_out(self):
+        f = BurnFlames(config.BURN_ANCHORS_GOLEM)
+        f.update(0.5, 0.0)
+        self.assertEqual(f.flames(False) + f.flames(True), [])
+        f.update(0.5, config.BURN_SECONDS_PER_HIT)  # 한 대: 아래 자리 몇 곳만
+        few = len(f.flames(False) + f.flames(True))
+        self.assertGreater(few, 0)
+        f.update(0.5, config.BURN_MAX_SECONDS)  # 많이 맞음: 모든 자리
+        self.assertEqual(len(f.flames(False) + f.flames(True)), len(config.BURN_ANCHORS_GOLEM))
+        self.assertGreater(len(config.BURN_ANCHORS_GOLEM), few)
+        self.assertTrue(f.sparks)
+        for _ in range(120):  # 꺼지면 사그라들고 불티·연기도 사라짐
+            f.update(1 / 60, 0.0)
+        self.assertEqual(f.flames(False) + f.flames(True), [])
+        self.assertEqual(f.spark_pixels(), [])
+        self.assertEqual(f.smoke_puffs(), [])
 
 
 class TargetBurnTest(unittest.TestCase):

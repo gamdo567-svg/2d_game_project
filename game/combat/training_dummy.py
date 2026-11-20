@@ -15,7 +15,7 @@ import math
 from dataclasses import dataclass
 
 from game import config
-from game.combat.burn import Burn, BurnFlames
+from game.combat.burn import Burn, BurnFlames, draw_burn
 from game.world.grid import Grid
 
 
@@ -76,7 +76,7 @@ class TrainingDummy:
         self.squash = Spring(1.0, config.DUMMY_SQUASH_FREQ, config.DUMMY_SQUASH_DAMPING)  # 세로 비율
         self._kick_sign = 1
         self.burn = Burn()  # 불 속성 칼에 맞으면 불이 붙음 (회피가 없어 다 탈 때까지 탐)
-        self.flames = BurnFlames(*config.BURN_BODY_DUMMY)
+        self.flames = BurnFlames(config.BURN_ANCHORS_DUMMY)
         self._seed = (col * 7349 + row * 1973 + 17) & 0x7FFFFFFF
 
     # ----- 상태 -----
@@ -160,7 +160,7 @@ class TrainingDummy:
             self.popups.append(DamagePopup(burn_damage, color=config.COLOR_BURN_TEXT))
             if self.hp == 0:
                 self._break()
-        self.flames.update(dt, self.burn.burning)
+        self.flames.update(dt, self.burn.time_left)
         self.lean.update(dt)
         self.squash.update(dt)
         for popup in self.popups:
@@ -191,6 +191,7 @@ class TrainingDummy:
         py = bottom + config.DUMMY_FOOT_PAD * s
         w, h = config.DUMMY_SPRITE_SIZE
         pivot_x, pivot_y = config.DUMMY_PIVOT  # 원본 그림에서 (왼쪽부터, 위에서부터)
+        draw_burn(renderer, self.flames, px, py, behind=True)
         if self.is_down:
             # 무너지는 그림 → 마지막 장(부러진 밑동). 회전 없이 기둥 밑을 축 자리에 맞춤
             renderer.draw_sprite_frame(config.DUMMY_BREAK_SHEET, self.break_frame, w, h,
@@ -213,8 +214,7 @@ class TrainingDummy:
             renderer.fill_rect(px - 10 * s, top, px + 10 * s, top + 2 * s, config.COLOR_DUMMY_SHADOW)
             renderer.fill_rect(px - 10 * s, top, px - 10 * s + 20 * s * self.hp / self.max_hp, top + 2 * s,
                                config.COLOR_DUMMY_HP)
-        for fx, fy, size, colour in self.flames.pixels():  # 타는 불꽃
-            renderer.fill_rect(px + fx * s, py + fy * s, px + (fx + size) * s, py + (fy + size) * s, colour)
+        draw_burn(renderer, self.flames, px, py, behind=False)  # 타는 불꽃·불티·연기
         for bit in self.bits:
             bx, by = px + bit.x * s, py + bit.y * s
             renderer.fill_rect(bx, by, bx + 2 * s, by + 1 * s, bit.color)

@@ -27,7 +27,7 @@ from game import config
 from game.combat.enemy_attack import HIT, PARRIED, EnemyAttack
 from game.physics.raycast import first_open_stop
 from game.combat.posture import PostureGauge
-from game.combat.burn import Burn, BurnFlames
+from game.combat.burn import Burn, BurnFlames, draw_burn
 from game.combat.training_dummy import DamagePopup
 from game.effects.effect import SpriteEffect, draw_stun_stars
 from game.world.grid import Grid
@@ -123,7 +123,7 @@ class Golem:
         self.attacks: list[EnemyAttack] = []  # 이번 프레임에 터진 공격 (장면이 주인공에게 전달)
         self.effects: list[SpriteEffect] = []  # 이번 프레임에 시작한 이펙트 (장면이 받아서 재생)
         self.popups: list[DamagePopup] = []
-        self.flames = BurnFlames(*config.BURN_BODY_GOLEM)
+        self.flames = BurnFlames(config.BURN_ANCHORS_GOLEM)
         self._respawn()
 
     def _respawn(self) -> None:
@@ -358,7 +358,7 @@ class Golem:
             self.popups.append(DamagePopup(burn_damage, color=config.COLOR_BURN_TEXT))
             if self.hp == 0:
                 self._die()
-        self.flames.update(dt, self.burn.burning)
+        self.flames.update(dt, self.burn.time_left)
         if self._move_t < 1.0:
             before = self._move_t
             self._move_t = min(1.0, self._move_t + dt * config.GOLEM_MOVE_SPEED)
@@ -612,6 +612,7 @@ class Golem:
             if frame is not None:
                 self._draw_anim(renderer, self.attack_sprite_path("death"), config.GOLEM_DEATH_ANIM, frame, cx, bottom)
             return
+        draw_burn(renderer, self.flames, cx, bottom, behind=True)
         if self._draw_sprite(renderer, cx, bottom):
             core_y = bottom + 40 * s
             bar_top = bottom + (config.GOLEM_SPRITE_SIZE - config.GOLEM_SPRITE_FOOT_MARGIN[self.view]
@@ -619,8 +620,7 @@ class Golem:
         else:
             core_y = self._draw_shapes(renderer, cx, bottom)
             bar_top = bottom + 66 * s
-        for fx, fy, size, colour in self.flames.pixels():  # 타는 불꽃
-            renderer.fill_rect(cx + fx * s, bottom + fy * s, cx + (fx + size) * s, bottom + (fy + size) * s, colour)
+        draw_burn(renderer, self.flames, cx, bottom, behind=False)  # 타는 불꽃·불티·연기
         if self._draw_laser(renderer, grid, cx, bottom):
             pass
         elif self.state == WINDUP and self.pattern == LASER:

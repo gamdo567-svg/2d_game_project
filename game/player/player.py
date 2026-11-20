@@ -28,7 +28,7 @@ from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
 from game.player.enchant import SwordEnchant
-from game.combat.burn import Burn, BurnFlames
+from game.combat.burn import Burn, BurnFlames, draw_burn
 from game.player.enchant_fx import EnchantFX
 from game.player.sword_dark import DarkField
 from game.player.sword_lightning import SWORD_SHAPE, BladeShape, LightningField
@@ -168,7 +168,7 @@ class Player:
         self.fx = EnchantFX()  # 입히기 폭발·털어내기 입자
         # 불 붙음 (적과 같은 규칙, game/combat/burn.py). 주인공은 회피하면 꺼진다. 지금은 불을 쓰는 적이 없다.
         self.burn = Burn()
-        self.flames = BurnFlames(*config.BURN_BODY_PLAYER)
+        self.flames = BurnFlames(config.BURN_ANCHORS_PLAYER)
         self._pending_fx: list[tuple[str, str]] = []  # 그릴 때 칼 자리를 알고 시작할 (종류, 속성)
         self._flicked = False  # 이번 입히기에서 털어내기 입자를 냈는지
         self.shake_requests: list[dict] = []  # 장면이 읽어 화면을 흔든다
@@ -242,7 +242,7 @@ class Player:
             self.hp -= burn_damage
             if self.hp <= 0:
                 self.hp = self.max_hp  # 사망은 기획 미정 (receive_attack 과 같음)
-        self.flames.update(dt, self.burn.burning)
+        self.flames.update(dt, self.burn.time_left)
         for index, action in enumerate(ELEMENT_KEYS):
             if input_state.was_pressed(action):
                 self.enchant.select(index)
@@ -483,18 +483,16 @@ class Player:
 
     # ----- 그리기 -----
     def draw(self, renderer) -> None:
+        self._draw_flames(renderer, behind=True)
         self._draw_body(renderer)
-        self._draw_flames(renderer)
+        self._draw_flames(renderer, behind=False)
         self._draw_fx(renderer)  # 입히기 폭발·털어내기 입자는 늘 맨 위에 (동작이 끝난 뒤에도 날아감)
 
-    def _draw_flames(self, renderer) -> None:
-        """불 붙은 몸에서 피어오르는 불꽃 (발 밑 가운데 기준)."""
-        s = config.RENDER_SCALE
+    def _draw_flames(self, renderer, behind: bool) -> None:
+        """불 붙은 몸의 불꽃 (발 밑 가운데 기준). 몸 뒤 불꽃은 몸 전에, 나머지와 불티·연기는 몸 다음에."""
         vcol, vrow = self.mover.visual_position
         left, bottom, right, _ = self.grid.tile_to_pixel_rect(vcol, vrow)
-        cx = (left + right) / 2
-        for fx, fy, size, colour in self.flames.pixels():
-            renderer.fill_rect(cx + fx * s, bottom + fy * s, cx + (fx + size) * s, bottom + (fy + size) * s, colour)
+        draw_burn(renderer, self.flames, (left + right) / 2, bottom, behind)
 
     def _draw_body(self, renderer) -> None:
         if self.perfect_text_left > 0.0:

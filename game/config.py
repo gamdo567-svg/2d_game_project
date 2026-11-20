@@ -339,13 +339,26 @@ BURN_SECONDS_PER_HIT = 2.0  # 한 대 맞을 때마다 늘어나는 타는 시�
 BURN_MAX_SECONDS = 10.0  # 최대 타는 시간
 BURN_DAMAGE_PER_SECOND = 3
 BURN_TICK = 1.0  # 이 간격(초)마다 피해를 나눠 줌 (피해 숫자도 이때 뜸)
-BURN_BODY_DUMMY = (18, 50)  # 불꽃이 피어오르는 몸 크기 (가로, 세로 원본 픽셀, 발 밑 기준)
-BURN_BODY_GOLEM = (34, 78)
-BURN_BODY_PLAYER = (16, 40)
-BURN_FLAME_RATE = 2.4  # 타는 몸에서 초당 피어오르는 불꽃 알갱이 수 (몸 넓이 100 원본 픽셀²당)
-# 쌓인 열 → 색 (이 값 이상이면 그 색). 가장자리 짙은 빨강 → 주황 → 노랑 → 흰빛 가운데
-BURN_FLAME_LEVELS = ((0.25, (150, 40, 24)), (0.5, (222, 82, 30)), (0.85, (255, 150, 40)), (1.3, (255, 214, 90)),
-                     (1.9, (255, 248, 210)))
+# 불꽃 그림 (2026-11-20 사용자: 불타는 느낌이 없음 → 불꽃 혀 시트를 몸 여러 자리에, concepts/pixellab/burn/build_burn_flame.py)
+BURN_FLAME_SHEET = str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / "flame.png")
+BURN_FLAME_SIZE = (24, 40)  # 한 장 (원본 픽셀)
+BURN_FLAME_FRAMES = 16
+BURN_FLAME_FPS = 14
+BURN_FLAME_BASE_MARGIN = 4  # 시트 아래에서 불이 붙은 줄까지
+BURN_FULL_SECONDS = 6.0  # 이만큼 남았으면 모든 자리에 불이 붙음 (한 대면 아래 자리 몇 곳만)
+BURN_FLARE_TIME = 0.2  # 자리에 불이 피어나는 시간
+BURN_FADE_TIME = 0.45  # 꺼질 때 사그라드는 시간
+BURN_SPARK_RATE = 5.0  # 불 붙은 자리 하나당 초당 불티 수
+BURN_SPARK_COLORS = ((255, 240, 170), (255, 196, 70), (255, 130, 40), (200, 60, 30))
+BURN_SMOKE_RATE = 5.0  # 초당 연기 덩어리 수
+BURN_SMOKE_ALPHA = 0.28
+# 불이 붙는 자리 ((x, y, 크기, 몸 뒤), 발 밑 가운데 기준 원본 픽셀, 위쪽 +). 앞쪽부터 차례로 붙는다.
+BURN_ANCHORS_GOLEM = ((-8, 4, 0.9, False), (9, 16, 1.0, False), (-14, 52, 1.2, True), (-10, 34, 0.95, False),
+                      (14, 58, 1.2, True), (8, 44, 0.9, False), (0, 70, 1.35, True))
+BURN_ANCHORS_DUMMY = ((1, 6, 0.8, False), (-5, 22, 0.9, False), (-8, 36, 1.0, True), (8, 40, 1.0, True),
+                      (0, 50, 1.15, True))
+BURN_ANCHORS_PLAYER = ((-3, 4, 0.75, False), (4, 14, 0.85, False), (-6, 26, 0.95, True), (6, 28, 0.95, True),
+                       (0, 36, 1.05, True))
 COLOR_BURN_TEXT = (255, 150, 60)  # 불 피해 숫자
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
