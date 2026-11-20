@@ -58,7 +58,7 @@ class ChargeLogicTest(unittest.TestCase):
             if d:
                 ticks.append(d)
         self.assertGreaterEqual(len(ticks), 10)
-        self.assertLessEqual(max(ticks), 6)
+        self.assertLessEqual(max(ticks), config.SHOCK_DAMAGE_FULL // 10)  # 한 번에 크게 깎이지 않음
 
     def test_discharge_scales_with_gauge(self):
         c = Charge()
@@ -182,9 +182,13 @@ class LightningSwordTest(unittest.TestCase):
         self.tap(Action.ENCHANT)
         self.run_for(config.PLAYER_ENCHANT_DURATION + 0.1)
         self.assertEqual(self.scene.player.enchant.active, "lightning")
+        before = self.dummy.hp
         self.tap(Action.ATTACK)
         self.run_for(0.8)
         self.assertAlmostEqual(self.dummy.charge.value, config.CHARGE_PER_HIT)
+        # 전기를 입힌 검은 평타가 절반
+        self.assertEqual(before - self.dummy.hp,
+                         round(config.PLAYER_ATTACK_DAMAGE[0] * config.CHARGE_STRIKE_DAMAGE_SCALE))
         hp = self.dummy.hp
         self.tap(Action.ENCHANT)  # 같은 속성으로 E: 번개를 끔 → 방전 (안의 전기가 모였다가 터짐)
         self.assertIsNone(self.scene.player.enchant.active)

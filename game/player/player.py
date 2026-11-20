@@ -471,8 +471,15 @@ class Player:
         if self.combo.frame_index >= config.PLAYER_ATTACK_HIT_FRAMES[i] and key != self._last_strike:
             self._last_strike = key
             self.strikes.append(Strike(self.col, self.row, self.facing.value,
-                                       config.PLAYER_ATTACK_REACH[i], config.PLAYER_ATTACK_DAMAGE[i],
+                                       config.PLAYER_ATTACK_REACH[i], self._strike_damage(i),
                                        config.PLAYER_ATTACK_WIDTH[i], self.enchant.active))
+
+    def _strike_damage(self, hit: int) -> int:
+        """이번 타의 피해: 전기를 입힌 검은 평타가 절반 (대신 감전이 세다, 2026-11-20 사용자)."""
+        damage = config.PLAYER_ATTACK_DAMAGE[hit]
+        if self.enchant.active == config.CHARGE_ELEMENT:
+            damage = max(1, round(damage * config.CHARGE_STRIKE_DAMAGE_SCALE))
+        return damage
 
     def _on_state_changed(self, state: str) -> None:
         if state == PARRY:
