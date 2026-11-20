@@ -29,7 +29,10 @@ HITS = {
         # 쳐올리는 장들의 잔상 [(장, 원 인자)], 'reuse': {장: 몸을 빌려 올 장}.
         # 2026-11-20 사용자 지적(후면 동작 순서가 이상함): 정면은 5 쳐올림(칼이 보임) → 6 머리 위로 계속(칼을 든 채 머리 위 잔상)
         # → 7·8 어깨에 멈춤인데, 후면은 6 에서 이미 멈춘 자세였다. 6 은 5 의 몸(칼을 쳐든)에 머리 위 잔상을 얹는다.
-        'swoosh': [(5, (40, 30, 30, 70, 230, 7)), (6, (36, 24, 21, 185, 305, 6))], 'reuse': {6: 5}},
+        'swoosh': [(5, (40, 30, 30, 70, 230, 7)), (6, (36, 24, 21, 185, 305, 6))], 'reuse': {6: 5},
+        # 다리 (같은 날 사용자: 다리 위치가 이상함): ChatGPT 그림은 장마다 발 간격·다리 길이가 달라 꿈틀거렸다. 정면처럼
+        # 1~4 는 같은 선 자세(1 의 다리), 5~8 은 오른발을 뒤로 든 자세(7 의 다리)로 맞춘다. {장: 다리를 빌려 올 장}
+        'legs': {2: 1, 3: 1, 4: 1, 5: 7, 6: 7, 8: 7}},
     3: {'dir': 'hit3_v3', 'src': 'result_hit3_back_frontmatch.png', 'swoosh': None},  # 3차: 사용자가 받은 그림 중 정면과 장마다 같은 것
 }
 OUT = 'attack_back_v3_68.png'
@@ -67,6 +70,25 @@ def body_h(im):
     px = im.load()
     rows = [y for y in range(im.height) if any(px[x, y][3] > 128 and not b.is_blue(px[x, y]) for x in range(im.width))]
     return rows[-1] - rows[0] + 1
+
+
+LEG_Y = 51  # 이 줄부터 아래(망토 자락 끝 ~ 발)를 다리로 본다
+
+
+def swap_legs(cell, src):
+    """cell 의 LEG_Y 아래를 src 의 다리로 바꾼다. 후드 가운데 차이만큼 옮겨 몸 아래에 붙이고, cell 의 파란 칼은 남긴다."""
+    dx = round(body_feet(cell)[0] - body_feet(src)[0])
+    out = cell.copy()
+    px, spx = out.load(), src.load()
+    w, h = out.size
+    for y in range(LEG_Y, h):
+        for x in range(w):
+            if px[x, y][3] and b.is_blue(px[x, y]):
+                continue
+            sx = x - dx
+            c = spx[sx, y] if 0 <= sx < w else (0, 0, 0, 0)
+            px[x, y] = (0, 0, 0, 0) if c[3] and b.is_blue(c) else c
+    return out
 
 
 def v2_sheet():
@@ -129,6 +151,8 @@ def build(hit, ref, palette):
     body = [body[0]] + [v2.despeckle(c) for c in v2.match_tones(body[1:], tone_ref)]
     for k, src in cfg.get('reuse', {}).items():
         body[k] = body[src].copy()
+    for k, src in cfg.get('legs', {}).items():
+        body[k] = swap_legs(body[k], body[src])
     for k, arc_args in cfg['swoosh'] or []:
         arc = bp.swoosh(body[k].size, *arc_args)  # 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머)
         arc.alpha_composite(no_blue(body[k]))  # 파란 칼날은 지우고 게임에서 칼을 따로 그림 (잔상만 파랑)
