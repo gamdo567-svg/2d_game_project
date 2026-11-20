@@ -20,6 +20,9 @@ from pico2d import (
     SDLK_1,
     SDLK_2,
     SDLK_3,
+    SDLK_KP_1,
+    SDLK_KP_2,
+    SDLK_KP_3,
     SDLK_a,
     SDLK_d,
     SDLK_e,
@@ -50,6 +53,9 @@ KEY_BINDINGS: dict[int, Action] = {
     SDLK_1: Action.ELEMENT_1,
     SDLK_2: Action.ELEMENT_2,
     SDLK_3: Action.ELEMENT_3,
+    SDLK_KP_1: Action.ELEMENT_1,  # 숫자 패드로 눌러도 고르게 (2026-11-20)
+    SDLK_KP_2: Action.ELEMENT_2,
+    SDLK_KP_3: Action.ELEMENT_3,
 }
 
 # 마우스 버튼 -> 행동. 마우스 배치 변경도 여기서만 한다.
