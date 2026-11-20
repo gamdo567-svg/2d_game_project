@@ -19,7 +19,9 @@ OUT = os.path.join(ROOT, 'assets', 'images', 'effects', 'sword_enchant')
 FRAME_W, FRAME_H = 80, 24  # game/config.py SWORD_EFFECT_FRAME_SIZE 와 같게
 HAND = (40, 12)  # 출력 프레임에서 손 자리 (그림 한가운데)
 SRC_HAND = (8, 35)  # 원본 프레임에서 손 자리
-ELEMENTS = ('fire',)  # 그림이 있는 속성 (전기·어둠은 만들 때 추가)
+# 그림이 있는 속성. 불은 2026-11-20 사용자가 PixelLab VFX 불을 마음에 안 들어 해 build_fire_handmade.py 로 직접 그림
+# (여기서 불을 다시 만들면 그 그림을 덮어쓰니 넣지 않음. 예전 PixelLab 불은 fire/dl/ 에 남김).
+ELEMENTS = ()
 
 
 def rotate_frame(frame):
