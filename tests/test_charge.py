@@ -15,27 +15,39 @@ from game.world.tile_map import TileMap
 DT = 1 / 60
 
 
+def burst(c: Charge) -> int:
+    """방전 뒤 모임이 끝나 터질 때까지 시간을 흘려 그 피해를 돌려준다."""
+    for _ in range(120):
+        damage = c.update(DT)
+        if damage:
+            return damage
+    return 0
+
+
 class ChargeLogicTest(unittest.TestCase):
     def test_ten_hits_fill_and_full_discharge(self):
         c = Charge()
         for _ in range(12):
             c.add()
         self.assertAlmostEqual(c.value, 1.0)
-        self.assertEqual(c.discharge(), config.SHOCK_DAMAGE_FULL)
+        self.assertTrue(c.discharge())
         self.assertEqual(c.value, 0.0)
-        self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL)
+        self.assertTrue(c.gathering)  # 안의 전기가 모이는 중 (아직 피해 없음)
+        self.assertEqual(burst(c), config.SHOCK_DAMAGE_FULL)
+        self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL, delta=DT)
 
     def test_discharge_scales_with_gauge(self):
         c = Charge()
         for _ in range(5):
             c.add()
-        self.assertEqual(c.discharge(), round(config.SHOCK_DAMAGE_FULL * 0.5))
-        self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL * 0.5)
+        c.discharge()
+        self.assertEqual(burst(c), round(config.SHOCK_DAMAGE_FULL * 0.5))
+        self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL * 0.5, delta=DT)
 
     def test_empty_gauge_does_nothing(self):
         c = Charge()
-        self.assertEqual(c.discharge(), 0)
-        self.assertFalse(c.shocked)
+        self.assertFalse(c.discharge())
+        self.assertFalse(c.frozen)
 
     def test_gauge_does_not_decay(self):
         c = Charge()
@@ -49,6 +61,7 @@ class ChargeLogicTest(unittest.TestCase):
         for _ in range(10):
             c.add()
         c.discharge()
+        burst(c)
         looks = set()
         for _ in range(60):
             looks.add(c.shock_look)
@@ -77,21 +90,29 @@ class TargetShockTest(unittest.TestCase):
         g.state, g.pattern, g.state_left = WINDUP, "slam", 1.0
         hp = g.hp
         self.assertTrue(g.discharge())
-        self.assertEqual(g.hp, hp - config.SHOCK_DAMAGE_FULL)
-        self.assertEqual(g.state, REST)
-        self.assertEqual(g.popups[-1].color, config.COLOR_SHOCK_TEXT)
+        self.assertEqual(g.state, REST)  # 예고는 바로 끊김
+        self.assertEqual(g.hp, hp)  # 모이는 동안은 아직 피해 없음
         spot = (g.col, g.row)
-        for _ in range(round(config.SHOCK_TIME_FULL / DT) - 2):  # 감전 동안 굳어 있음
+        bursts = 0
+        for _ in range(round((config.SHOCK_GATHER_TIME + config.SHOCK_TIME_FULL) / DT) - 2):  # 모임·감전 동안 굳어 있음
             g.update(DT, (5, 9), lambda c, r: True)
+            bursts += g.burst_now
+            if g.burst_now:
+                self.assertEqual(g.popups[-1].color, config.COLOR_SHOCK_TEXT)
             self.assertEqual((g.col, g.row), spot)
             self.assertEqual(g.attacks, [])
+        self.assertEqual(bursts, 1)
+        self.assertEqual(g.hp, hp - config.SHOCK_DAMAGE_FULL)
 
     def test_dummy_shock(self):
         d = TrainingDummy(3, 3)
         d.add_charge()
         self.assertTrue(d.discharge())
-        self.assertEqual(d.hp, d.max_hp - round(config.SHOCK_DAMAGE_FULL * config.CHARGE_PER_HIT))
         self.assertFalse(d.discharge())  # 게이지를 다 썼음
+        for _ in range(round(config.SHOCK_GATHER_TIME / DT) + 2):
+            d.update(DT)
+        self.assertEqual(d.hp, d.max_hp - round(config.SHOCK_DAMAGE_FULL * config.CHARGE_PER_HIT))
+        self.assertTrue(d.charge.shocked)
 
 
 ROOM = """
@@ -136,11 +157,13 @@ class LightningSwordTest(unittest.TestCase):
         self.run_for(0.8)
         self.assertAlmostEqual(self.dummy.charge.value, config.CHARGE_PER_HIT)
         hp = self.dummy.hp
-        self.tap(Action.ENCHANT)  # 같은 속성으로 E: 번개를 끔 → 방전
+        self.tap(Action.ENCHANT)  # 같은 속성으로 E: 번개를 끔 → 방전 (안의 전기가 모였다가 터짐)
         self.assertIsNone(self.scene.player.enchant.active)
+        self.assertTrue(self.dummy.charge.gathering)
+        self.assertEqual(self.dummy.charge.value, 0.0)
+        self.run_for(config.SHOCK_GATHER_TIME + 0.05)
         self.assertTrue(self.dummy.charge.shocked)
         self.assertLess(self.dummy.hp, hp)
-        self.assertEqual(self.dummy.charge.value, 0.0)
 
 
 if __name__ == "__main__":

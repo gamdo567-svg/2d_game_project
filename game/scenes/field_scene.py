@@ -95,8 +95,8 @@ class FieldScene:
         for shake in self.player.shake_requests:  # 검 속성이 다 차오른 순간 등
             self.shake.start(**shake)
         if self.player.discharge_requested:  # 검의 번개를 끔: 전기 게이지가 찬 상대가 모두 감전 (2026-11-20)
-            if any([target.discharge() for target in [*self.dummies, *self.golems]]):
-                self.shake.start(**config.SHOCK_SHAKE)  # 누군가 감전되면 화면이 짧게 흔들림
+            for target in [*self.dummies, *self.golems]:
+                target.discharge()  # 안의 전기가 모이기 시작 (잠시 뒤 터짐)
         for strike in self.player.strikes:
             tiles = attack_tiles(strike, self.tile_map.is_wall)
             for dummy in self.dummies:
@@ -130,6 +130,8 @@ class FieldScene:
                     point = parry_spark_point(self.player.col, self.player.row, self.player.facing)
                     self._start_effects([SpriteEffect(config.PARRY_SPARK_EFFECT, *point)])
             self._start_effects(golem.effects)
+        if any(target.burst_now for target in [*self.dummies, *self.golems]):
+            self.shake.start(**config.SHOCK_SHAKE)  # 모인 전기가 터지는 순간 화면이 짧게 흔들림
         self._update_effects(dt)
         self._follow_player()
 

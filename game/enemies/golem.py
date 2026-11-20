@@ -28,7 +28,7 @@ from game.combat.enemy_attack import HIT, PARRIED, EnemyAttack
 from game.physics.raycast import first_open_stop
 from game.combat.posture import PostureGauge
 from game.combat.burn import Burn, BurnFlames, draw_burn
-from game.combat.charge import BLACK, WHITE, Charge, StaticField, draw_charge_bar, draw_static
+from game.combat.charge import BLACK, WHITE, Charge, StaticField, draw_charge_bar, draw_charge_glow, draw_static
 from game.combat.training_dummy import DamagePopup
 from game.effects.effect import SpriteEffect, draw_stun_stars
 from game.world.grid import Grid
@@ -126,6 +126,7 @@ class Golem:
         self.popups: list[DamagePopup] = []
         self.flames = BurnFlames(config.BURN_BODY_GOLEM)
         self.static = StaticField(config.BURN_BODY_GOLEM)  # 정전기·감전 번개
+        self.burst_now = False  # 이번 프레임에 모인 전기가 터졌는지 (장면이 화면을 흔듦)
         self._respawn()
 
     def _respawn(self) -> None:
@@ -311,21 +312,23 @@ class Golem:
             self.charge.add()
 
     def discharge(self) -> bool:
-        """주인공이 검의 번개를 껐다: 쌓인 게이지만큼 감전 (피해 + 그동안 멈춤, 하던 공격 예고는 끊김). 감전됐으면 True."""
-        if not self.alive:
+        """주인공이 검의 번개를 껐다: 쌓인 전기가 모이기 시작한다 (굳음, 하던 공격 예고는 끊김).
+        모임이 끝나면 update 에서 터지며 피해를 받고 감전된다. 게이지가 있었으면 True."""
+        if not self.alive or not self.charge.discharge():
             return False
-        damage = self.charge.discharge()
-        if not damage:
-            return False
-        self.hp = max(0, self.hp - damage)
-        self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
-        self.static.burst(self.charge.shock_power)  # 방전 순간: 흰 섬광 + 사방으로 터지는 번개·불티
-        if self.hp == 0:
-            self._die()
-        elif self.state in (WINDUP, RECOVER):
+        if self.state in (WINDUP, RECOVER):
             self._rest()  # 예고·자세 되돌림이 끊김 (감전이 끝나면 쉬었다가 다시 고름)
             self.beam_tiles = frozenset()
         return True
+
+    def _shock_burst(self, damage: int) -> None:
+        """모인 전기가 터짐: 피해 + 흰 섬광·사방으로 터지는 번개·불티 (장면이 burst_now 를 보고 화면을 흔듦)."""
+        self.burst_now = True
+        self.hp = max(0, self.hp - damage)
+        self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
+        self.static.burst(self.charge.shock_power)
+        if self.hp == 0:
+            self._die()
 
     def _die(self) -> None:
         self.state = DEAD
@@ -385,10 +388,13 @@ class Golem:
             if self.hp == 0:
                 self._die()
         self.flames.update(dt, self.burn.time_left)
-        self.charge.update(dt)
-        self.static.update(dt, self.charge.value, self.charge.shocked)
-        if self.charge.shocked and self.alive:
-            return  # 감전: 그 자리에 굳어 아무것도 하지 않음 (걷던 칸도 멈춤)
+        self.burst_now = False
+        damage = self.charge.update(dt)
+        if damage and self.alive:
+            self._shock_burst(damage)
+        self.static.update(dt, self.charge.value, self.charge.shocked, self.charge.gather_progress, self.charge.release)
+        if self.charge.frozen and self.alive:
+            return  # 전기가 모이는 동안·감전: 그 자리에 굳어 아무것도 하지 않음 (걷던 칸도 멈춤)
         if self._move_t < 1.0:
             before = self._move_t
             self._move_t = min(1.0, self._move_t + dt * config.GOLEM_MOVE_SPEED)
@@ -680,7 +686,7 @@ class Golem:
         renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx + 26 * s, bar_top - 1 * s, config.COLOR_BAR_BACK)
         renderer.fill_rect(cx - 26 * s, bar_top - 3 * s, cx - 26 * s + 52 * s * self.posture.value, bar_top - 1 * s,
                            config.COLOR_POSTURE)
-        draw_charge_bar(renderer, self.charge.value, cx, bar_top - 6 * s, 26 * s)  # 파란 전기 게이지 (찼을 때만)
+        draw_charge_bar(renderer, self.charge.bar_value, cx, bar_top - 6 * s, 26 * s)  # 파란 전기 게이지 (찼을 때만)
         for popup in self.popups:
             rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
             renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), popup.color)
@@ -716,7 +722,8 @@ class Golem:
         그 그림을 못 읽으면 서 있는 그림을 쓴다.
         """
         size, s = config.GOLEM_SPRITE_SIZE, config.RENDER_SCALE
-        if self.charge.shocked:
+        if self.charge.frozen:
+            # 모임: 서 있는 그림이 굳어 파르르 떨며 파랗게 달아오름 (안의 전기가 모임)
             # 감전: 서 있는 그림 · 검은 그림자(밝은 뼈) · 흰 그림(진한 뼈)을 번갈아, 몸을 감싼 전기 테두리, 파르르 떨림 (만화처럼)
             look = self.charge.shock_look
             base = str(config.GOLEM_IMAGE_DIR / f"shock_{self.view}")
@@ -729,6 +736,7 @@ class Golem:
             drawn = False
             for path in layers:
                 drawn = bool(renderer.draw_sprite_frame(path, 0, size, size, cx + jx * s, foot, size * s, size * s)) or drawn
+            draw_charge_glow(renderer, self.charge, base + "_charge.png", 0, (size, size), cx + jx * s, foot)
             return drawn
         if self.flash_left > 0.0 and int(self.flash_left / 0.03) % 2 == 0:
             return True  # 맞은 직후 깜빡임: 이 순간은 그리지 않음 (그림이 있다고 보고 임시 도형도 그리지 않음)

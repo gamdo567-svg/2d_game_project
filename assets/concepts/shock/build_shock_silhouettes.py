@@ -8,6 +8,7 @@
 - 뼈: 엑스레이처럼 몸 안에 해골·척추·갈비뼈·골반·팔다리 뼈. 방향마다 손으로 자리를 정하고 몸 모양 안쪽으로 자른다.
   검은 그림자 위에는 밝은 뼈(<이름>_bones_light.png), 흰 그림 위에는 진한 뼈(<이름>_bones_dark.png).
 - 전기 테두리: 몸 바깥 1 픽셀 하늘색 + 그 밖 1 픽셀 파랑 (<이름>_rim.png). 감전 동안 깜빡이며 몸을 감쌈.
+- 파란 몸 (<이름>_charge.png): 방전 직전 안의 전기가 모이며 몸이 파랗게 달아오를 때 겹쳐 그림 (불투명도로 세기).
 """
 import math
 import os
@@ -21,6 +22,7 @@ WHITE = (244, 248, 255)
 BONE_LIGHT = ((240, 246, 255), (164, 190, 228))  # (뼈, 뼈 그늘·이음매)
 BONE_DARK = ((40, 44, 70), (96, 108, 150))
 RIM = ((150, 232, 255), (70, 120, 255))  # (안쪽 테두리, 바깥 테두리)
+CHARGE = (96, 180, 255)  # 방전 직전 몸이 파랗게 달아오르는 그림 (같은 날 사용자: 안의 전기가 방출되는 느낌)
 
 
 def silhouette(src: str, dst: str, colour) -> None:
@@ -163,6 +165,7 @@ def main():
         base = os.path.join(IMAGES, 'golem', f'shock_{view}')
         silhouette(src, base + '_black.png', BLACK)
         silhouette(src, base + '_white.png', WHITE)
+        silhouette(src, base + '_charge.png', CHARGE)
         b = Bones((96, 96))
         if view in ('south', 'north'):
             golem_front(b, face=view == 'south')
@@ -175,6 +178,7 @@ def main():
         src = os.path.join(IMAGES, 'dummy', f'stage{k}.png')
         base = os.path.join(IMAGES, 'dummy', f'stage{k}')
         silhouette(src, base + '_black.png', BLACK)
+        silhouette(src, base + '_charge.png', CHARGE)
         b = Bones(Image.open(src).size)
         dummy_bones(b)
         b.paint(src, BONE_LIGHT, base + '_bones_light.png')

@@ -80,6 +80,7 @@ class TrainingDummy:
         self.flames = BurnFlames(config.BURN_BODY_DUMMY)
         self.charge = Charge()  # 전기 속성 칼에 맞으면 파란 게이지 (방전하면 감전)
         self.static = StaticField(config.BURN_BODY_DUMMY)
+        self.burst_now = False  # 이번 프레임에 모인 전기가 터졌는지 (장면이 화면을 흔듦)
         self._seed = (col * 7349 + row * 1973 + 17) & 0x7FFFFFFF
 
     # ----- 상태 -----
@@ -149,18 +150,17 @@ class TrainingDummy:
             self.charge.add()
 
     def discharge(self) -> bool:
-        """주인공이 검의 번개를 껐다: 쌓인 게이지만큼 감전. 감전됐으면 True."""
-        if self.is_down:
-            return False
-        damage = self.charge.discharge()
-        if not damage:
-            return False
+        """주인공이 검의 번개를 껐다: 쌓인 전기가 모이기 시작한다 (모임이 끝나면 update 에서 터지며 피해·감전). 게이지가 있었으면 True."""
+        return not self.is_down and self.charge.discharge()
+
+    def _shock_burst(self, damage: int) -> None:
+        """모인 전기가 터짐: 피해 + 흰 섬광·사방으로 터지는 번개·불티 (장면이 burst_now 를 보고 화면을 흔듦)."""
+        self.burst_now = True
         self.hp = max(0, self.hp - damage)
         self.popups.append(DamagePopup(damage, color=config.COLOR_SHOCK_TEXT))
-        self.static.burst(self.charge.shock_power)  # 방전 순간: 흰 섬광 + 사방으로 터지는 번개·불티
+        self.static.burst(self.charge.shock_power)
         if self.hp == 0:
             self._break()
-        return True
 
     def _break(self) -> None:
         self.down_left = config.DUMMY_DOWN_TIME
@@ -184,8 +184,11 @@ class TrainingDummy:
             if self.hp == 0:
                 self._break()
         self.flames.update(dt, self.burn.time_left)
-        self.charge.update(dt)
-        self.static.update(dt, self.charge.value, self.charge.shocked)
+        self.burst_now = False
+        damage = self.charge.update(dt)
+        if damage and not self.is_down:
+            self._shock_burst(damage)
+        self.static.update(dt, self.charge.value, self.charge.shocked, self.charge.gather_progress, self.charge.release)
         self.lean.update(dt)
         self.squash.update(dt)
         for popup in self.popups:
@@ -242,6 +245,9 @@ class TrainingDummy:
             cx, cy = cx + jx * s, cy + jy * s
             for image in layers:
                 renderer.draw_image_rotated(image, cx, cy, w * s, h * s * sq, angle)
+            if self.charge.glow > 0.0:  # 전기가 모이며 파랗게 달아오름 → 터진 뒤 식음
+                renderer.draw_image_rotated(f"{stage}_charge.png", cx, cy, w * s, h * s * sq, angle,
+                                            opacity=self.charge.glow)
             if self.flash_left > 0.0:
                 renderer.draw_image_rotated(config.DUMMY_STAGE_WHITE[self.stage], cx, cy, w * s, h * s * sq, angle,
                                             opacity=self.flash_left / config.DUMMY_FLASH_TIME * 0.9)
@@ -250,7 +256,7 @@ class TrainingDummy:
             renderer.fill_rect(px - 10 * s, top, px + 10 * s, top + 2 * s, config.COLOR_DUMMY_SHADOW)
             renderer.fill_rect(px - 10 * s, top, px - 10 * s + 20 * s * self.hp / self.max_hp, top + 2 * s,
                                config.COLOR_DUMMY_HP)
-            draw_charge_bar(renderer, self.charge.value, px, top + 3 * s, 10 * s)  # 파란 전기 게이지 (찼을 때만)
+            draw_charge_bar(renderer, self.charge.bar_value, px, top + 3 * s, 10 * s)  # 파란 전기 게이지 (찼을 때만)
         draw_burn(renderer, self.flames, px, py, behind=False)  # 타는 불꽃·불티·연기
         draw_static(renderer, self.static, px, py)  # 정전기·감전 번개
         for bit in self.bits:
