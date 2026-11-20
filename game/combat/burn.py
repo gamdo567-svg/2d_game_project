@@ -63,6 +63,7 @@ class Spark:
     vy: float
     life: float
     size: float = 0.0
+    alpha: float = 0.0  # 연기 짙기 (0 이면 BURN_SMOKE_ALPHA)
     age: float = 0.0
 
 
@@ -92,11 +93,14 @@ class Tongue:
 class BurnFlames:
     """타는 대상 몸의 불 (2026-11-20 사용자: 불타는 느낌 없음 → 띄엄띄엄 → 크기·모양이 다 같아 부자연스러움, 다시 만듦).
 
-    - 불꽃 하나하나가 몸 위 아무 데서나 피어나 커졌다가 사그라들고, 그 사이 다른 자리에서 새 불꽃이 핀다 (자리가 고정되지 않음).
+    - 불꽃 하나하나가 피어나 커졌다가 사그라들고, 그 사이 새 불꽃이 핀다 (자리가 고정되지 않음).
     - 모양 3종(가늘고 높은 혀 / 넓은 불 / 작게 날름거리는 불)을 섞고, 크기·재생 속도·좌우·수명을 불꽃마다 다르게.
-    - 몸 둘레 불꽃은 몸 뒤에서 솟아 실루엣을 감싸고, 몸 앞 불꽃은 작게. 위쪽 불꽃이 더 크다.
-    - 남은 타는 시간이 길수록(많이 맞을수록) 불꽃이 많이 핀다. 꺼지면 새로 피지 않고 있던 불꽃만 사그라든다.
-    - 불티: 1 픽셀 불티가 흔들리며 높이 날아올라 식음. 연기: 꼭대기 위로 옅은 그림자 덩어리.
+    - 불타는 곳 (같은 날 사용자: 이펙트 떡칠은 싫지만 이글거림은 약해지면 안 됨): 몸 전체에 고르게 바르지 않고
+      몸 위 몇 군데(hotspots)에 모여 세게 탄다. 불타는 곳은 천천히 옮겨 다니고, 오래 탈수록 늘어난다.
+      둘레 쪽 불꽃은 몸 뒤에서 솟아 실루엣을 감싸고, 몸 앞 불꽃은 적고 작게.
+    - 식을 때 (같은 날 사용자: 불이 식을 때 연기): 꺼지기 전 BURN_SMOLDER_TIME 초 동안 불꽃이 작아지고 연기가 짙어지며,
+      꺼지는 순간 불타던 곳마다 연기가 뭉게뭉게 피어올라 천천히 흩어진다 (다 타서 꺼질 때도, 회피·죽음으로 꺼질 때도).
+    - 불티: 1 픽셀 불티가 흔들리며 날아올라 식음. 연기: 불타는 곳 위로 옅은 그림자 덩어리.
     body = (가로, 세로) 원본 픽셀, 자리는 대상 발 밑 가운데 기준 (위쪽 +).
     """
 
@@ -106,9 +110,16 @@ class BurnFlames:
         self.tongues: list[Tongue] = []
         self.sparks: list[Spark] = []
         self.smoke: list[Spark] = []
+        self.hotspots: list[list[float]] = []  # 불타는 곳 [x, y, 남은 시간]
         self._tongue_timer = 0.0
         self._spark_timer = 0.0
         self._smoke_timer = 0.0
+        self._was_burning = False
+
+    @property
+    def max_hotspots(self) -> int:
+        """몸 크기에 따른 불타는 곳 최대 수 (골렘 3, 주인공·허수아비 2)."""
+        return max(2, round(self.body[1] / config.BURN_HOTSPOT_HEIGHT))
 
     def intensity(self, time_left: float) -> float:
         """불의 세기 0~1: 한 대(2초)면 약하게, BURN_FULL_SECONDS 이상 남으면 가득."""
@@ -125,47 +136,100 @@ class BurnFlames:
             p.age += dt
             p.x += p.vx * dt + math.sin(p.age * 9 + p.life * 20) * 6 * dt
             p.y += p.vy * dt
+            if p.size:
+                p.vy *= 0.985  # 연기는 오르며 느려짐
         self.sparks = [p for p in self.sparks if p.age < p.life]
         self.smoke = [p for p in self.smoke if p.age < p.life]
         power = self.intensity(time_left)
         if power <= 0.0:
+            if self._was_burning:  # 막 꺼짐: 불타던 곳마다 연기가 뭉게뭉게
+                self._puff_out()
+            self._was_burning = False
+            self.hotspots = []
             return
-        w, h = self.body
+        self._was_burning = True
+        smolder = min(1.0, time_left / config.BURN_SMOLDER_TIME)  # 1 = 한창, 0 에 가까울수록 식는 중
+        self._update_hotspots(dt, power)
         rng = self.rng
         self._tongue_timer -= dt
         while self._tongue_timer <= 0.0:
-            self._spawn_tongue(power)
-            self._tongue_timer += rng.expovariate(config.BURN_TONGUE_RATE * w * h / 100 * power)
+            self._spawn_tongue(power, smolder)
+            rate = config.BURN_TONGUE_RATE * len(self.hotspots) * (0.4 + 0.6 * smolder)
+            self._tongue_timer += rng.expovariate(rate)
         self._spark_timer -= dt
         while self._spark_timer <= 0.0:
-            self.sparks.append(Spark(rng.uniform(-w / 2, w / 2), rng.uniform(h * 0.3, h * 1.1), rng.uniform(-10, 10),
-                                     rng.uniform(35, 75), rng.uniform(0.45, 0.9)))
-            self._spark_timer += rng.expovariate(config.BURN_SPARK_RATE * power)
+            x, y, _ = rng.choice(self.hotspots)
+            self.sparks.append(Spark(x + rng.uniform(-4, 4), y + rng.uniform(6, 16), rng.uniform(-10, 10),
+                                     rng.uniform(35, 70), rng.uniform(0.4, 0.8)))
+            self._spark_timer += rng.expovariate(config.BURN_SPARK_RATE * power * smolder + 0.01)
         self._smoke_timer -= dt
         while self._smoke_timer <= 0.0:
-            self.smoke.append(Spark(rng.uniform(-w / 4, w / 4), h + rng.uniform(4, 12), rng.uniform(-4, 4),
-                                    rng.uniform(14, 24), rng.uniform(0.8, 1.3), rng.uniform(2.0, 3.5)))
-            self._smoke_timer += rng.expovariate(config.BURN_SMOKE_RATE * power)
+            x, y, _ = rng.choice(self.hotspots)
+            self._add_smoke(x, y + 18 + rng.uniform(0, 8), heavy=False)
+            # 식을수록 연기가 짙어짐
+            rate = config.BURN_SMOKE_RATE * (1 + config.BURN_SMOLDER_SMOKE * (1 - smolder))
+            self._smoke_timer += rng.expovariate(rate)
 
-    def _spawn_tongue(self, power: float) -> None:
+    def _update_hotspots(self, dt: float, power: float) -> None:
+        """불타는 곳: 세기만큼 늘고, 저마다 시간이 다 되면 다른 자리로 옮겨 간다."""
+        want = 1 + round((self.max_hotspots - 1) * (power - config.BURN_MIN_INTENSITY) / (1 - config.BURN_MIN_INTENSITY))
+        for spot in self.hotspots:
+            spot[2] -= dt
+        self.hotspots = [spot for spot in self.hotspots if spot[2] > 0.0][:want]
+        while len(self.hotspots) < want:
+            self.hotspots.append(self._new_hotspot())
+
+    def _new_hotspot(self) -> list[float]:
         rng = self.rng
         w, h = self.body
-        behind = rng.random() < 0.55
-        # 몸 앞은 아래쪽에 조금 더, 몸 뒤는 고르게 (위쪽 불꽃이 머리 위로 솟아 이글거림)
-        y = h * (rng.uniform(0.1, 0.95) if behind else rng.random() ** 1.3 * 0.9)
+        y = h * rng.uniform(0.05, 0.8)
+        x = rng.uniform(-w / 2, w / 2) * 0.8
+        # 이미 있는 곳과 겹치지 않게 (몇 번 다시 뽑음)
+        for _ in range(4):
+            if all(abs(y - o[1]) > h * 0.22 or abs(x - o[0]) > w * 0.4 for o in self.hotspots):
+                break
+            y = h * rng.uniform(0.05, 0.8)
+            x = rng.uniform(-w / 2, w / 2) * 0.8
+        return [x, y, rng.uniform(*config.BURN_HOTSPOT_LIFE)]
+
+    def _spawn_tongue(self, power: float, smolder: float) -> None:
+        rng = self.rng
+        w, h = self.body
+        hx, hy, _ = rng.choice(self.hotspots)
+        y = max(0.0, min(h * 0.95, hy + rng.gauss(0, config.BURN_HOTSPOT_SPREAD[1])))
         up = y / h
         half = w / 2 * (1.0 - 0.25 * up)  # 위로 갈수록 몸이 좁음
-        if behind:  # 몸 둘레: 가장자리에서 솟아 실루엣을 감쌈
-            x = rng.choice((-1, 1)) * half * rng.uniform(0.55, 1.05)
+        behind = rng.random() < 0.4
+        if behind:  # 몸 뒤: 불타는 곳 쪽 가장자리에서 실루엣 밖으로 솟아 핥음 (안쪽이면 몸에 가려 안 보임)
+            side = 1 if hx > 0 else -1 if hx < 0 else rng.choice((-1, 1))
+            if rng.random() < 0.3:
+                side = -side
+            x = side * half * rng.uniform(0.85, 1.2)
             variant = rng.choice(("tall", "tall", "wide"))
-            size = rng.uniform(0.8, 1.3)
-        else:  # 몸 앞: 작은 불이 듬성듬성
-            x = rng.uniform(-half * 0.8, half * 0.8)
-            variant = rng.choice(("lick", "lick", "tall"))
-            size = rng.uniform(0.45, 0.8)
-        size *= (0.8 + 0.45 * up) * (0.75 + 0.25 * power)  # 위쪽일수록, 셀수록 크게
-        self.tongues.append(Tongue(x, y, size, variant, rng.random() < 0.5, behind, rng.uniform(0.45, 1.0),
+            size = rng.uniform(0.75, 1.25)
+        else:  # 몸 앞: 불타는 곳에 모여 타는 불
+            x = max(-half, min(half, hx + rng.gauss(0, config.BURN_HOTSPOT_SPREAD[0])))
+            variant = rng.choice(("lick", "tall", "tall", "wide"))
+            size = rng.uniform(0.5, 0.95)
+        size *= (0.8 + 0.45 * up) * (0.75 + 0.25 * power) * (0.45 + 0.55 * smolder)  # 위쪽일수록·셀수록 크고, 식으면 작게
+        self.tongues.append(Tongue(x, y, size, variant, rng.random() < 0.5, behind, rng.uniform(0.4, 0.85),
                                    rng.uniform(11, 17), rng.uniform(0, config.BURN_FLAME_FRAMES)))
+
+    def _add_smoke(self, x: float, y: float, heavy: bool) -> None:
+        rng = self.rng
+        if heavy:  # 꺼질 때: 크고 느리게 오래
+            self.smoke.append(Spark(x + rng.uniform(-3, 3), y, rng.uniform(-6, 6), rng.uniform(10, 22),
+                                    rng.uniform(1.4, 2.2), rng.uniform(3.0, 5.0), config.BURN_PUFF_ALPHA))
+        else:
+            self.smoke.append(Spark(x + rng.uniform(-3, 3), y, rng.uniform(-4, 4), rng.uniform(14, 24),
+                                    rng.uniform(0.8, 1.3), rng.uniform(2.0, 3.2)))
+
+    def _puff_out(self) -> None:
+        """불이 꺼진 순간: 불타던 곳(없으면 몸 가운데)에서 연기 덩어리가 뭉게뭉게 피어오른다."""
+        spots = self.hotspots or [[0.0, self.body[1] * 0.5, 0.0]]
+        for x, y, _ in spots:
+            for k in range(config.BURN_PUFF_COUNT):
+                self._add_smoke(x, y + 4 + k * 5, heavy=True)
 
     def flames(self, behind: bool) -> list[tuple[float, float, float, int, bool, str]]:
         """그릴 불꽃 (x, y, 크기, 시트 장, 좌우 뒤집기, 모양). 시트 아래 가운데(불이 붙은 줄)를 (x, y) 에. 큰 것을 먼저."""
@@ -189,7 +253,7 @@ class BurnFlames:
 
     def smoke_puffs(self) -> list[tuple[float, float, float, float]]:
         """연기 (x, y, 반지름, 짙기): 오르며 커지고 옅어진다."""
-        return [(p.x, p.y, p.size * (1 + p.age / p.life), config.BURN_SMOKE_ALPHA * (1 - p.age / p.life))
+        return [(p.x, p.y, p.size * (1 + p.age / p.life), (p.alpha or config.BURN_SMOKE_ALPHA) * (1 - p.age / p.life))
                 for p in self.smoke]
 
 
@@ -205,10 +269,11 @@ def draw_burn(renderer, flames: BurnFlames, cx: float, bottom: float, behind: bo
     if behind:
         return
     for x, y, radius, alpha in flames.smoke_puffs():
-        r = max(1, round(radius))
-        for py in range(-r, r + 1):
-            span = round(math.sqrt(max(0, r * r - py * py)))
-            renderer.fill_shade(cx + (x - span) * s, bottom + (y + py) * s, cx + (x + span + 1) * s,
-                                bottom + (y + py + 1) * s, alpha)
+        # 두 겹: 바깥은 옅게, 안쪽(반지름 절반)은 한 번 더 덮여 짙게 → 뭉게뭉게한 덩어리
+        for r, a in ((max(1, round(radius)), alpha * 0.6), (max(1, round(radius * 0.55)), alpha * 0.5)):
+            for py in range(-r, r + 1):
+                span = round(math.sqrt(max(0, r * r - py * py)))
+                renderer.fill_shade(cx + (x - span) * s, bottom + (y + py) * s, cx + (x + span + 1) * s,
+                                    bottom + (y + py + 1) * s, a)
     for x, y, colour in flames.spark_pixels():
         renderer.fill_rect(cx + x * s, bottom + y * s, cx + (x + 1) * s, bottom + (y + 1) * s, colour)

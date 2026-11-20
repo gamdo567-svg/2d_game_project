@@ -59,10 +59,14 @@ class BurnLogicTest(unittest.TestCase):
         count = lambda f: len(f.flames(False) + f.flames(True))
         self.assertGreater(count(weak), 0)
         self.assertGreater(count(strong), count(weak))
+        self.assertLessEqual(len(strong.hotspots), strong.max_hotspots)  # 몇 군데에 모여 탐
+        self.assertLess(len(weak.hotspots), len(strong.hotspots) + 1)
         sizes = {round(fl[2], 2) for fl in strong.flames(False) + strong.flames(True)}
         self.assertGreater(len(sizes), 3)  # 크기가 제각각
         self.assertEqual({fl[5] for fl in strong.flames(False) + strong.flames(True)}, {"tall", "wide", "lick"})
-        for _ in range(120):  # 꺼지면 새로 피지 않고 사그라들며, 불티·연기도 사라짐
+        strong.update(1 / 60, 0.0)  # 꺼지는 순간: 연기가 뭉게뭉게
+        self.assertGreaterEqual(len(strong.smoke_puffs()), config.BURN_PUFF_COUNT)
+        for _ in range(180):  # 새로 피지 않고 사그라들며, 불티·연기도 사라짐
             strong.update(1 / 60, 0.0)
         self.assertEqual(count(strong), 0)
         self.assertEqual(strong.spark_pixels(), [])

@@ -348,11 +348,20 @@ BURN_FLAME_FRAMES = 16
 BURN_FLAME_BASE_MARGIN = 4  # 시트 아래에서 불이 붙은 줄까지
 BURN_FULL_SECONDS = 6.0  # 이만큼 남았으면 불이 가장 세게 (한 대면 약하게, 드문드문)
 BURN_MIN_INTENSITY = 0.35  # 막 붙었을 때 세기
-BURN_TONGUE_RATE = 4.0  # 가장 셀 때 초당 피어나는 불꽃 수 (몸 넓이 100 원본 픽셀²당)
-BURN_SPARK_RATE = 14.0  # 가장 셀 때 초당 불티 수
+# 불타는 곳 (같은 날 사용자: 이펙트 떡칠은 싫지만 이글거림은 약해지면 안 됨): 몸 전체가 아니라 몇 군데에 모여 세게 탐
+BURN_HOTSPOT_HEIGHT = 30  # 몸 세로 이만큼마다 불타는 곳 하나 (최소 2, 골렘 3)
+BURN_HOTSPOT_LIFE = (0.9, 1.8)  # 불타는 곳이 한 자리에 머무는 시간 (초), 지나면 다른 자리로
+BURN_HOTSPOT_SPREAD = (4.5, 6.0)  # 불타는 곳 둘레로 불꽃이 퍼지는 정도 (가로, 세로 원본 픽셀)
+BURN_TONGUE_RATE = 11.0  # 불타는 곳 하나당 초당 피어나는 불꽃 수
+BURN_SPARK_RATE = 7.0  # 가장 셀 때 초당 불티 수
 BURN_SPARK_COLORS = ((255, 240, 170), (255, 196, 70), (255, 130, 40), (200, 60, 30))
-BURN_SMOKE_RATE = 5.0  # 가장 셀 때 초당 연기 덩어리 수
-BURN_SMOKE_ALPHA = 0.28
+BURN_SMOKE_RATE = 2.5  # 탈 때 초당 연기 덩어리 수 (옅게)
+BURN_SMOKE_ALPHA = 0.32
+# 식을 때 (같은 날 사용자: 불이 식을 때 연기): 꺼지기 전 이 시간 동안 불꽃이 작아지고 연기가 짙어지며, 꺼지는 순간 연기가 뭉게뭉게
+BURN_SMOLDER_TIME = 1.0
+BURN_SMOLDER_SMOKE = 3.0  # 식는 동안 연기가 늘어나는 배수 (+)
+BURN_PUFF_COUNT = 4  # 꺼질 때 불타던 곳 하나당 연기 덩어리 수
+BURN_PUFF_ALPHA = 0.55  # 꺼질 때 연기 짙기
 # 불이 붙는 몸 크기 (가로, 세로 원본 픽셀, 발 밑 가운데 기준). 이 안에서 불꽃이 피었다 사그라든다.
 BURN_BODY_GOLEM = (30, 74)
 BURN_BODY_DUMMY = (16, 48)
