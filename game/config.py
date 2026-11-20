@@ -349,12 +349,11 @@ BURN_FLAME_BASE_MARGIN = 4  # 시트 아래에서 불이 붙은 줄까지
 BURN_FULL_SECONDS = 10.0  # 이만큼 남았으면 불이 가장 세게. 남은 시간에 비례 (같은 날 사용자: 많이 때릴수록 더)
 BURN_MIN_INTENSITY = 0.15  # 막 붙었을 때 가장 약한 세기
 # 불타는 곳 (같은 날 사용자: 이펙트 떡칠은 싫지만 이글거림은 약해지면 안 됨): 몸 전체가 아니라 몇 군데에 모여 세게 탐
-BURN_HOTSPOT_HEIGHT = 20  # 몸 세로 이만큼마다 불타는 곳 하나 (최소 3, 골렘 4). 세기만큼 켜짐 (한 대면 1곳)
+BURN_HOTSPOT_HEIGHT = 20  # 몸 세로 이만큼마다 불타는 곳 하나 (최소 3, 골렘 4). 한 대만 맞아도 몸 전체 (같은 날 사용자)
 BURN_HOTSPOT_BLOOM = 0.35  # 새 불타는 곳이 피어나는 시간 (초)
-BURN_HOTSPOT_FADE = 0.5  # 줄어들 때 사그라드는 시간 (초)
 BURN_HOTSPOT_WANDER = 40.0  # 불타는 곳이 몸 위를 떠도는 정도 (순간이동하지 않음)
 BURN_CORE_SIZE = 1.0  # 불타는 곳의 꺼지지 않는 중심 불길 크기 (시트 배율)
-BURN_GROW_MIN = 0.7  # 세기에 따른 불길 크기 배율 (한 대)
+BURN_GROW_MIN = 0.5  # 세기에 따른 불길 크기 배율 (한 대: 온몸에 작게)
 BURN_GROW_MAX = 1.4  # (가득)
 BURN_HOTSPOT_SPREAD = (4.5, 6.0)  # 불타는 곳 둘레로 불꽃이 퍼지는 정도 (가로, 세로 원본 픽셀)
 BURN_TONGUE_RATE = 16.0  # 가득일 때 불타는 곳 하나당 초당 피어나는 작은 불꽃 수

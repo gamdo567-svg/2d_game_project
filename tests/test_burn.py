@@ -87,11 +87,17 @@ class BurnLogicTest(unittest.TestCase):
             for _ in range(60):
                 f.update(1 / 60, hits * config.BURN_SECONDS_PER_HIT)
             fires.append(f)
-        spots = [len(f.hotspots) for f in fires]
-        self.assertLess(spots[0], spots[1])
-        self.assertLess(spots[1], spots[2])
+        # 한 대만 맞아도 몸 전체 (2026-11-20 사용자: 특정 위치에만 타면 이상함): 불타는 곳이 발부터 머리까지 퍼져 있음
+        for f in fires:
+            ys = sorted(spot.y for spot in f.hotspots)
+            self.assertEqual(len(ys), f.max_hotspots)
+            self.assertLess(ys[0], config.BURN_BODY_GOLEM[1] * 0.25)
+            self.assertGreater(ys[-1], config.BURN_BODY_GOLEM[1] * 0.6)
         biggest = [max(fl[2] for fl in f.flames(False) + f.flames(True)) for f in fires]
-        self.assertLess(biggest[0], biggest[2])
+        self.assertLess(biggest[0], biggest[1])
+        self.assertLess(biggest[1], biggest[2])
+        counts = [len(f.flames(False) + f.flames(True)) for f in fires]
+        self.assertLess(counts[0], counts[2])
 
     def test_core_flame_never_gaps(self):
         # 띄엄띄엄 끊기지 않게: 타는 동안 매 프레임 불길이 보임

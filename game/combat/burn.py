@@ -102,8 +102,8 @@ class Hotspot:
     phase: float  # 일렁임 박자
     flip: bool
     offset: float  # 시트 시작 장
-    heat: float = 0.0  # 0 → 1 피어남, 꺼질 때 1 → 0
-    dying: bool = False
+    zone: tuple[float, float]  # 이 불타는 곳이 떠도는 세로 구역 (아래, 위)
+    heat: float = 0.0  # 0 → 1 피어남
 
 
 class BurnFlames:
@@ -116,7 +116,9 @@ class BurnFlames:
       둘레 쪽 불꽃은 몸 뒤에서 솟아 실루엣을 감싸고, 몸 앞 불꽃은 적고 작게.
     - 끊기지 않게 (같은 날 사용자: 띄엄띄엄 나와 불타는 느낌이 안 남): 불타는 곳마다 꺼지지 않는 큰 불길(몸 앞 하나,
       가장자리 몸 뒤 하나)이 숨 쉬듯 일렁이고, 둘레에 작은 불꽃이 피었다 사그라든다. 불타는 곳은 순간이동하지 않고 천천히 떠돈다.
-    - 많이 맞을수록 더 (같은 날 사용자): 남은 시간(최대 10초)에 비례해 불타는 곳 수·불길 크기·작은 불꽃·불티가 늘어난다.
+    - 많이 맞을수록 더 (같은 날 사용자): 남은 시간(최대 10초)에 비례해 불길 크기·작은 불꽃·불티가 늘어난다.
+    - 늘 몸 전체 (같은 날 사용자: 특정 위치에만 불이 타오르니 이상함): 몸을 세로 구역으로 나눠 구역마다 불타는 곳이 하나씩,
+      한 대만 맞아도 발부터 머리까지 고르게 탄다 (세기는 크기·양으로만). 구역 안에서 좌우를 번갈아 두고 천천히 떠돈다.
     - 식을 때 (같은 날 사용자: 불이 식을 때 연기): 꺼지기 전 BURN_SMOLDER_TIME 초 동안 불꽃이 작아지고 연기가 짙어지며,
       꺼지는 순간 불타던 곳마다 연기가 뭉게뭉게 피어올라 천천히 흩어진다 (다 타서 꺼질 때도, 회피·죽음으로 꺼질 때도).
     - 불티: 1 픽셀 불티가 흔들리며 날아올라 식음. 연기: 불타는 곳 위로 옅은 그림자 덩어리.
@@ -137,6 +139,7 @@ class BurnFlames:
         self._clock = 0.0
         self._last_power = 0.0
         self._last_smolder = 0.0
+        self._side_start = 1
 
     @staticmethod
     def _grow(power: float) -> float:
@@ -145,7 +148,7 @@ class BurnFlames:
 
     @property
     def max_hotspots(self) -> int:
-        """몸 크기에 따른 불타는 곳 최대 수 (골렘 4, 주인공·허수아비 3)."""
+        """몸 크기에 따른 불타는 곳 수 (골렘 4, 주인공·허수아비 3). 세로 구역마다 하나."""
         return max(3, round(self.body[1] / config.BURN_HOTSPOT_HEIGHT))
 
     def intensity(self, time_left: float) -> float:
@@ -185,12 +188,12 @@ class BurnFlames:
         self._was_burning = True
         smolder = min(1.0, time_left / config.BURN_SMOLDER_TIME)  # 1 = 한창, 0 에 가까울수록 식는 중
         self._update_hotspots(dt, power)
-        live = [h for h in self.hotspots if not h.dying] or self.hotspots
+        live = self.hotspots
         rng = self.rng
         self._tongue_timer -= dt
         while self._tongue_timer <= 0.0:
             self._spawn_tongue(power, smolder, rng.choice(live))
-            rate = config.BURN_TONGUE_RATE * len(live) * (0.5 + 0.5 * power) * (0.4 + 0.6 * smolder)
+            rate = config.BURN_TONGUE_RATE * len(live) * power * (0.4 + 0.6 * smolder)
             self._tongue_timer += rng.expovariate(rate)
         self._spark_timer -= dt
         while self._spark_timer <= 0.0:
@@ -212,40 +215,39 @@ class BurnFlames:
             self._smoke_timer += rng.expovariate(rate)
 
     def _update_hotspots(self, dt: float, power: float) -> None:
-        """불타는 곳: 세기에 비례해 늘고 줄어든다 (새 곳은 서서히 피어나고, 줄면 서서히 사그라듦). 몸 위를 천천히 떠돈다."""
+        """불타는 곳: 몸의 세로 구역마다 하나씩 (처음 불이 붙을 때 한꺼번에 피어남). 저마다 제 구역 안을 천천히 떠돈다."""
         w, h = self.body
-        want = max(1, round(self.max_hotspots * power))
-        alive = [spot for spot in self.hotspots if not spot.dying]
-        for spot in alive[want:]:
-            spot.dying = True
-        while len([spot for spot in self.hotspots if not spot.dying]) < want:
-            self.hotspots.append(self._new_hotspot())
+        if not self.hotspots:
+            n = self.max_hotspots
+            self._side_start = self.rng.choice((-1, 1))
+            for k in range(n):
+                self.hotspots.append(self._new_hotspot(k, n))
         rng = self.rng
         for spot in self.hotspots:
-            step = dt / (config.BURN_HOTSPOT_FADE if spot.dying else config.BURN_HOTSPOT_BLOOM)
-            spot.heat = max(0.0, spot.heat - step) if spot.dying else min(1.0, spot.heat + step)
+            spot.heat = min(1.0, spot.heat + dt / config.BURN_HOTSPOT_BLOOM)
             spot.vx += rng.uniform(-1, 1) * config.BURN_HOTSPOT_WANDER * dt
             spot.vy += rng.uniform(-1, 1) * config.BURN_HOTSPOT_WANDER * dt
             spot.vx *= 0.97
             spot.vy *= 0.97
-            spot.x = max(-w * 0.4, min(w * 0.4, spot.x + spot.vx * dt))
-            spot.y = max(h * 0.05, min(h * 0.8, spot.y + spot.vy * dt))
-        self.hotspots = [spot for spot in self.hotspots if not (spot.dying and spot.heat <= 0.0)]
+            # 제 쪽(edge) 안에서만 떠돎: 가운데를 조금 넘을 수는 있지만 반대쪽 끝까지 가지 않음
+            if spot.edge > 0:
+                spot.x = max(-w * 0.1, min(w * 0.4, spot.x + spot.vx * dt))
+            else:
+                spot.x = max(-w * 0.4, min(w * 0.1, spot.x + spot.vx * dt))
+            low, high = spot.zone
+            spot.y = max(low, min(high, spot.y + spot.vy * dt))
+            if spot.y in (low, high):
+                spot.vy = -spot.vy * 0.5
 
-    def _new_hotspot(self) -> Hotspot:
+    def _new_hotspot(self, k: int, n: int) -> Hotspot:
+        """k 번째 세로 구역의 불타는 곳 (아래부터, 좌우 번갈아)."""
         rng = self.rng
         w, h = self.body
-        y = h * rng.uniform(0.05, 0.8)
-        x = rng.uniform(-w / 2, w / 2) * 0.8
-        # 이미 있는 곳과 겹치지 않게 (몇 번 다시 뽑음)
-        for _ in range(6):
-            if all(abs(y - o.y) > h * 0.2 or abs(x - o.x) > w * 0.4 for o in self.hotspots if not o.dying):
-                break
-            y = h * rng.uniform(0.05, 0.8)
-            x = rng.uniform(-w / 2, w / 2) * 0.8
-        edge = 1 if x > 0 else -1 if x < 0 else rng.choice((-1, 1))
-        return Hotspot(x, y, 0.0, 0.0, edge, rng.uniform(0, 6.28), rng.random() < 0.5,
-                       rng.uniform(0, config.BURN_FLAME_FRAMES))
+        low, high = h * 0.9 * k / n, h * 0.9 * (k + 1) / n
+        side = (1 if k % 2 == 0 else -1) * self._side_start  # 좌우 번갈아 (한쪽으로 쏠리지 않게)
+        x = side * w * rng.uniform(0.05, 0.3)
+        return Hotspot(x, rng.uniform(low, high), 0.0, 0.0, side, rng.uniform(0, 6.28), rng.random() < 0.5,
+                       rng.uniform(0, config.BURN_FLAME_FRAMES), (low, high))
 
     def _spawn_tongue(self, power: float, smolder: float, spot: Hotspot) -> None:
         rng = self.rng
