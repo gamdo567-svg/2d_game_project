@@ -16,6 +16,15 @@
 
 ---
 
+## 2026-11-20 — 후면 3타 일관성 (Claude Code)
+- 브랜치 / 마지막 커밋: `claude/monster-aggro` / 이 항목을 담은 커밋
+- 한 일: 사용자 지적(후면 3타가 측면·정면 찌르기와 너무 다름)으로, 받은 ChatGPT 그림 중 정면 8장과 장마다 같은 것
+  (`attack_back_kit/hit3_v3/result_hit3_back_frontmatch.png`)으로 바꿈. `build_attack_back_v3.py` → PixelLab transfer_outfit(8장 함께,
+  seed 7) → 1타 색감 맞춤 → `export_to_game.py`. 칼 자리는 `estimate_back_swords` 로 다시 어림해 `PLAYER_ATTACK_SWORD_BACK` 3타 줄과
+  `PLAYER_ATTACK_FRAME_SHIFTS_BACK` 3타 줄(4·6·8번 발 1 픽셀) 갱신. 바뀐 게임 그림은 `back_3.png` 하나 (2타 시트 줄은 그대로).
+- 현재 상태: 테스트 297개 통과, 스모크 실행 정상. 실제 창으로는 확인하지 못함 (그리기 캡처로 측면·정면·후면 비교).
+- 남은 문제 / 다음 할 일: 후면 2타는 아직 2차(hit2_v2) 그림. 푸시·PR 보류 중.
+
 ## 2026-11-20 — 몬스터 어그로 시스템 (Claude Code)
 - 브랜치 / 마지막 커밋: `claude/monster-aggro` (`claude/labyrinth-tileset` 위에서 시작) / 이 항목을 담은 커밋
 - 한 일: 몬스터 휴면 → 6칸 안·맞으면 깨어남, 주인공은 한 번에 한 마리만 끌고 죽을 때까지 유지 (`game/enemies/aggro.py`). 골렘 휴면(코어 꺼짐·깊게 웅크림·회색빛)·깨어남 그림(PixelLab), 붉은 ! (솟구침·눌림·흔들림·번쩍임·강조선) (D-054).
