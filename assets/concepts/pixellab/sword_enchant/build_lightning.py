@@ -1,12 +1,15 @@
-"""검 전기 이펙트 (2026-11-20 사용자: 전기 한번 해줘봐). 불(build_fire_flame.py)과 같은 형식의 시트를 직접 그린다.
+"""검 전기 이펙트 2차 (2026-11-20 사용자: 1차 번개가 너무 조잡함, 스파크가 더 튀고 진짜 전기 같게. 1차는 build_lightning_v1.py).
 
-- 칼날 가장자리를 따라 지그재그 번개 줄기가 칼끝 쪽으로 기어가고(1~4 픽셀 떨어져), 짧은 번개가 바깥으로 튀며 갈라진다.
-- 줄기는 흰 심 + 하늘색 + 파란 테두리, 둘레에 옅은 파란 빛. 튀는 불꽃(점) 몇 개. 칼날 둘레에 옅은 푸른 빛이 늘 깔림.
-- 전기는 빨리 바뀌어야 해 줄기마다 2장씩만 유지하고 새로 그린다 (24장 한 바퀴, 장마다 정해진 씨앗이라 늘 같은 그림).
-출력 (assets/images/effects/sword_enchant/):
-- lightning.png: 칼 그림 방향(칼끝 오른쪽, 손 (40, 12)) 80×24 × 24장 반복
-- lightning_ignite.png: E 로 입힐 때 12장. 손잡이에서 전기가 튀기 시작해 칼끝까지 번짐 (앞머리에 큰 방전)
-- lightning_front_3_f5.png / f6.png: 정면 3타 찌르기용 칼 그림 (공격 칸 96×64 × 24장), 칼날 윤곽을 따라
+픽셀 번개답게 굵은 덩어리 대신 1 픽셀 흰 줄기를 날카롭게 꺾어 그린다:
+- 아크: 칼날 가장자리 띠 위의 두 점(칼 방향으로 6~14 픽셀 떨어진, 같은 쪽)을 잇는 번개. 가운데를 옆으로 밀어내는 방식
+  (midpoint displacement, 바깥으로 치우침)으로 날카롭게 꺾이며 칼날에서 튀어나갔다 돌아온다. 흰 심 + 바로 옆 1 픽셀만 파랑.
+- 갈래: 아크 중간에서 바깥으로 짧게 갈라지는 하늘색 번개.
+- 스파크: 번개 끝과 칼날에서 튀어 나가는 점들이 짧은 꼬리를 남기며 몇 장에 걸쳐 날아가 파랗게 식는다.
+- 방전: 4장(약 0.33초)마다 칼끝(입힐 때는 번지는 앞머리)에서 크게 뻗는 번개 둘, 칼날 둘레가 번쩍.
+- 칼날 둘레에 얇은 푸른 빛(1 픽셀)이 깜빡이며 늘 깔림.
+번개는 장마다 새로 (장마다 정해진 씨앗이라 늘 같은 그림).
+출력 (assets/images/effects/sword_enchant/): lightning.png (80×24 × 24), lightning_ignite.png (× 12),
+lightning_front_3_f5.png / f6.png (정면 3타 찌르기용 칼 그림, 96×64 × 24)
 """
 import math
 import os
@@ -19,117 +22,177 @@ import build_fire_flame as ff
 OUT = ff.OUT
 FRAMES = ff.FRAMES
 IGNITE_FRAMES = ff.IGNITE_FRAMES
-CORE = (245, 252, 255, 255)
-BRIGHT = (150, 222, 255, 255)
-EDGE = (64, 140, 255, 235)
-HALO = (50, 110, 245, 160)
-BLADE_GLOW = [(120, 190, 255, 150), (70, 120, 245, 90)]
+WHITE = (250, 254, 255, 255)
+CYAN = (140, 225, 255, 255)
+BLUE = (70, 150, 255, 220)
+DEEP = (45, 85, 220, 150)
+BLADE_GLOW = (120, 200, 255, 160)
+BLADE_GLOW_FLASH = (170, 230, 255, 190)
+MAX_REACH = 4.5  # 아크·갈래가 칼날에서 벗어나는 최대 거리 (픽셀)
 
 
 def dist_map(blade, w, h):
     return {(x, y): min(math.hypot(x - bx, y - by) for bx, by in blade) for y in range(h) for x in range(w)}
 
 
-def crawl(rnd, start, axis, dist, lo, hi, length):
-    """칼날에서 lo~hi 떨어진 띠 안을 축 방향(axis = (ax, ay))으로 지그재그로 기어가는 줄기 (픽셀 목록)."""
-    pts = [start]
-    x, y = start
-    ax, ay = axis
-    nx, ny = -ay, ax  # 축에 수직
-    side_step = 0
-    for _ in range(length):
-        if side_step == 0 or rnd.random() < 0.45:
-            side_step = rnd.choice((-1, 0, 1))
-        cand = (x + ax + nx * side_step, y + ay + ny * side_step)
-        if cand not in dist or not (lo <= dist[cand] <= hi):
-            cand = (x + ax, y + ay)
-            if cand not in dist or not (lo - 0.5 <= dist[cand] <= hi + 0.5):
-                break
-        x, y = cand
-        pts.append((x, y))
+def line_pixels(a, b):
+    """두 점 사이 1 픽셀 선 (Bresenham)."""
+    (x0, y0), (x1, y1) = (round(a[0]), round(a[1])), (round(b[0]), round(b[1]))
+    dx, dy = abs(x1 - x0), -abs(y1 - y0)
+    sx, sy = (1 if x0 < x1 else -1), (1 if y0 < y1 else -1)
+    err = dx + dy
+    out = []
+    while True:
+        out.append((x0, y0))
+        if (x0, y0) == (x1, y1):
+            return out
+        e2 = 2 * err
+        if e2 >= dy:
+            err += dy
+            x0 += sx
+        if e2 <= dx:
+            err += dx
+            y0 += sy
+
+
+def jagged(rnd, a, b, rough=0.45, depth=3, outward=None):
+    """a 에서 b 로 날카롭게 꺾인 번개 꼭짓점들. outward(p) 가 있으면 그 쪽(칼날 바깥)으로 치우쳐 꺾음."""
+    pts = [a, b]
+    for _ in range(depth):
+        new = [pts[0]]
+        for p, q in zip(pts, pts[1:]):
+            mx, my = (p[0] + q[0]) / 2, (p[1] + q[1]) / 2
+            seg = math.hypot(q[0] - p[0], q[1] - p[1])
+            nx, ny = -(q[1] - p[1]) / (seg or 1), (q[0] - p[0]) / (seg or 1)
+            off = rnd.uniform(-1, 1) * seg * rough
+            if outward is not None:  # 칼날 쪽으로 파고들지 않게
+                ox, oy = outward((mx, my))
+                if nx * ox + ny * oy < 0:
+                    nx, ny = -nx, -ny
+                off = abs(off) * (1 if rnd.random() < 0.8 else -0.4)
+            new += [(mx + nx * off, my + ny * off), q]
+        pts = new
     return pts
 
 
-def jump(rnd, start, dist, length):
-    """칼날에서 바깥으로 튀는 짧은 번개 (거리가 늘어나는 쪽으로), 가끔 갈래."""
-    pts = [start]
-    branches = []
-    x, y = start
-    for k in range(length):
-        nbrs = [(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx or dy) and (x + dx, y + dy) in dist]
-        out = [p for p in nbrs if dist[p] > dist[(x, y)]]
-        if not out:
-            break
-        x, y = rnd.choice(out)
-        pts.append((x, y))
-        if k == 1 and rnd.random() < 0.5:
-            branches.append(jump(rnd, (x, y), dist, max(1, length - 3))[0])
-    return pts, branches
+def polyline(pts):
+    out = []
+    for p, q in zip(pts, pts[1:]):
+        seg = line_pixels(p, q)
+        out += seg if not out else seg[1:]
+    return out
 
 
-def paint(im, blade, lines, sparks, glow_limit=None):
-    """줄기들을 그린다: 먼저 둘레 빛, 그다음 테두리·밝은 색, 마지막 흰 심. 칼날 픽셀은 가리지 않음."""
+class Painter:
+    def __init__(self, size, blade):
+        self.im = Image.new('RGBA', size, (0, 0, 0, 0))
+        self.px = self.im.load()
+        self.blade = blade
+        self.w, self.h = size
+
+    def put(self, p, c, weaker_only=True):
+        x, y = p
+        if 0 <= x < self.w and 0 <= y < self.h and p not in self.blade:
+            if not weaker_only or self.px[x, y][3] < c[3]:
+                self.px[x, y] = c
+
+    def bolt(self, pixels, core=WHITE):
+        for x, y in pixels:  # 바로 옆 1 픽셀만 파랑 (번개가 굵어 보이지 않게 대각선은 빼고)
+            for d in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                self.put((x + d[0], y + d[1]), BLUE)
+        for p in pixels:
+            self.put(p, core, weaker_only=False)
+
+
+def blade_band(dist, lo, hi, keep):
+    return [p for p, v in dist.items() if lo <= v <= hi and keep(p)]
+
+
+def outward_fn(centre):
+    def f(p):
+        cx, cy = centre(p)
+        dx, dy = p[0] - cx, p[1] - cy
+        n = math.hypot(dx, dy) or 1
+        return dx / n, dy / n
+    return f
+
+
+def same_side(centre, a, b):
+    ca, cb = centre(a), centre(b)
+    return (a[0] - ca[0]) * (b[0] - cb[0]) + (a[1] - ca[1]) * (b[1] - cb[1]) > 0
+
+
+def draw(seed, size, blade, dist, along, centre, start, end, flash=False, front=None):
+    """한 장. along(p) = 칼 방향 자리, centre(p) = 그 자리의 칼 가운데 점, start~end = 칼날 범위 (손잡이 쪽 ~ 칼끝).
+    front 가 있으면 그 자리(칼 방향)까지만 전기가 번져 있다 (입힐 때)."""
+    rnd = random.Random(seed)
+    top = end if front is None else min(end, front)
+    paint = Painter(size, blade)
+    out = outward_fn(centre)
+    for bx, by in blade:  # 칼날 둘레 얇은 빛 (깜빡임)
+        if along((bx, by)) > top:
+            continue
+        for d in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if rnd.random() < (0.9 if flash else 0.55):
+                paint.put((bx + d[0], by + d[1]), BLADE_GLOW_FLASH if flash else BLADE_GLOW)
+    band = blade_band(dist, 1.0, 2.0, lambda p: start + 1 <= along(p) <= top)
+    if not band:
+        return paint.im
+    ends = []
+    near = lambda pix: [p for p in pix if p in dist and dist[p] <= MAX_REACH]  # 칼에서 멀리 벗어나지 않게
+    for _ in range(rnd.randint(4, 5)):  # 아크
+        a = rnd.choice(band)
+        cands = [q for q in band if 6 <= along(q) - along(a) <= 14 and same_side(centre, a, q)]
+        if not cands:
+            continue
+        b = rnd.choice(cands)
+        pts = jagged(rnd, a, b, rough=0.28, depth=3, outward=out)
+        paint.bolt(near(polyline(pts)))
+        ends += [a, b]
+        if rnd.random() < 0.6 and len(pts) > 3:  # 갈래
+            m = pts[len(pts) // 2]
+            ox, oy = out(m)
+            reach = rnd.uniform(2, 4)
+            tip = (m[0] + ox * reach + rnd.uniform(-2, 2), m[1] + oy * reach + rnd.uniform(-2, 2))
+            paint.bolt(near(polyline(jagged(rnd, m, tip, rough=0.35, depth=2))), core=CYAN)
+            ends.append((round(tip[0]), round(tip[1])))
+    if flash:  # 방전
+        heads = [p for p in band if along(p) >= top - 3] or band
+        for _ in range(1):
+            m = rnd.choice(heads)
+            ox, oy = out(m)
+            reach = rnd.uniform(5, 7)
+            tip = (m[0] + ox * reach + rnd.uniform(-1.5, 1.5), m[1] + oy * reach + rnd.uniform(-1.5, 1.5))
+            paint.bolt(polyline(jagged(rnd, m, tip, rough=0.35, depth=2)))
+            ends.append((round(tip[0]), round(tip[1])))
+    for e in ends:  # 번개 끝에서 튀는 스파크 (짧은 꼬리)
+        if rnd.random() < 0.5:
+            ox, oy = out(e)
+            vx, vy = ox * rnd.uniform(1.0, 2.0) + rnd.uniform(-1, 1), oy * rnd.uniform(1.5, 3) + rnd.uniform(-1, 1)
+            for k, c in enumerate((WHITE, CYAN, DEEP)):
+                paint.put((round(e[0] + vx * (2 - k)), round(e[1] + vy * (2 - k))), c, weaker_only=False)
+    return paint.im
+
+
+def sparks_over(im, seed_base, i, band, out, n_frames, blade):
+    """여러 장에 걸쳐 날아가는 스파크 (앞 3장에서 태어난 것까지): 흰 머리 + 파란 꼬리, 나이 들수록 식음."""
     px = im.load()
     w, h = im.size
-
-    def put(p, c, only_if_weaker=True):
-        if 0 <= p[0] < w and 0 <= p[1] < h and p not in blade:
-            if not only_if_weaker or px[p][3] < c[3]:
-                px[p] = c
-
-    for bx, by in blade:  # 칼날 둘레 옅은 빛
-        for dx, dy in ((0, -1), (0, 1), (1, 0), (-1, 0), (0, -2), (0, 2)):
-            p = (bx + dx, by + dy)
-            if glow_limit is None or glow_limit(p):
-                put(p, BLADE_GLOW[0] if abs(dx) + abs(dy) == 1 else BLADE_GLOW[1])
-    for line in lines:
-        for x, y in line:
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    put((x + dx, y + dy), HALO)
-    for line in lines:
-        for i, p in enumerate(line):
-            put(p, BRIGHT if 0 < i < len(line) - 1 else EDGE, only_if_weaker=False)
-    for line in lines:  # 흰 심: 줄기 가운데 부분
-        for p in line[1:-2]:
-            put(p, CORE, only_if_weaker=False)
-    for p in sparks:
-        put(p, CORE if (p[0] + p[1]) % 2 else BRIGHT, only_if_weaker=False)
-
-
-def edge_points(blade, dist, d):
-    return [p for p, v in dist.items() if d - 0.5 <= v <= d + 0.5]
-
-
-def bolts(seed, blade, dist, axis, along_key, front=None, flare_at=None, start=-1e9):
-    """한 장의 번개들: 기어가는 줄기 3~4개, 튀는 번개 2~3개, 불꽃 점. front 가 있으면 그 앞(축 방향)은 아직 없음."""
-    rnd = random.Random(seed)
-    near = [p for p in edge_points(blade, dist, 1.5) if along_key(p) >= start + 1 and (front is None or along_key(p) <= front)]
-    lines, sparks = [], []
-    if not near:
-        return lines, sparks
-    for _ in range(rnd.randint(4, 6)):
-        line = crawl(rnd, rnd.choice(near), axis, dist, 1, 3.5, rnd.randint(6, 14))
-        line = [p for p in line if along_key(p) >= start]  # 가드 아래(손잡이)로는 가지 않음
-        if front is not None:
-            line = [p for p in line if along_key(p) <= front + 2]
-        if len(line) > 2:
-            lines.append(line)
-    for _ in range(rnd.randint(3, 4)):
-        main, branches = jump(rnd, rnd.choice(near), dist, rnd.randint(3, 7))
-        lines.append(main)
-        lines.extend(b for b in branches if len(b) > 1)
-    if flare_at is not None:  # 번지는 앞머리의 큰 방전
-        heads = [p for p in near if abs(along_key(p) - flare_at) <= 2] or near[-3:]
-        for _ in range(3):
-            main, branches = jump(rnd, rnd.choice(heads), dist, rnd.randint(5, 8))
-            lines.append(main)
-            lines.extend(branches)
-    for line in lines:
-        if rnd.random() < 0.6:
-            ex, ey = line[-1]
-            sparks.append((ex + rnd.choice((-2, -1, 1, 2)), ey + rnd.choice((-2, -1, 1, 2))))
-    return lines, sparks
+    if not band:
+        return
+    for born in range(i - 3, i + 1):
+        rnd = random.Random(seed_base * 7919 + (born % n_frames))
+        for _ in range(rnd.randint(1, 2)):
+            o = rnd.choice(band)
+            ox, oy = out(o)
+            vx = ox * rnd.uniform(1.2, 2.4) + rnd.uniform(-0.8, 0.8)
+            vy = oy * rnd.uniform(1.2, 2.4) + rnd.uniform(-0.8, 0.8)
+            age = i - born
+            head = (round(o[0] + vx * (age + 1)), round(o[1] + vy * (age + 1)))
+            trail = (round(o[0] + vx * age), round(o[1] + vy * age))
+            for p, c in ((trail, DEEP if age > 1 else BLUE), (head, CYAN if age > 1 else WHITE)):
+                if 0 <= p[0] < w and 0 <= p[1] < h and p not in blade and px[p][3] < c[3]:
+                    px[p] = c
 
 
 def sword_sheets():
@@ -140,12 +203,15 @@ def sword_sheets():
     def along(p):
         return p[0]
 
-    def frame(i, front=None, flare=None, salt=0):
-        im = Image.new('RGBA', (ff.W, ff.H), (0, 0, 0, 0))
-        # 2장마다 새 번개 (너무 빨리 바뀌면 깜빡임처럼 보임)
-        lines, sparks = bolts(10_000 * salt + i // 2, blade, dist, (1, 0), along, front, flare, start=ff.BLADE_FROM_X)
-        limit = None if front is None else (lambda p: p[0] <= front)
-        paint(im, blade, lines, sparks, limit)
+    def centre(p):
+        return (min(p[0], tip), ff.MID_Y)
+
+    def frame(i, front=None, salt=0):
+        flash = (i % 4 == 0) if front is None else True
+        im = draw(salt * 1000 + i, (ff.W, ff.H), blade, dist, along, centre, ff.BLADE_FROM_X, tip, flash, front)
+        top = tip if front is None else front
+        sparks_over(im, 11 + salt, i, blade_band(dist, 1.0, 2.0, lambda p: ff.BLADE_FROM_X < p[0] <= top),
+                    outward_fn(centre), FRAMES, blade)
         return im
 
     strip = Image.new('RGBA', (ff.W * FRAMES, ff.H), (0, 0, 0, 0))
@@ -154,21 +220,33 @@ def sword_sheets():
     strip.save(os.path.join(OUT, 'lightning.png'))
     ignite = Image.new('RGBA', (ff.W * IGNITE_FRAMES, ff.H), (0, 0, 0, 0))
     for k in range(IGNITE_FRAMES):
-        front = ff.BLADE_FROM_X + 1 + (tip + 3 - (ff.BLADE_FROM_X + 1)) * (k + 1) / IGNITE_FRAMES
-        ignite.alpha_composite(frame(2 * k, front, front, salt=1), (k * ff.W, 0))
+        front = ff.BLADE_FROM_X + 2 + (tip + 2 - (ff.BLADE_FROM_X + 2)) * (k + 1) / IGNITE_FRAMES
+        ignite.alpha_composite(frame(k, front, salt=1), (k * ff.W, 0))
     ignite.save(os.path.join(OUT, 'lightning_ignite.png'))
 
 
 def art_sheets():
-    for k in ff.ART_BLADE_TOP:
+    for k, top_row in ff.ART_BLADE_TOP.items():
         blade = ff.art_blade(k)
         dist = dist_map(blade, 96, 64)
+        rows = {}
+        for x, y in blade:
+            rows.setdefault(y, []).append(x)
+        bottom = max(rows)
+
+        def along(p):
+            return p[1]
+
+        def centre(p, rows=rows, bottom=bottom, top_row=top_row):
+            y = min(max(p[1], top_row), bottom)
+            xs = rows.get(y) or rows[bottom]
+            return ((min(xs) + max(xs)) / 2, y)
+
         strip = Image.new('RGBA', (96 * FRAMES, 64), (0, 0, 0, 0))
         for i in range(FRAMES):
-            im = Image.new('RGBA', (96, 64), (0, 0, 0, 0))
-            # 칼이 보는 사람 쪽(화면 아래)으로 뻗어 줄기는 칼끝 쪽(아래)으로 기어감
-            lines, sparks = bolts(20_000 + k * 100 + i // 2, blade, dist, (0, 1), lambda p: p[1], start=ff.ART_BLADE_TOP[k])
-            paint(im, blade, lines, sparks)
+            im = draw(5000 + k * 100 + i, (96, 64), blade, dist, along, centre, top_row, bottom, i % 4 == 0)
+            sparks_over(im, 31 + k, i, blade_band(dist, 1.0, 2.0, lambda p: p[1] > top_row),
+                        outward_fn(centre), FRAMES, blade)
             strip.alpha_composite(im, (i * 96, 0))
         strip.save(os.path.join(OUT, f'lightning_front_3_f{k}.png'))
 
