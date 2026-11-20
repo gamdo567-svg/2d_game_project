@@ -115,6 +115,35 @@ def side_part(x, y, mirror):
     return 'torso'
 
 
+def fill_holes(im):
+    """덩어리를 옮기며 몸 안에 생긴 투명 틈(바깥과 이어지지 않은 빈 픽셀)을 둘레의 가장 어두운 색으로 메운다
+    (같은 날 사용자: 웅크린 옆모습의 머리·어깨 사이 작은 틈). 돌 사이 이음매처럼 보이게."""
+    out = im.copy()
+    px = out.load()
+    w, h = out.size
+    edge = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
+    stack = [p for p in edge if px[p][3] == 0]
+    outside = set(stack)
+    while stack:
+        x, y = stack.pop()
+        for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= n[0] < w and 0 <= n[1] < h and n not in outside and px[n][3] == 0:
+                outside.add(n)
+                stack.append(n)
+    holes = [(x, y) for y in range(h) for x in range(w) if px[x, y][3] == 0 and (x, y) not in outside]
+    for _ in range(4):  # 넓은 틈은 바깥쪽부터 몇 번에 걸쳐 메움
+        rest = []
+        for x, y in holes:
+            near = [px[n] for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+                    if 0 <= n[0] < w and 0 <= n[1] < h and px[n][3]]
+            if near:
+                px[x, y] = min(near, key=lambda c: c[0] + c[1] + c[2])
+            else:
+                rest.append((x, y))
+        holes = rest
+    return out
+
+
 def crouch_side(base, k, mirror):
     """옆모습 덩어리를 k(0~1)만큼 웅크린 자세로 옮겨 다시 쌓는다."""
     layers = {n: Image.new('RGBA', base.size, (0, 0, 0, 0)) for n in ('legs', 'torso', 'head', 'arm')}
@@ -128,7 +157,7 @@ def crouch_side(base, k, mirror):
         dx, dy = SIDE_SHIFT.get(name, (0, 0))
         dx = round(dx * k) * (-1 if mirror else 1)
         out.alpha_composite(layers[name], (dx, round(dy * k)))
-    return out
+    return fill_holes(out)
 
 
 def side_frames(view):
