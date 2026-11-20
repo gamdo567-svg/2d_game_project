@@ -285,7 +285,7 @@ PLAYER_ENCHANT_DURATION = 1.2  # [임시값] 초. 입히는 동작 전체 (그�
 PLAYER_ENCHANT_RISE = (0.2, 0.75)  # [임시값] 동작 진행도 중 이펙트가 손잡이에서 칼끝까지 차오르는 구간
 # 입히는 자세: 새 그림(PixelLab, 측면부터)을 만들 때까지 패링 막기 자세(패링 그림 3번째 장)를 임시로 쓴다.
 PLAYER_ENCHANT_POSE_FRAME = 2
-# 이펙트 시트 (assets/concepts/pixellab/sword_enchant/, 불은 build_fire_aura.py 로 직접 그린 오러): 칼 그림과 같은 방향(칼끝 오른쪽)으로
+# 이펙트 시트 (assets/concepts/pixellab/sword_enchant/, 불은 build_fire_flame.py 로 직접 그린 입자 불꽃): 칼 그림과 같은 방향(칼끝 오른쪽)으로
 # 프레임마다 가로로 이어 붙임. 손(칼 그림 한가운데)이 프레임 한가운데. 칼과 같은 손 위치·각도로 돌려 겹쳐 그린다.
 SWORD_EFFECT_DIR = PROJECT_ROOT / "assets" / "images" / "effects" / "sword_enchant"
 SWORD_EFFECT_FRAME_SIZE = (80, 24)
