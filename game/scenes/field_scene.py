@@ -94,17 +94,24 @@ class FieldScene:
         self.player.update(dt, input_state)
         for shake in self.player.shake_requests:  # 검 속성이 다 차오른 순간 등
             self.shake.start(**shake)
+        if self.player.discharge_requested:  # 검의 번개를 끔: 전기 게이지가 찬 상대가 모두 감전 (2026-11-20)
+            for target in [*self.dummies, *self.golems]:
+                target.discharge()
         for strike in self.player.strikes:
             tiles = attack_tiles(strike, self.tile_map.is_wall)
             for dummy in self.dummies:
                 if (dummy.col, dummy.row) in tiles and dummy.take_hit(strike.damage, strike.direction):
                     if strike.element == config.BURN_ELEMENT:
                         dummy.ignite()  # 불 속성 칼: 불이 붙음
+                    elif strike.element == config.CHARGE_ELEMENT:
+                        dummy.add_charge()  # 전기 속성 칼: 파란 게이지가 참
             for golem in self.golems:
                 if golem.tiles.intersection(tiles) and golem.take_hit(strike.damage, strike.direction):
                     self.aggro.on_hit(golem)  # 휴면 중에 맞으면 (끈 몬스터가 없을 때) 깨어나 끌림
                     if strike.element == config.BURN_ELEMENT:
                         golem.ignite()
+                    elif strike.element == config.CHARGE_ELEMENT:
+                        golem.add_charge()
         for dummy in self.dummies:
             dummy.update(dt)
         player_tile = (self.player.col, self.player.row)

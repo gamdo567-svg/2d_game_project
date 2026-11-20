@@ -172,6 +172,7 @@ class Player:
         self._pending_fx: list[tuple[str, str]] = []  # 그릴 때 칼 자리를 알고 시작할 (종류, 속성)
         self._flicked = False  # 이번 입히기에서 털어내기 입자를 냈는지
         self.shake_requests: list[dict] = []  # 장면이 읽어 화면을 흔든다
+        self.discharge_requested = False  # 검의 번개를 끈 프레임 (전기 방전, 장면이 처리)
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
         self.posture = PostureGauge()
@@ -236,6 +237,7 @@ class Player:
         self.posture.update(dt)
         self.effect_clock += dt
         self.shake_requests = []
+        self.discharge_requested = False  # 이번 프레임에 검의 번개를 껐는지 (전기 방전, 장면이 처리)
         self.fx.update(dt)
         burn_damage = self.burn.update(dt)
         if burn_damage:  # 불 피해: 경직 없이 체력만
@@ -281,6 +283,8 @@ class Player:
                 if self.enchant.press():
                     self.combo.cancel_window()
                     self.fsm.trigger("enchant")
+                elif self.enchant.removed == config.CHARGE_ELEMENT:
+                    self.discharge_requested = True  # 검의 번개를 끔: 장면이 게이지가 찬 상대를 모두 감전시킨다
             elif self._buffered(Action.JUMP):
                 # 걷던 중이면 그 한 칸은 공중에서 마저 간다 (2026-11-17 사용자 결정: 바로 점프)
                 self._consume(Action.JUMP)

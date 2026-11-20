@@ -23,6 +23,7 @@ class SwordEnchant(TimedAction):
         self.active: str | None = None
         self.pending: str | None = None
         self.just_applied = False  # 이번 update 에서 막 입혀짐 (폭발·화면 흔들림 신호)
+        self.removed: str | None = None  # 방금 E 로 푼 속성 (전기면 방전, 2026-11-20)
 
     def select(self, index: int) -> None:
         """index 번째 속성(0 부터)을 고른다. 검은 그대로."""
@@ -32,6 +33,7 @@ class SwordEnchant(TimedAction):
     def press(self) -> bool:
         """E: 고른 속성이 이미 입혀져 있으면 풀고 False, 아니면 입히는 동작을 시작하고 True."""
         if self.selected == self.active:
+            self.removed = self.active
             self.active = None
             return False
         self.pending = self.selected

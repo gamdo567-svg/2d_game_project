@@ -1,0 +1,147 @@
+"""전기 능력 테스트 (2026-11-20 사용자 결정: 전기 칼로 때리면 파란 게이지가 차고, E 로 번개를 끄면 게이지만큼 감전).
+pico2d 없이."""
+import random
+import unittest
+
+from game import config
+from game.combat.charge import BLACK, NORMAL, WHITE, Charge, StaticField
+from game.combat.training_dummy import TrainingDummy
+from game.enemies.golem import REST, WINDUP, Golem
+from game.input.input_state import Action, InputState
+from game.scenes.field_scene import FieldScene
+from game.world.grid import Grid
+from game.world.tile_map import TileMap
+
+DT = 1 / 60
+
+
+class ChargeLogicTest(unittest.TestCase):
+    def test_ten_hits_fill_and_full_discharge(self):
+        c = Charge()
+        for _ in range(12):
+            c.add()
+        self.assertAlmostEqual(c.value, 1.0)
+        self.assertEqual(c.discharge(), config.SHOCK_DAMAGE_FULL)
+        self.assertEqual(c.value, 0.0)
+        self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL)
+
+    def test_discharge_scales_with_gauge(self):
+        c = Charge()
+        for _ in range(5):
+            c.add()
+        self.assertEqual(c.discharge(), round(config.SHOCK_DAMAGE_FULL * 0.5))
+        self.assertAlmostEqual(c.shock_left, config.SHOCK_TIME_FULL * 0.5)
+
+    def test_empty_gauge_does_nothing(self):
+        c = Charge()
+        self.assertEqual(c.discharge(), 0)
+        self.assertFalse(c.shocked)
+
+    def test_gauge_does_not_decay(self):
+        c = Charge()
+        c.add()
+        for _ in range(600):
+            c.update(DT)
+        self.assertAlmostEqual(c.value, config.CHARGE_PER_HIT)
+
+    def test_shock_flickers_black_white(self):
+        c = Charge()
+        for _ in range(10):
+            c.add()
+        c.discharge()
+        looks = set()
+        for _ in range(60):
+            looks.add(c.shock_look)
+            c.update(DT)
+        self.assertEqual(looks, {BLACK, WHITE, NORMAL})
+
+    def test_static_grows_with_gauge(self):
+        weak, strong = StaticField((16, 40), random.Random(1)), StaticField((16, 40), random.Random(1))
+        nw = ns = 0
+        for _ in range(120):
+            weak.update(DT, 0.1, False)
+            strong.update(DT, 1.0, False)
+            nw += len(weak.arcs)
+            ns += len(strong.arcs)
+        self.assertGreater(ns, nw * 2)
+        empty = StaticField((16, 40))
+        empty.update(1.0, 0.0, False)
+        self.assertEqual(empty.pixels(), [])
+
+
+class TargetShockTest(unittest.TestCase):
+    def test_golem_shock_damages_freezes_and_cancels_windup(self):
+        g = Golem(5, 5, lambda c, r: False)
+        for _ in range(10):
+            g.add_charge()
+        g.state, g.pattern, g.state_left = WINDUP, "slam", 1.0
+        hp = g.hp
+        self.assertTrue(g.discharge())
+        self.assertEqual(g.hp, hp - config.SHOCK_DAMAGE_FULL)
+        self.assertEqual(g.state, REST)
+        self.assertEqual(g.popups[-1].color, config.COLOR_SHOCK_TEXT)
+        spot = (g.col, g.row)
+        for _ in range(round(config.SHOCK_TIME_FULL / DT) - 2):  # 감전 동안 굳어 있음
+            g.update(DT, (5, 9), lambda c, r: True)
+            self.assertEqual((g.col, g.row), spot)
+            self.assertEqual(g.attacks, [])
+
+    def test_dummy_shock(self):
+        d = TrainingDummy(3, 3)
+        d.add_charge()
+        self.assertTrue(d.discharge())
+        self.assertEqual(d.hp, d.max_hp - round(config.SHOCK_DAMAGE_FULL * config.CHARGE_PER_HIT))
+        self.assertFalse(d.discharge())  # 게이지를 다 썼음
+
+
+ROOM = """
+#######
+#.....#
+#P.D..#
+#.....#
+#######
+"""
+
+
+class LightningSwordTest(unittest.TestCase):
+    def setUp(self):
+        tile_map = TileMap.from_text(ROOM)
+        self.scene = FieldScene(Grid(tile_map.cols, tile_map.rows, config.RENDER_TILE_SIZE), tile_map)
+        self.input = InputState()
+        self.dummy = self.scene.dummies[0]
+
+    def step(self):
+        self.scene.update(DT, self.input)
+        self.input.begin_frame()
+
+    def tap(self, action):
+        self.input.press(action)
+        self.step()
+        self.input.release(action)
+
+    def run_for(self, seconds):
+        for _ in range(round(seconds / DT)):
+            self.step()
+
+    def test_hits_charge_then_e_discharges_and_removes_lightning(self):
+        self.input.press(Action.MOVE_RIGHT)
+        self.run_for(1.0)
+        self.input.release(Action.MOVE_RIGHT)
+        self.run_for(0.3)
+        self.tap(Action.ELEMENT_2)
+        self.tap(Action.ENCHANT)
+        self.run_for(config.PLAYER_ENCHANT_DURATION + 0.1)
+        self.assertEqual(self.scene.player.enchant.active, "lightning")
+        self.tap(Action.ATTACK)
+        self.run_for(0.8)
+        self.assertAlmostEqual(self.dummy.charge.value, config.CHARGE_PER_HIT)
+        hp = self.dummy.hp
+        self.tap(Action.ENCHANT)  # 같은 속성으로 E: 번개를 끔 → 방전
+        self.assertIsNone(self.scene.player.enchant.active)
+        self.assertTrue(self.dummy.charge.shocked)
+        self.assertLess(self.dummy.hp, hp)
+        self.assertEqual(self.dummy.charge.value, 0.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

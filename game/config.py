@@ -380,6 +380,20 @@ BURN_BODY_GOLEM = (30, 74)
 BURN_BODY_DUMMY = (16, 48)
 BURN_BODY_PLAYER = (16, 38)
 COLOR_BURN_TEXT = (255, 150, 60)  # 불 피해 숫자
+# 전기 능력 (2026-11-20 사용자 결정, game/combat/charge.py): 전기를 입힌 검으로 때리면 상대에게 파란 게이지가 차고,
+# E 로 검의 번개를 끄면(속성이 풀림) 쌓인 게이지만큼 감전 (피해 + 그동안 멈춤, 하던 공격 예고도 끊김). 수치는 [임시값].
+CHARGE_ELEMENT = "lightning"
+CHARGE_PER_HIT = 0.1  # 한 대에 차는 게이지 (10대면 가득). 방전할 때까지 줄지 않음
+SHOCK_DAMAGE_FULL = 60  # 게이지가 가득일 때 방전 피해 (게이지에 비례)
+SHOCK_TIME_FULL = 1.5  # 게이지가 가득일 때 감전 시간 (초, 게이지에 비례)
+SHOCK_FLASH = 0.06  # 감전 중 검은 그림자 → 흰 그림 → 원래 그림이 바뀌는 간격 (초)
+SHOCK_ZAP_RATE = 55.0  # 감전 중 몸을 가로지르는 번개 수 (초당)
+STATIC_RATE_MIN = 2.0  # 정전기 번개 수 (초당) = 최소 + 최대 × 게이지
+STATIC_RATE_MAX = 30.0
+STATIC_CORE_COLOR = (236, 248, 255)  # 번개 심
+STATIC_GLOW_COLOR = (110, 190, 255)  # 번개 둘레·식은 번개
+COLOR_CHARGE_BAR = (80, 170, 255)  # 파란 전기 게이지 막대
+COLOR_SHOCK_TEXT = (140, 210, 255)  # 감전 피해 숫자
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.
@@ -436,6 +450,7 @@ DUMMY_FLASH_TIME = 0.12  # 초. 하얗게 깜빡이는 시간
 DUMMY_IMAGE_DIR = PROJECT_ROOT / "assets" / "images" / "dummy"
 DUMMY_STAGE_IMAGES = tuple(str(DUMMY_IMAGE_DIR / f"stage{k}.png") for k in range(3))
 DUMMY_STAGE_WHITE = tuple(str(DUMMY_IMAGE_DIR / f"stage{k}_white.png") for k in range(3))
+DUMMY_STAGE_BLACK = tuple(str(DUMMY_IMAGE_DIR / f"stage{k}_black.png") for k in range(3))  # 감전 검은 그림자
 DUMMY_BREAK_SHEET = str(DUMMY_IMAGE_DIR / "break.png")
 DUMMY_BREAK_FRAMES = 8
 DUMMY_BREAK_TIME = 0.6  # 초. 무너지는 그림 8장 (그 뒤 부러진 밑동으로 쓰러져 있음)
