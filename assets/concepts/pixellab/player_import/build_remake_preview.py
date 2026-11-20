@@ -69,7 +69,7 @@ OVERRIDES = {
     ('enchant_side', 12): (41, 33, 68, False), ('enchant_side', 13): (29, 29, 117, True),
     ('enchant_side', 14): (27, 31, 137, True),
     ('enchant_front', 12): (19, 41, -160, False), ('enchant_front', 13): (20, 34, 108, False),
-    ('enchant_front', 14): (21, 31, 38, True),
+    ('enchant_front', 14): (21, 31, 150, True),  # 칼을 머리 뒤로 넘기면 가려져 (사용자 지적) 왼쪽 위로 다 보이게
     ('enchant_back', 12): (41, 39, 20, False), ('enchant_back', 13): (41, 34, 69, False),
     ('enchant_back', 14): (39, 30, 90, True),
     # 패링 정면 (2026-11-18, C안): 2번째는 쳐올리는 잔상 속 칼 (오른쪽 위로)

@@ -30,6 +30,23 @@ VIEWS = {'side': ('east', 'side_raise_v1'), 'front': ('south', 'south_raise_v1')
 # 등에 다시 꽂기 (같은 날 사용자 승인): 힘 푼 끝 장 → 서 있는 그림을 pixminimax 8장으로 (<방향>_sheathe_v1, f0 = 시작),
 #   칼을 오른쪽 어깨 위로 넘겨 등에 꽂음. 그중 5장을 골라 씀 → 16장. 마지막 2장은 게임이 등 칼을 그린다.
 #   후면은 PixelLab 이 왼쪽 어깨로 넘겨 f3·f4·f7 을 좌우로 뒤집어 씀 (m3·m4·m7, 등 칼 손잡이는 오른쪽 어깨).
+# 뒤집으면 PixelLab 이 맨살로 그린 왼팔이 오른쪽에 드러나 (사용자 지적) 살색을 어두운 소매 색으로 칠한다.
+SKIN_TO_SLEEVE = {(254, 165, 118): (61, 43, 45), (144, 84, 73): (42, 28, 32), (147, 103, 95): (52, 34, 39)}
+
+
+def mirrored_sheathe():
+    """후면 꽂기 f3·f4·f7 → 좌우로 뒤집고 살색을 소매 색으로 (m3·m4·m7)."""
+    for k in (3, 4, 7):
+        im = Image.open(os.path.join(POSE, 'north_sheathe_v1', f'f{k}.png')).convert('RGBA').transpose(Image.FLIP_LEFT_RIGHT)
+        px = im.load()
+        for y in range(im.height):
+            for x in range(im.width):
+                r, g, b_, a = px[x, y]
+                if a and (r, g, b_) in SKIN_TO_SLEEVE:
+                    px[x, y] = SKIN_TO_SLEEVE[(r, g, b_)] + (a,)
+        im.save(os.path.join(POSE, 'north_sheathe_v1', f'm{k}.png'))
+
+
 SHEATHE = {'east': ('f2', 'f3', 'f4', 'f5', 'f7'), 'south': ('f1', 'f2', 'f3', 'f6', 'f7'),
            'north': ('f1', 'f2', 'm3', 'm4', 'm7')}
 #   몸을 살짝 펴고 칼 쥔 팔이 느슨해지며 칼끝이 조금 더 처짐.
@@ -43,6 +60,7 @@ def order(direction, folder):
 
 
 def main():
+    mirrored_sheathe()
     palette = pf.game_palette()
     for view, (direction, folder) in VIEWS.items():
         frames = [Image.open(os.path.join(POSE, f'idle_{direction}_64.png')).convert('RGBA')]
