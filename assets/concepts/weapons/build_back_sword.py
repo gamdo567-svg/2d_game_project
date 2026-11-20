@@ -1,5 +1,9 @@
 """등에 멘 칼 그림을 만든다 (2026-11-18 사용자 요청: 평소에는 검을 등에 매고 다님).
 
+2026-11-20 사용자 요청: 칼집을 없애고 칼을 바로 등에 멘다 (칼집에 가려 검 속성 이펙트가 안 보임). BARE 가 True 면
+칼 그림(<무기>.png)을 그대로 BARE_PLACES 의 손 자리·각도로 돌려 놓는다. 게임은 같은 자리·각도(PLAYER_BACK_SWORD_HAND)에
+속성 이펙트를 겹친다. 아래 칼집 방식(PixelLab 그림·계산 그림)은 BARE = False 로 되돌릴 때를 위해 남김.
+
 지금은 PixelLab 그림(pixellab_sheath/)을 자리에 맞춰 놓는다 (PIXELLAB_ART). 아래 1~3 은 처음의 계산 방식(밑그림용으로 남김).
 
 입력: assets/images/player/weapons/<무기>.png (56×10, 칼끝 오른쪽, 한가운데가 손).
@@ -154,12 +158,20 @@ def place_art(view: str) -> Image.Image:
     return canvas
 
 
+BARE = True
+# 맨 칼: 방향별 (손 자리 = 주인공 그림 좌표, 칼끝 각도). game/config.py PLAYER_BACK_SWORD_HAND 는 여기에 BODY 를 더한 값.
+BARE_PLACES = {"front": ((7, 15), -55), "back": ((23, 18), -125), "side": ((10, 16), -100)}
+
+
 def main() -> None:
     sword = Image.open(WEAPONS / f"{WEAPON}.png").convert("RGBA")
     item = sheathed(sword)
     preview = Image.new("RGBA", (CANVAS * 3, CANVAS), (40, 44, 52, 255))
     for k, (view, (guard, angle, behind, thin)) in enumerate(PLACES.items()):
-        art = place_art(view)  # 예전 계산 그림: place(sheathed(sword, thin), guard, angle)
+        if BARE:
+            art = place(sword, *BARE_PLACES[view])
+        else:
+            art = place_art(view)  # 예전 계산 그림: place(sheathed(sword, thin), guard, angle)
         art.save(WEAPONS / f"{WEAPON}_back_{view}.png")
         body = Image.open(PLAYER / "idle" / f"{view}.png").convert("RGBA").crop((0, 0, 32, 48))
         cell = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))

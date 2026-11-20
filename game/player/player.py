@@ -538,10 +538,16 @@ class Player:
         size = config.PLAYER_BACK_SWORD_SIZE
 
         def draw_sword() -> None:
+            sword_x = center_x + (-dx if flip else dx) * scale  # 등 칼 그림의 아래 가운데
+            sword_bottom = bottom + dy * scale
             renderer.draw_sprite_frame(
                 weapon_back_path(config.PLAYER_WEAPON, view), 0, size, size,
-                center_x + (-dx if flip else dx) * scale, bottom + dy * scale,
-                size * scale, size * scale, flip_horizontal=flip)
+                sword_x, sword_bottom, size * scale, size * scale, flip_horizontal=flip)
+            # 검 속성 이펙트: 등에 멘 맨 칼에도 같은 자리·각도로 (2026-11-20 사용자 요청)
+            hx, hy, angle = config.PLAYER_BACK_SWORD_HAND[view]
+            x = size - hx - 0.5 if flip else hx + 0.5
+            self._draw_sword_effect(renderer, sword_x - size * scale / 2 + x * scale,
+                                    sword_bottom + (size - hy - 0.5) * scale, -angle if flip else angle, flip)
 
         if (state, view) in config.PLAYER_BACK_SWORD_HIDDEN:
             draw_body()

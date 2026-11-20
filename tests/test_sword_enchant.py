@@ -124,6 +124,17 @@ class PlayerEnchantTest(unittest.TestCase):
         self.assertEqual(len(effect), 1)
         self.assertTrue(effect[0][1][0].endswith("fire.png"))  # 다 붙은 뒤에는 반복 시트
 
+    def test_effect_on_back_sword_when_idle(self):
+        # 칼집 없이 등에 멘 칼에도 속성 이펙트 (2026-11-20 사용자 요청)
+        self.tap(Action.ENCHANT)
+        self.run_for(config.PLAYER_ENCHANT_DURATION + 0.1)
+        self.assertEqual(self.player.state, IDLE)
+        renderer = _RecordingRenderer()
+        self.player.draw(renderer)
+        effect = [c for c in renderer.calls if c[0] == "draw_frame_rotated"]
+        self.assertEqual(len(effect), 1)
+        self.assertEqual(effect[0][1][7], config.PLAYER_BACK_SWORD_HAND["front"][2])  # 등 칼과 같은 각도
+
     def test_effect_on_front_thrust_art(self):
         # 정면 3타 찌르는 순간은 찌르기용 칼 그림을 쓰는데, 거기에도 이펙트가 붙어야 함 (2026-11-20 사용자 지적)
         self.tap(Action.ENCHANT)
