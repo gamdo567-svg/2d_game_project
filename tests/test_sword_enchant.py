@@ -110,8 +110,8 @@ class PlayerEnchantTest(unittest.TestCase):
         self.player.draw(renderer)
         effect = [c for c in renderer.calls if c[0] == "draw_frame_rotated"]
         self.assertEqual(len(effect), 1)
-        start, end = config.SWORD_EFFECT_RISE_X
-        self.assertTrue(start < effect[0][2]["visible_width"] < end)  # 손잡이 쪽부터 일부만
+        self.assertTrue(effect[0][1][0].endswith("fire_ignite.png"))  # 점화 시트
+        self.assertTrue(0 < effect[0][1][1] < config.SWORD_EFFECT_IGNITE_FRAMES - 1)  # 번지는 중간 장
 
     def test_effect_drawn_on_sword_during_attack(self):
         self.tap(Action.ENCHANT)
@@ -122,7 +122,7 @@ class PlayerEnchantTest(unittest.TestCase):
         self.player.draw(renderer)
         effect = [c for c in renderer.calls if c[0] == "draw_frame_rotated"]
         self.assertEqual(len(effect), 1)
-        self.assertIsNone(effect[0][2]["visible_width"])  # 칼 전체
+        self.assertTrue(effect[0][1][0].endswith("fire.png"))  # 다 붙은 뒤에는 반복 시트
 
 
 if __name__ == "__main__":

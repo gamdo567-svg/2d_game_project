@@ -291,7 +291,9 @@ SWORD_EFFECT_DIR = PROJECT_ROOT / "assets" / "images" / "effects" / "sword_encha
 SWORD_EFFECT_FRAME_SIZE = (80, 24)
 SWORD_EFFECT_FRAMES = 24
 SWORD_EFFECT_FPS = 12
-SWORD_EFFECT_RISE_X = (44, 80)  # 프레임에서 차오르기가 시작하는 x(칼 가드)와 끝나는 x(이펙트 끝)
+# 점화 시트 (<속성>_ignite.png): E 로 입힐 때 차오르는 정도(0~1)에 맞춰 고르는 장들. 손잡이에서 불이 붙어 칼끝까지 타오르며 번짐.
+# (2026-11-20 사용자: 잘라 보여 주던 방식은 레이저처럼 올라가 불타오르는 느낌이 없었음)
+SWORD_EFFECT_IGNITE_FRAMES = 12
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 칼집째 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.

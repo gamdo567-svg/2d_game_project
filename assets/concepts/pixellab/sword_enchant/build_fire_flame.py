@@ -25,6 +25,7 @@ BLADE_FROM_X = 45
 TOP_EDGE, BOTTOM_EDGE, MID_Y = 9, 13, 11
 SEED = 5
 COUNT = 170  # 불꽃 덩어리 수
+IGNITE_FRAMES = 12  # 점화 장 수 (game/config.py SWORD_EFFECT_IGNITE_FRAMES 와 같게)
 
 # 열 문턱 → 색 (높은 것부터)
 HEAT_COLOURS = [
@@ -68,10 +69,35 @@ def make_particles(tip):
     return out
 
 
-def draw_frame(i, blade, parts):
+def flare_blobs(front, k):
+    """불이 번지는 앞머리의 큰 불덩이들 (점화 장 k 마다 조금씩 다르게)."""
+    rnd = random.Random(1000 + k)
+    out = []
+    for _ in range(7):
+        side = rnd.choice((-1, 0, 1))
+        cx = front - rnd.uniform(-1.5, 3.5)
+        cy = MID_Y + side * rnd.uniform(2.5, 4.5) + rnd.uniform(-0.8, 0.8)
+        out.append((cx + rnd.uniform(0, 3), cy, rnd.uniform(2.0, 3.2), rnd.uniform(0.9, 1.3)))
+    return out
+
+
+def draw_frame(i, blade, parts, front=None, k=0):
+    """front 가 있으면 점화 장: 그 x 까지만 불이 붙어 있고, 앞머리에서 큰 불덩이가 화르륵 일어난다."""
     t = i / FRAMES
     heat = [[0.0] * W for _ in range(H)]
+    if front is not None:
+        for cx, cy, r, strength in flare_blobs(front, k):
+            for y in range(max(0, int(cy - r - 1)), min(H, int(cy + r + 2))):
+                for x in range(max(0, int(cx - r - 1)), min(W, int(cx + r + 2))):
+                    d = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
+                    if d < r:
+                        heat[y][x] += (1 - d / r) * strength
     for p in parts:
+        boost = 1.0
+        if front is not None:
+            if p['x0'] > front:
+                continue  # 아직 불이 닿지 않은 자리
+            boost = 1.0 + 0.5 * max(0.0, 1 - (front - p['x0']) / 8)  # 막 불이 붙은 곳은 더 세게
         age = ((t - p['born']) % 1.0) / p['life']
         if age >= 1.0:
             continue
@@ -79,7 +105,7 @@ def draw_frame(i, blade, parts):
         cx = p['x0'] + p['vx'] * age ** 1.2
         cy = p['y0'] + p['vy'] * age + p['wig'] * math.sin(p['ph'] + age * 9) * age
         r = p['r0'] * (1 - 0.75 * age)
-        strength = 1.25 * (1 - age) ** 0.7
+        strength = 1.25 * (1 - age) ** 0.7 * boost
         for y in range(max(0, int(cy - r - 1)), min(H, int(cy + r + 2))):
             for x in range(max(0, int(cx - r - 1)), min(W, int(cx + r + 2))):
                 d = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
@@ -92,7 +118,7 @@ def draw_frame(i, blade, parts):
         for dy in (-2, -1, 1, 2):
             for dx in (-1, 0, 1):
                 x, y = bx + dx, by + dy
-                if 0 <= x < W and 0 <= y < H and (x, y) not in blade and x >= BLADE_FROM_X:
+                if 0 <= x < W and 0 <= y < H and (x, y) not in blade and x >= BLADE_FROM_X                         and (front is None or x <= front):
                     c = GLOW[0] if abs(dy) == 1 else GLOW[1]
                     if px[x, y][3] < c[3]:
                         px[x, y] = c
@@ -116,7 +142,16 @@ def main():
         strip.alpha_composite(draw_frame(i, blade, parts), (i * W, 0))
     os.makedirs(OUT, exist_ok=True)
     strip.save(os.path.join(OUT, 'fire.png'))
-    print('fire flame', FRAMES)
+    # 점화 (E 로 입힐 때): 손잡이에서 불이 붙어 칼끝까지 타오르며 번짐. 앞머리 뒤로 날린 불꽃이 앞질러 핥는다.
+    tip = max(x for x, _ in blade)
+    ignite = Image.new('RGBA', (W * IGNITE_FRAMES, H), (0, 0, 0, 0))
+    for k in range(IGNITE_FRAMES):
+        front = BLADE_FROM_X + 1 + (tip + 4 - (BLADE_FROM_X + 1)) * (k + 1) / IGNITE_FRAMES
+        # 막 불이 붙은 아랫부분이 비어 보이지 않게 덩어리를 한 벌 더 (태어나는 때를 옮긴 것)
+        dense = parts + [dict(p, born=(p['born'] + 0.37) % 1.0) for p in parts[::2]]
+        ignite.alpha_composite(draw_frame(k, blade, dense, front=front, k=k), (k * W, 0))
+    ignite.save(os.path.join(OUT, 'fire_ignite.png'))
+    print('fire flame', FRAMES, 'ignite', IGNITE_FRAMES)
 
 
 if __name__ == '__main__':

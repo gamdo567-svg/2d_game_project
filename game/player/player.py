@@ -614,19 +614,21 @@ class Player:
         return None
 
     def _draw_sword_effect(self, renderer, x: float, y: float, angle: float, flip: bool) -> None:
-        """칼 이펙트 시트를 칼과 같은 손 위치·각도로 겹친다 (차오르는 중이면 손잡이 쪽부터 그 만큼만)."""
+        """칼 이펙트 시트를 칼과 같은 손 위치·각도로 겹친다 (입히는 중이면 점화 시트의 그 순간 장)."""
         effect = self.sword_effect
         if effect is None:
             return
         element, rise = effect
         if rise <= 0.0:
             return
-        start, end = config.SWORD_EFFECT_RISE_X
-        visible = None if rise >= 1.0 else round(start + (end - start) * rise)
-        frame = int(self.effect_clock * config.SWORD_EFFECT_FPS) % config.SWORD_EFFECT_FRAMES
+        if rise < 1.0:  # 입히는 중: 점화 시트 (손잡이에서 붙은 불이 칼끝까지 번짐)
+            path = config.SWORD_EFFECT_DIR / f"{element}_ignite.png"
+            frame = min(config.SWORD_EFFECT_IGNITE_FRAMES - 1, int(rise * config.SWORD_EFFECT_IGNITE_FRAMES))
+        else:
+            path = config.SWORD_EFFECT_DIR / f"{element}.png"
+            frame = int(self.effect_clock * config.SWORD_EFFECT_FPS) % config.SWORD_EFFECT_FRAMES
         w, h = config.SWORD_EFFECT_FRAME_SIZE
-        renderer.draw_frame_rotated(str(config.SWORD_EFFECT_DIR / f"{element}.png"), frame, w, h, x, y,
-                                    config.RENDER_SCALE, angle, flip_horizontal=flip, visible_width=visible)
+        renderer.draw_frame_rotated(str(path), frame, w, h, x, y, config.RENDER_SCALE, angle, flip_horizontal=flip)
 
     def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
                          body_path: str, hand_path: str, sword: tuple, art_path: str | None = None) -> None:

@@ -19,7 +19,7 @@
 ## 2026-11-20 — 검 속성 입히기 (Claude Code)
 - 브랜치 / 마지막 커밋: `claude/sword-enchant` (`claude/monster-aggro` 위에서 시작, main 에는 아직 없음) / 이 항목을 담은 커밋
 - 한 일: 1·2·3 으로 속성(불·전기·어둠) 고르기, E 로 입히기(두 손으로 검을 세우면 이펙트가 손잡이→칼끝으로 차오름, 다 차면 계속 남음),
-  같은 속성으로 E = 풀기. 새 상태 `enchant`, `game/player/enchant.py`, `Renderer.draw_frame_rotated`, HUD 표시. 불 이펙트는 PixelLab VFX → 직접 그린 불꽃 혀(`build_fire_handmade.py`) → 불 오러(`build_fire_aura.py`) → 레이저 검 같다는 지적으로 입자 불꽃(`build_fire_flame.py`, 지금 쓰는 것).
+  같은 속성으로 E = 풀기. 새 상태 `enchant`, `game/player/enchant.py`, `Renderer.draw_frame_rotated`, HUD 표시. 불 이펙트는 PixelLab VFX → 직접 그린 불꽃 혀(`build_fire_handmade.py`) → 불 오러(`build_fire_aura.py`) → 레이저 검 같다는 지적으로 입자 불꽃(`build_fire_flame.py`, 지금 쓰는 것). E 로 입힐 때는 점화 시트(`fire_ignite.png`).
 - 현재 상태: 테스트 통과 (새 `tests/test_sword_enchant.py`), 스모크 정상. 그리기는 Pillow 캡처로만 확인, 실제 창은 못 봄.
 - 다음 작업자가 알아야 할 것: 자세 그림은 패링 막기 자세 임시. 전기·어둠은 고를 수 있지만 그림이 없어 아무것도 안 그려짐.
 - 남은 문제 / 다음 할 일: 사용자 의견 → 새 입히는 자세(측면부터 PixelLab), 전기·어둠 이펙트, 등에 멘 칼의 은은한 이펙트, 찌르기 칼 이펙트. 푸시·PR 보류 중.
