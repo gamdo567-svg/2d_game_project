@@ -608,8 +608,16 @@ class Player:
         return True
 
     def _draw_enchant(self, renderer, center_x: float, bottom: float) -> bool:
-        """검 속성 입히기 자세. 새 그림을 만들 때까지 패링 막기 자세(PLAYER_ENCHANT_POSE_FRAME)를 임시로 쓴다."""
+        """검 속성 입히기 자세: 그 방향 그림(PLAYER_ENCHANT_SWORD)이 있으면 칼을 곧게 세우는 동작,
+        없으면 패링 막기 자세(PLAYER_ENCHANT_POSE_FRAME)를 임시로 쓴다."""
         view, _ = sprite_view(self.facing)
+        table = config.PLAYER_ENCHANT_SWORD.get(view)
+        if table is not None:
+            frame = frame_for_progress(self.enchant.progress, config.PLAYER_ENCHANT_FRAME_ENDS)
+            folder = config.PLAYER_IMAGE_DIR / "enchant"
+            self._draw_sword_pose(renderer, center_x, bottom, frame, (0, 0), str(folder / f"{view}.png"),
+                                  str(folder / f"{view}_hand.png"), table[frame])
+            return True
         table = config.PLAYER_PARRY_SWORD.get(view)
         if table is None:
             return False

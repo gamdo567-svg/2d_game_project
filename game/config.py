@@ -283,8 +283,17 @@ SWORD_ELEMENT_NAMES = {"fire": "불", "lightning": "전기", "dark": "어둠"}
 SWORD_ELEMENT_COLORS = {"fire": (255, 140, 50), "lightning": (120, 200, 255), "dark": (170, 110, 220)}
 PLAYER_ENCHANT_DURATION = 1.2  # [임시값] 초. 입히는 동작 전체 (그동안 이동하지 않음)
 PLAYER_ENCHANT_RISE = (0.2, 0.75)  # [임시값] 동작 진행도 중 이펙트가 손잡이에서 칼끝까지 차오르는 구간
-# 입히는 자세: 새 그림(PixelLab, 측면부터)을 만들 때까지 패링 막기 자세(패링 그림 3번째 장)를 임시로 쓴다.
+# 입히는 자세: 새 그림이 없는 방향은 패링 막기 자세(패링 그림 3번째 장)를 임시로 쓴다.
 PLAYER_ENCHANT_POSE_FRAME = 2
+# 입히는 자세 그림 (2026-11-20, PixelLab: 두 손으로 칼을 곧게 세움, player/enchant/<방향>.png·_hand.png, 96×64 × 6장).
+# 장: 손을 꺼냄 → 칼을 허리 앞에 → 비스듬히 들어 올림 → 곧게 세움(이펙트가 차오르는 동안) → 비스듬히 → 허리 앞.
+# 칼 위치표는 export_to_game.py 가 뽑은 값 (손 x, 손 y, 각도, 몸 뒤[, 칼 길이 비율 0 = 안 그림]). 측면 먼저.
+PLAYER_ENCHANT_SWORD = {
+    "side": ((63, 40, 0, False, 0), (48, 43, 0, False), (54, 39, 53, False), (57, 35, 90, False), (54, 39, 53, False),
+             (48, 43, 0, False)),
+}
+# 장이 끝나는 진행도: 곧게 세운 장이 차오르는 구간(PLAYER_ENCHANT_RISE 0.2~0.75)을 덮게
+PLAYER_ENCHANT_FRAME_ENDS = (0.06, 0.12, 0.2, 0.84, 0.92, 1.0)
 # 이펙트 시트 (assets/concepts/pixellab/sword_enchant/, 불은 build_fire_flame.py 로 직접 그린 입자 불꽃): 칼 그림과 같은 방향(칼끝 오른쪽)으로
 # 프레임마다 가로로 이어 붙임. 손(칼 그림 한가운데)이 프레임 한가운데. 칼과 같은 손 위치·각도로 돌려 겹쳐 그린다.
 SWORD_EFFECT_DIR = PROJECT_ROOT / "assets" / "images" / "effects" / "sword_enchant"

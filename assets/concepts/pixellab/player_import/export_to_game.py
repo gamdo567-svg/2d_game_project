@@ -76,12 +76,17 @@ VIEW_PARRY = {'side': ('parry_side', 'parry_side_sheet_68.png', 0),
               'back': ('parry_back', 'parry_back_sheet_68.png', 0)}
 
 
-def export_parry():
-    """패링 시트(player/parry/<방향>.png, _hand.png)를 내보내고 칼 위치표 {방향: [...]} 를 돌려준다."""
+# 검 속성 입히기 자세 (2026-11-20, build_enchant_side.py): 두 손으로 칼을 곧게 세움. 측면 먼저.
+VIEW_ENCHANT = {'side': ('enchant_side', 'enchant_side_sheet_68.png', 0)}
+
+
+def export_parry(views=None, folder='parry', count=6):
+    """패링 시트(player/parry/<방향>.png, _hand.png)를 내보내고 칼 위치표 {방향: [...]} 를 돌려준다.
+    views·folder·count 를 바꾸면 같은 방식으로 다른 자세(검 속성 입히기 등)를 내보낸다."""
     tables = {}
-    os.makedirs(os.path.join(OUT, 'parry'), exist_ok=True)
-    for view, (name, path, row) in VIEW_PARRY.items():
-        frames = b.cells(path, row, count=6)
+    os.makedirs(os.path.join(OUT, folder), exist_ok=True)
+    for view, (name, path, row) in (views or VIEW_PARRY).items():
+        frames = b.cells(path, row, count=count)
         cx, foot, _ = ref_anchor(frames[0])
         dx, dy = ATTACK_W // 2 - cx, ATTACK_FOOT_ROW - foot
         layers, _, _ = b.build_layers(name, frames[1:])
@@ -93,8 +98,8 @@ def export_parry():
             hand.alpha_composite(layer['hand'].crop(_src_box(dx, dy)), _dst(i, dx, dy))
             hx, hy, angle, behind, *rest = layer['sword']
             table.append((round(hx + dx), round(hy + dy), round(angle), behind) + tuple(rest))
-        body.save(os.path.join(OUT, 'parry', f'{view}.png'))
-        hand.save(os.path.join(OUT, 'parry', f'{view}_hand.png'))
+        body.save(os.path.join(OUT, folder, f'{view}.png'))
+        hand.save(os.path.join(OUT, folder, f'{view}_hand.png'))
         tables[view] = table
     return tables
 
@@ -280,6 +285,8 @@ def main():
         print(')')
     for view, t in export_parry().items():
         print(f'PLAYER_PARRY_SWORD[{view!r}] = (' + ', '.join('(' + ', '.join(str(v) for v in e) + ')' for e in t) + ')')
+    for view, t in export_parry(VIEW_ENCHANT, 'enchant', 7).items():
+        print(f'PLAYER_ENCHANT_SWORD[{view!r}] = (' + ', '.join('(' + ', '.join(str(v) for v in e) + ')' for e in t) + ')')
     export_jump()
 
 if __name__ == '__main__':
