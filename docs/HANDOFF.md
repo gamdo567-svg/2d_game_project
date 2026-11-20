@@ -23,7 +23,9 @@
   seed 7) → 1타 색감 맞춤 → `export_to_game.py`. 칼 자리는 `estimate_back_swords` 로 다시 어림해 `PLAYER_ATTACK_SWORD_BACK` 3타 줄과
   `PLAYER_ATTACK_FRAME_SHIFTS_BACK` 3타 줄(4·6·8번 발 1 픽셀) 갱신. 바뀐 게임 그림은 `back_3.png` 하나 (2타 시트 줄은 그대로).
 - 현재 상태: 테스트 297개 통과, 스모크 실행 정상. 실제 창으로는 확인하지 못함 (그리기 캡처로 측면·정면·후면 비교).
-- 남은 문제 / 다음 할 일: 후면 2타는 아직 2차(hit2_v2) 그림. 푸시·PR 보류 중.
+- 이어서 2타도 같은 방법 (사용자 요청): `hit2_v3/result_hit2_back.png`(정면과 장마다 같은 그림) → 화풍 입힘 → 칼 자리 다시 어림
+  (칼날이 두꺼워 estimate 의 너비 한도 6) → `back_2.png`, config 2타 칼 줄·프레임 보정 줄 갱신. 5번째 잔상 장은 예전 설정 그대로.
+- 남은 문제 / 다음 할 일: 푸시·PR 보류 중.
 
 ## 2026-11-20 — 몬스터 어그로 시스템 (Claude Code)
 - 브랜치 / 마지막 커밋: `claude/monster-aggro` (`claude/labyrinth-tileset` 위에서 시작) / 이 항목을 담은 커밋
