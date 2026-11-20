@@ -25,11 +25,14 @@ VIEWS = {'side': ('east', 'side_raise_v1'), 'front': ('south', 'south_raise_v1')
 # (칼을 몸 옆 아래로 비스듬히, 4방향) 상태를 만들고, 곧게 세운 자세 → 그 자세를 pixminimax 4장으로 (<방향>_flick_v2).
 # 1차(flick_v1)는 "피를 털어내듯" 이라고 써서 PixelLab 이 빨간 피를 그려 버림 → 그 말을 빼고 다시.
 # 장 순서 (7장): 들어 올림 f1~f3 → 곧게 세움 → 확 털어 내림(크게 휘두른 잔상) → 내려온 장 → 털어낸 끝 자세
+# 힘 풀기 (같은 날 사용자: 털고 난 뒤 힘을 푸는 동작을 살짝): 끝 자세에서 pixminimax 4장 (<방향>_relax_v1, 끝 지정 없음) → 11장.
+#   몸을 살짝 펴고 칼 쥔 팔이 느슨해지며 칼끝이 조금 더 처짐.
 
 
 def order(direction, folder):
     return [f'{folder}/f1.png', f'{folder}/f2.png', f'{folder}/f3.png', f'hold_{direction}_64.png',
-            f'{direction}_flick_v2/f1.png', f'{direction}_flick_v2/f2.png', f'flick_{direction}_64.png']
+            f'{direction}_flick_v2/f1.png', f'{direction}_flick_v2/f2.png', f'flick_{direction}_64.png'] + [
+            f'{direction}_relax_v1/f{k}.png' for k in (1, 2, 3, 4)]
 
 
 def main():

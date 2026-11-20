@@ -287,7 +287,7 @@ def main():
         print(')')
     for view, t in export_parry().items():
         print(f'PLAYER_PARRY_SWORD[{view!r}] = (' + ', '.join('(' + ', '.join(str(v) for v in e) + ')' for e in t) + ')')
-    for view, t in export_parry(VIEW_ENCHANT, 'enchant', 8).items():
+    for view, t in export_parry(VIEW_ENCHANT, 'enchant', 12).items():
         print(f'PLAYER_ENCHANT_SWORD[{view!r}] = (' + ', '.join('(' + ', '.join(str(v) for v in e) + ')' for e in t) + ')')
     export_jump()
 

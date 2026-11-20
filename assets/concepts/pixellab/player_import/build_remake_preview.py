@@ -128,9 +128,9 @@ OVERRIDES = {
 # 쓰는 원본 프레임 (1~8). 2타 8번은 자세가 어정쩡해 7번을 한 번 더 쓴다 (2026-11-17 사용자 지적).
 FRAME_PICK = {
     'parry_side': [1, 2, 3, 4, 5],
-    'enchant_side': [1, 2, 3, 4, 5, 6, 7],  # 검 속성 입히기 (2026-11-20, 마지막 3장 = 털어내기)
-    'enchant_front': [1, 2, 3, 4, 5, 6, 7],
-    'enchant_back': [1, 2, 3, 4, 5, 6, 7],
+    'enchant_side': list(range(1, 12)),  # 검 속성 입히기 (2026-11-20, 마지막 3장 = 털어내기)
+    'enchant_front': list(range(1, 12)),
+    'enchant_back': list(range(1, 12)),
     'parry_front': [1, 2, 3, 4, 5],  # 패링: 당김, 쳐올림, 막기, 막기, 당김(복귀)
     'parry_back': [1, 2, 3, 4, 5],
     'backgpt1': [1, 2, 3, 4, 5, 6, 7, 8],
