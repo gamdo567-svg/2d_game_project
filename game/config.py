@@ -337,7 +337,7 @@ SWORD_PROCEDURAL_ELEMENTS = ("lightning", "dark")  # 어둠: 블랙홀처럼 빨
 BURN_ELEMENT = "fire"
 BURN_SECONDS_PER_HIT = 2.0  # 한 대 맞을 때마다 늘어나는 타는 시간
 BURN_MAX_SECONDS = 10.0  # 최대 타는 시간
-BURN_DAMAGE_PER_SECOND = 3
+BURN_DAMAGE_PER_SECOND = 4  # 3 → 4 (2026-11-20 사용자: 불이 셋 중 가장 약해서)
 BURN_TICK = 1.0  # 이 간격(초)마다 피해를 나눠 줌 (피해 숫자도 이때 뜸)
 # 불꽃 그림 (2026-11-20 사용자: 불타는 느낌이 없음 → 불꽃 혀 시트를 몸 여러 자리에, concepts/pixellab/burn/build_burn_flame.py)
 # 불꽃 모양 3종 (같은 날 사용자: 크기·모양이 다 같아 부자연스러움): 가늘고 높은 혀 / 넓은 불 / 작게 날름거리는 불
