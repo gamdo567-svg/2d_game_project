@@ -76,8 +76,10 @@ VIEW_PARRY = {'side': ('parry_side', 'parry_side_sheet_68.png', 0),
               'back': ('parry_back', 'parry_back_sheet_68.png', 0)}
 
 
-# 검 속성 입히기 자세 (2026-11-20, build_enchant_side.py): 두 손으로 칼을 곧게 세움. 측면 먼저.
-VIEW_ENCHANT = {'side': ('enchant_side', 'enchant_side_sheet_68.png', 0)}
+# 검 속성 입히기 자세 (2026-11-20, build_enchant_pose.py): 두 손으로 칼을 곧게 세움.
+VIEW_ENCHANT = {'side': ('enchant_side', 'enchant_side_sheet_68.png', 0),
+                'front': ('enchant_front', 'enchant_front_sheet_68.png', 0),
+                'back': ('enchant_back', 'enchant_back_sheet_68.png', 0)}
 
 
 def export_parry(views=None, folder='parry', count=6):

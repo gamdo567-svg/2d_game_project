@@ -56,6 +56,9 @@ OVERRIDES = {
     ('parry_side', 1): (43, 31, 108, True), ('parry_side', 2): (46, 41, 60, False),
     ('parry_side', 5): (43, 31, 108, True),
     ('enchant_side', 1): (48, 43, 0, False, 0),  # 검 속성 입히기 첫 장: 손만 꺼냄 (칼 없음)
+    # 후면 입히기: 칼은 몸 앞(보는 사람 반대쪽)이라 몸에 가려지고 칼끝만 후드 위로. 보이는 칼끝에서 칼 길이(24)만큼 아래가 손.
+    ('enchant_back', 1): (33, 36, 90, True, 0), ('enchant_back', 2): (38, 36, 120, True), ('enchant_back', 3): (32, 34, 90, True),
+    ('enchant_back', 4): (33, 33, 90, True), ('enchant_back', 5): (32, 34, 90, True), ('enchant_back', 6): (38, 36, 120, True),
     # 패링 정면 (2026-11-18, C안): 2번째는 쳐올리는 잔상 속 칼 (오른쪽 위로)
     ('parry_front', 2): (37, 41, 60, False),
     # 패링 후면 (2026-11-18, ChatGPT 핵심 자세): 두 손이 몸 앞이라 칼은 늘 몸 뒤(가려짐), 보이는 칼날 방향으로 맞춤.
@@ -122,6 +125,8 @@ OVERRIDES = {
 FRAME_PICK = {
     'parry_side': [1, 2, 3, 4, 5],
     'enchant_side': [1, 2, 3, 4, 5, 6],  # 검 속성 입히기 (2026-11-20)
+    'enchant_front': [1, 2, 3, 4, 5, 6],
+    'enchant_back': [1, 2, 3, 4, 5, 6],
     'parry_front': [1, 2, 3, 4, 5],  # 패링: 당김, 쳐올림, 막기, 막기, 당김(복귀)
     'parry_back': [1, 2, 3, 4, 5],
     'backgpt1': [1, 2, 3, 4, 5, 6, 7, 8],
