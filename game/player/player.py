@@ -666,12 +666,17 @@ class Player:
         sign = -1.0 if flip else 1.0
         rad = math.radians(angle)
         direction = (sign * math.cos(rad), sign * math.sin(rad))
-        for px, py, colour, *alpha in self.procedural[element].pixels((x / scale, y / scale), direction, shape,
-                                                                     along, reach):
+        # 원본 픽셀 격자를 캐릭터 그림의 픽셀 격자에 맞춘다 (손은 픽셀 한가운데). 안 맞추면 네모가 그림 픽셀과
+        # 반 칸씩 어긋나 겹쳐 깨져 보였음 (2026-11-20 사용자 지적).
+        hx, hy = x / scale - 0.5, y / scale - 0.5
+        ox, oy = hx - math.floor(hx), hy - math.floor(hy)
+        hand = (math.floor(hx) + 0.5, math.floor(hy) + 0.5)
+        for px, py, colour, *alpha in self.procedural[element].pixels(hand, direction, shape, along, reach):
+            left, bottom = (px + ox) * scale, (py + oy) * scale
             if colour is None:  # 반투명 그림자 (어둠)
-                renderer.fill_shade(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, alpha[0])
+                renderer.fill_shade(left, bottom, left + scale, bottom + scale, alpha[0])
             else:
-                renderer.fill_rect(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, colour)
+                renderer.fill_rect(left, bottom, left + scale, bottom + scale, colour)
 
     def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
                          body_path: str, hand_path: str, sword: tuple, art_path: str | None = None,

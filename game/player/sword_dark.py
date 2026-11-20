@@ -21,7 +21,7 @@ from game.player.sword_lightning import NOMINAL_LENGTH, BladeShape, _line
 
 PALE = (176, 172, 184)  # 빨려 드는 빛 조각 머리
 GREY = (70, 66, 76)  # 그 꼬리
-SHADE_STEPS = (0.2, 0.4, 0.6, 0.8, 0.94)  # 어둠 짙기를 이 단계로 끊어 픽셀풍으로
+SHADE_STEPS = (0.3, 0.6, 0.9)  # 어둠 짙기를 이 단계로 끊어 픽셀풍으로 (단계가 많으면 얼룩져 깨져 보임)
 
 
 @dataclass
@@ -142,23 +142,33 @@ class DarkField:
                     if d < r:
                         add(x, y, strength * (1 - d / r) ** 0.7)
 
-        # 칼 그림자: 칼날을 덮고 둘레는 더 짙게 (맥동 때 넓고 짙게)
-        steps = max(2, int((shape.end - shape.start) * along_scale))
-        boost = 1.0 if self.pulse else 0.0
-        for k in range(steps + 1):
-            a = k / steps
-            if a > reach:
-                break
-            wave = 0.5 + 0.5 * math.sin(self.phase * 6 + k * 0.8)
-            half = shape.half(a)
-            for t in range(-math.ceil(half), math.ceil(half) + 1):  # 칼날 위
-                x, y = place(a * NOMINAL_LENGTH, t, inside=True)
-                add(math.floor(x), math.floor(y), 0.62)
-            for side in (-1, 1):
-                width = 2.0 + 1.5 * wave + 1.5 * boost
-                for t in range(int(width) + 1):
-                    x, y = place(a * NOMINAL_LENGTH, side * (0.3 + t))
-                    add(math.floor(x), math.floor(y), 0.97 * (1 - t / (width + 1.5)) ** 0.8)
+        # 칼 그림자: 칼날을 덮고 둘레는 더 짙게 (맥동 때 넓고 짙게). 칼 둘레 네모 안의 모든 픽셀을 칼 모양에 대어 보고
+        # 칠한다 (칼날을 따라 점을 찍으면 비스듬한 칼에서 구멍이 나 깨져 보였음, 2026-11-20 사용자 지적).
+        boost = 1.5 if self.pulse else 0.0
+        near_end = (shape.start + (shape.end - shape.start) * reach) * along_scale
+        far = shape.half_start + 3.5 + boost + 1
+        corners = [place(0, 0, inside=True), place(reach * NOMINAL_LENGTH, 0, inside=True)]
+        x0 = math.floor(min(c[0] for c in corners) - far) - 1
+        x1 = math.ceil(max(c[0] for c in corners) + far) + 1
+        y0 = math.floor(min(c[1] for c in corners) - far) - 1
+        y1 = math.ceil(max(c[1] for c in corners) + far) + 1
+        for py in range(y0, y1 + 1):
+            for px in range(x0, x1 + 1):
+                vx, vy = px + 0.5 - hand[0], py + 0.5 - hand[1]
+                dist = vx * dx + vy * dy  # 칼 방향 거리
+                side = vx * nx + vy * ny  # 칼에서 옆으로
+                if not (shape.start * along_scale - 0.5 <= dist <= near_end + 0.5):
+                    continue
+                a = min(1.0, max(0.0, (dist / along_scale - shape.start) / (shape.end - shape.start)))
+                half = shape.half(a)
+                gap = abs(side) - half  # 칼날 가장자리에서 바깥으로
+                if gap <= 0:
+                    add(px, py, 0.62)  # 칼날 위
+                    continue
+                wave = 0.5 + 0.5 * math.sin(self.phase * 6 + a * 16 + (1 if side > 0 else 0))
+                width = 2.0 + 1.5 * wave + boost
+                if gap <= width:
+                    add(px, py, 0.97 * (1 - gap / (width + 1.0)) ** 0.8)
         for m in self.motes:
             if m.kind == "speck":
                 continue
@@ -170,10 +180,17 @@ class DarkField:
                 near = max(0.0, 1 - abs(m.off) / 9)
                 soft(cx, cy, max(0.8, m.radius * min(1.0, abs(m.off) / 4)), 0.35 + 0.65 * near)
         out: list[tuple] = []
+        levels = {}
         for (x, y), a in shade.items():
             level = max((s for s in SHADE_STEPS if s <= a), default=None)
             if level is not None:
-                out.append((x, y, None, level))
+                levels[(x, y)] = level
+        for (x, y), level in levels.items():
+            # 옅은 외톨이 픽셀은 버림 (가장자리에 흩어진 점이 깨져 보였음)
+            if level == SHADE_STEPS[0] and sum((x + ex, y + ey) in levels
+                                                for ex, ey in ((1, 0), (-1, 0), (0, 1), (0, -1))) < 2:
+                continue
+            out.append((x, y, None, level))
         for m in self.motes:  # 빨려 드는 빛 조각 (꼬리)
             if m.kind != "speck":
                 continue
