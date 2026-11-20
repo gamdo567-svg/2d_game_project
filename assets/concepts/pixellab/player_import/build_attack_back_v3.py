@@ -8,6 +8,7 @@ ChatGPT 가 정면 2·3타 8장(미리 좌우로 뒤집어 준 것)을 "뒤에�
 망토 명암은 게임에 내보낼 때 back_shading.py 가 넣으므로 여기서는 명암 없는 서기 그림 색에 맞춘다.
 출력: remake_raw/attack_back_v3_68.png (0행 = 2타, 1행 = 3타, 칸 0 = 게임 뒷모습), restyle 입력은 hitN_v2/restyle_in/f0~8.
 """
+import math
 import os
 import sys
 
@@ -29,7 +30,9 @@ HITS = {
         # 쳐올리는 장들의 잔상 [(장, 원 인자)], 'reuse': {장: 몸을 빌려 올 장}.
         # 2026-11-20 사용자 지적(후면 동작 순서가 이상함): 정면은 5 쳐올림(칼이 보임) → 6 머리 위로 계속(칼을 든 채 머리 위 잔상)
         # → 7·8 어깨에 멈춤인데, 후면은 6 에서 이미 멈춘 자세였다. 6 은 5 의 몸(칼을 쳐든)에 머리 위 잔상을 얹는다.
-        'swoosh': [(5, (40, 30, 30, 70, 230, 7)), (6, (36, 24, 21, 185, 305, 6))], 'reuse': {6: 5},
+        # 잔상 모양 (같은 날 사용자: 2타 후면 잔상도 정면처럼): 계산한 호 대신 정면 같은 장(5·6번째)의 잔상을 좌우로 뒤집어 그대로 쓴다.
+        # ('front', 정면 장 번호 0부터) = 정면 게임 그림의 잔상 픽셀을 뒷모습 몸 가운데 기준으로 뒤집어 옮김.
+        'swoosh': [(5, ('front', 4)), (6, ('front', 5))], 'reuse': {6: 5},
         # 다리 (같은 날 사용자: 다리 위치가 이상함): ChatGPT 그림은 장마다 발 간격·다리 길이가 달라 꿈틀거렸다. 정면처럼
         # 1~4 는 같은 선 자세(1 의 다리), 5~8 은 오른발을 뒤로 든 자세(7 의 다리)로 맞춘다. {장: 다리를 빌려 올 장}
         'legs': {2: 1, 3: 1, 4: 1, 5: 7, 6: 7, 8: 7}},
@@ -70,6 +73,42 @@ def body_h(im):
     px = im.load()
     rows = [y for y in range(im.height) if any(px[x, y][3] > 128 and not b.is_blue(px[x, y]) for x in range(im.width))]
     return rows[-1] - rows[0] + 1
+
+
+CELL_TO_GAME = (14, -3)  # 이 시트 칸(68) 좌표 + 이것 = 게임 공격 그림(96×64) 좌표
+
+
+def is_smear(c):
+    """게임 그림의 잔상 픽셀 (밝은 회청색)."""
+    return c[3] > 100 and c[0] > 150 and abs(c[0] - c[2]) < 40
+
+
+def hood_centre_x(im):
+    px = im.load()
+    pts = [(x, y) for y in range(im.height) for x in range(im.width) if px[x, y][3] > 128 and not is_smear(px[x, y])]
+    top = min(y for _, y in pts)
+    xs = [x for x, y in pts if y <= top + 4]
+    return (min(xs) + max(xs)) / 2
+
+
+def front_smear(hit, k, size):
+    """정면 hit 타 k 번째 장의 잔상을 좌우로 뒤집어 이 시트 칸 좌표의 파란 잔상으로 (몸 가운데끼리 맞춤)."""
+    front = Image.open(os.path.join(GAME, 'sword_attack', f'front_{hit}.png')).convert('RGBA')
+    fw = front.width // 8
+    f = front.crop((k * fw, 0, (k + 1) * fw, front.height))
+    first = front.crop((0, 0, fw, front.height))
+    back = Image.open(os.path.join(GAME, 'sword_attack', f'back_{hit}.png')).convert('RGBA')
+    cf, cb = hood_centre_x(first), hood_centre_x(back.crop((0, 0, back.width // 8, back.height)))
+    out = Image.new('RGBA', size, (0, 0, 0, 0))
+    px, fpx = out.load(), f.load()
+    for y in range(f.height):
+        for x in range(f.width):
+            if is_smear(fpx[x, y]):
+                gx = math.floor(cb + cf - x)  # 몸 가운데를 축으로 뒤집음 (round 는 .5 를 짝수로 보내 한 줄씩 비었음)
+                cx, cy = gx - CELL_TO_GAME[0], y - CELL_TO_GAME[1]
+                if 0 <= cx < size[0] and 0 <= cy < size[1]:
+                    px[cx, cy] = pb.BLUE
+    return out
 
 
 LEG_Y = 51  # 이 줄부터 아래(망토 자락 끝 ~ 발)를 다리로 본다
@@ -154,7 +193,10 @@ def build(hit, ref, palette):
     for k, src in cfg.get('legs', {}).items():
         body[k] = swap_legs(body[k], body[src])
     for k, arc_args in cfg['swoosh'] or []:
-        arc = bp.swoosh(body[k].size, *arc_args)  # 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머)
+        if arc_args[0] == 'front':
+            arc = front_smear(hit, arc_args[1], body[k].size)
+        else:
+            arc = bp.swoosh(body[k].size, *arc_args)  # 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머)
         arc.alpha_composite(no_blue(body[k]))  # 파란 칼날은 지우고 게임에서 칼을 따로 그림 (잔상만 파랑)
         body[k] = arc
     print(hit, 'scale', round(scale, 3))
