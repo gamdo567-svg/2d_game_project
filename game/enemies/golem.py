@@ -123,7 +123,7 @@ class Golem:
         self.attacks: list[EnemyAttack] = []  # 이번 프레임에 터진 공격 (장면이 주인공에게 전달)
         self.effects: list[SpriteEffect] = []  # 이번 프레임에 시작한 이펙트 (장면이 받아서 재생)
         self.popups: list[DamagePopup] = []
-        self.flames = BurnFlames(config.BURN_ANCHORS_GOLEM)
+        self.flames = BurnFlames(config.BURN_BODY_GOLEM)
         self._respawn()
 
     def _respawn(self) -> None:

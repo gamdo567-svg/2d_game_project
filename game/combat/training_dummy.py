@@ -76,7 +76,7 @@ class TrainingDummy:
         self.squash = Spring(1.0, config.DUMMY_SQUASH_FREQ, config.DUMMY_SQUASH_DAMPING)  # 세로 비율
         self._kick_sign = 1
         self.burn = Burn()  # 불 속성 칼에 맞으면 불이 붙음 (회피가 없어 다 탈 때까지 탐)
-        self.flames = BurnFlames(config.BURN_ANCHORS_DUMMY)
+        self.flames = BurnFlames(config.BURN_BODY_DUMMY)
         self._seed = (col * 7349 + row * 1973 + 17) & 0x7FFFFFFF
 
     # ----- 상태 -----

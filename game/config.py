@@ -348,17 +348,19 @@ BURN_FLAME_BASE_MARGIN = 4  # 시트 아래에서 불이 붙은 줄까지
 BURN_FULL_SECONDS = 6.0  # 이만큼 남았으면 모든 자리에 불이 붙음 (한 대면 아래 자리 몇 곳만)
 BURN_FLARE_TIME = 0.2  # 자리에 불이 피어나는 시간
 BURN_FADE_TIME = 0.45  # 꺼질 때 사그라드는 시간
-BURN_SPARK_RATE = 5.0  # 불 붙은 자리 하나당 초당 불티 수
+BURN_SPARK_RATE = 2.5  # 불 붙은 자리 하나당 초당 불티 수
 BURN_SPARK_COLORS = ((255, 240, 170), (255, 196, 70), (255, 130, 40), (200, 60, 30))
 BURN_SMOKE_RATE = 5.0  # 초당 연기 덩어리 수
 BURN_SMOKE_ALPHA = 0.28
-# 불이 붙는 자리 ((x, y, 크기, 몸 뒤), 발 밑 가운데 기준 원본 픽셀, 위쪽 +). 앞쪽부터 차례로 붙는다.
-BURN_ANCHORS_GOLEM = ((-8, 4, 0.9, False), (9, 16, 1.0, False), (-14, 52, 1.2, True), (-10, 34, 0.95, False),
-                      (14, 58, 1.2, True), (8, 44, 0.9, False), (0, 70, 1.35, True))
-BURN_ANCHORS_DUMMY = ((1, 6, 0.8, False), (-5, 22, 0.9, False), (-8, 36, 1.0, True), (8, 40, 1.0, True),
-                      (0, 50, 1.15, True))
-BURN_ANCHORS_PLAYER = ((-3, 4, 0.75, False), (4, 14, 0.85, False), (-6, 26, 0.95, True), (6, 28, 0.95, True),
-                       (0, 36, 1.05, True))
+BURN_GLOW_IMAGE = str(PROJECT_ROOT / "assets" / "images" / "effects" / "burn" / "glow.png")  # 몸 뒤 달아오른 빛
+BURN_GLOW_SIZE = (32, 48)
+# 불이 붙는 몸 크기 (가로, 세로 원본 픽셀, 발 밑 가운데 기준). 이 안을 불꽃 자리로 촘촘히 덮는다 (burn.body_anchors).
+# (같은 날 사용자: 띄엄띄엄 불꽃이 떠서 불타는 느낌이 적음 → 이글이글하게)
+BURN_ROW_STEP = 9  # 불꽃 줄 간격
+BURN_COL_STEP = 8  # 한 줄 안의 불꽃 간격
+BURN_BODY_GOLEM = (30, 74)
+BURN_BODY_DUMMY = (16, 48)
+BURN_BODY_PLAYER = (16, 38)
 COLOR_BURN_TEXT = (255, 150, 60)  # 불 피해 숫자
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.

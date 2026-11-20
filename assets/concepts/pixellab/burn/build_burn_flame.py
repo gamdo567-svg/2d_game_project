@@ -83,7 +83,25 @@ def main():
         strip.alpha_composite(draw_frame(i, parts), (i * W, 0))
     os.makedirs(OUT, exist_ok=True)
     strip.save(os.path.join(OUT, 'flame.png'))
+    make_glow()
     print('burn flame', FRAMES)
+
+
+def make_glow():
+    """이글이글 달아오른 열기 (같은 날 사용자: 띄엄띄엄 불꽃이 아니라 이글이글한 느낌): 몸 뒤에 까는 주황빛.
+    가운데가 진하고 바깥으로 단계를 끊어 옅어지는 세로로 긴 타원 (픽셀풍). 게임이 몸 크기에 맞춰 늘리고 깜빡인다."""
+    w, h = 32, 48
+    steps = [(0.5, (255, 190, 80, 150)), (0.78, (255, 140, 50, 105)), (1.0, (255, 100, 40, 60))]
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    px = im.load()
+    for y in range(h):
+        for x in range(w):
+            d = math.hypot((x + 0.5 - w / 2) / (w / 2), (y + 0.5 - h * 0.55) / (h * 0.55))
+            for limit, colour in steps:
+                if d <= limit:
+                    px[x, y] = colour
+                    break
+    im.save(os.path.join(OUT, 'glow.png'))
 
 
 if __name__ == '__main__':

@@ -168,7 +168,7 @@ class Player:
         self.fx = EnchantFX()  # 입히기 폭발·털어내기 입자
         # 불 붙음 (적과 같은 규칙, game/combat/burn.py). 주인공은 회피하면 꺼진다. 지금은 불을 쓰는 적이 없다.
         self.burn = Burn()
-        self.flames = BurnFlames(config.BURN_ANCHORS_PLAYER)
+        self.flames = BurnFlames(config.BURN_BODY_PLAYER)
         self._pending_fx: list[tuple[str, str]] = []  # 그릴 때 칼 자리를 알고 시작할 (종류, 속성)
         self._flicked = False  # 이번 입히기에서 털어내기 입자를 냈는지
         self.shake_requests: list[dict] = []  # 장면이 읽어 화면을 흔든다
