@@ -26,7 +26,10 @@ GAME = os.path.normpath(os.path.join(HERE, '..', '..', '..', 'images', 'player')
 HITS = {
     2: {'dir': 'hit2_v3', 'src': 'result_hit2_back.png',  # 3차 (2026-11-20 사용자: 측면·정면과 일관성): 정면과 장마다 같은 그림
         # 쳐올리는 장(8장 중 번호)의 잔상: (원 중심 x, y, 반지름, 시작 각도, 끝 각도, 두께). 오른쪽 아래 → 왼쪽 위
-        'swoosh': (5, (40, 30, 30, 70, 230, 7))},
+        # 쳐올리는 장들의 잔상 [(장, 원 인자)], 'reuse': {장: 몸을 빌려 올 장}.
+        # 2026-11-20 사용자 지적(후면 동작 순서가 이상함): 정면은 5 쳐올림(칼이 보임) → 6 머리 위로 계속(칼을 든 채 머리 위 잔상)
+        # → 7·8 어깨에 멈춤인데, 후면은 6 에서 이미 멈춘 자세였다. 6 은 5 의 몸(칼을 쳐든)에 머리 위 잔상을 얹는다.
+        'swoosh': [(5, (40, 30, 30, 70, 230, 7)), (6, (36, 24, 21, 185, 305, 6))], 'reuse': {6: 5}},
     3: {'dir': 'hit3_v3', 'src': 'result_hit3_back_frontmatch.png', 'swoosh': None},  # 3차: 사용자가 받은 그림 중 정면과 장마다 같은 것
 }
 OUT = 'attack_back_v3_68.png'
@@ -124,10 +127,11 @@ def build(hit, ref, palette):
     for k, c in enumerate(b.cells(v2_sheet(), 0)[1:9]):
         tone_ref.alpha_composite(c, (k * 68, 0))
     body = [body[0]] + [v2.despeckle(c) for c in v2.match_tones(body[1:], tone_ref)]
-    if cfg['swoosh']:
-        k, arc_args = cfg['swoosh']
+    for k, src in cfg.get('reuse', {}).items():
+        body[k] = body[src].copy()
+    for k, arc_args in cfg['swoosh'] or []:
         arc = bp.swoosh(body[k].size, *arc_args)  # 잔상은 몸 뒤 (뒷모습이라 칼은 몸 너머)
-        arc.alpha_composite(body[k])
+        arc.alpha_composite(no_blue(body[k]))  # 파란 칼날은 지우고 게임에서 칼을 따로 그림 (잔상만 파랑)
         body[k] = arc
     print(hit, 'scale', round(scale, 3))
     return body
