@@ -78,6 +78,31 @@ class BurnLogicTest(unittest.TestCase):
         self.assertEqual(strong.steam_pixels(), [])
 
 
+    def test_more_hits_more_fire(self):
+        # 많이 때려 오래 탈수록 불이 더 (2026-11-20 사용자 요청): 불타는 곳 수·불길 크기가 늘어남
+        import random
+        fires = []
+        for hits in (1, 3, 5):
+            f = BurnFlames(config.BURN_BODY_GOLEM, random.Random(3))
+            for _ in range(60):
+                f.update(1 / 60, hits * config.BURN_SECONDS_PER_HIT)
+            fires.append(f)
+        spots = [len(f.hotspots) for f in fires]
+        self.assertLess(spots[0], spots[1])
+        self.assertLess(spots[1], spots[2])
+        biggest = [max(fl[2] for fl in f.flames(False) + f.flames(True)) for f in fires]
+        self.assertLess(biggest[0], biggest[2])
+
+    def test_core_flame_never_gaps(self):
+        # 띄엄띄엄 끊기지 않게: 타는 동안 매 프레임 불길이 보임
+        import random
+        f = BurnFlames(config.BURN_BODY_PLAYER, random.Random(5))
+        f.update(0.4, config.BURN_SECONDS_PER_HIT)
+        for _ in range(60):
+            f.update(1 / 60, config.BURN_SECONDS_PER_HIT)
+            self.assertTrue(f.flames(False))
+
+
 class TargetBurnTest(unittest.TestCase):
     def test_golem_loses_hp_while_burning_and_fire_stops_on_death(self):
         g = Golem(5, 5, lambda c, r: False, dormant=True)
