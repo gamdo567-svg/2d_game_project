@@ -119,6 +119,7 @@ class FieldScene:
         for golem in self.golems:
             golem.update(dt, player_tile, lambda c, r, g=golem: self._golem_can_place(g, c, r))
             for attack in golem.attacks:
+                self.player.clones.hit_tiles(attack.tiles)  # 몬스터 공격에 맞은 그림자 분신은 흩어짐
                 result = self.player.receive_attack(attack)
                 # 막지 못한 빨강·노랑 공격은 레이저 스택, 맞은 것은 세지 않음 (2026-11-18 사용자 결정)
                 golem.on_attack_result(attack, result, self.player.last_perfect_dodge)

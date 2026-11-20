@@ -405,6 +405,16 @@ SHOCK_GATHER_RATE = 45.0  # 모이는 동안 가운데로 빨려 드는 번개 �
 SHOCK_SHAKE = {"amplitude": 4, "duration": 0.22, "frequency": 30}  # 방전 순간 화면 흔들림
 COLOR_CHARGE_BAR = (80, 170, 255)  # 파란 전기 게이지 막대
 COLOR_SHOCK_TEXT = (140, 210, 255)  # 감전 피해 숫자
+# 어둠 능력 (2026-11-20 사용자 결정, game/player/shadow_clone.py): 어둠을 입힌 검으로 3타를 다 때리면 그 자리·방향에 그림자 분신.
+# 주인공이 평타를 치면 분신도 자기 자리에서 같은 타를 같이 침. 수치는 [임시값].
+SHADOW_ELEMENT = "dark"
+SHADOW_CLONE_MAX = 3  # 동시에 둘 수 있는 분신 수 (넘으면 가장 오래된 것이 흩어짐)
+SHADOW_CLONE_DAMAGE_SCALE = 0.5  # 분신 공격 피해 = 주인공 그 타 피해 × 이 값
+SHADOW_CLONE_IDLE = 5.0  # 같이 치지 않고 이만큼 지나면 흩어짐 (초)
+SHADOW_CLONE_RANGE = 6  # 주인공이 이 칸 수보다 멀어지면 흩어짐 (가로·세로 중 큰 쪽)
+SHADOW_CLONE_OPACITY = 0.85  # 분신 그림 불투명도 (반투명 검은 그림자)
+SHADOW_SCATTER_PUFFS = 16  # 흩어질 때 검은 연기 덩어리 수
+SHADOW_WISP_RATE = 6.0  # 분신 하나에서 초당 피어오르는 어둠 기운 수
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.

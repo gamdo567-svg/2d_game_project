@@ -63,6 +63,7 @@
 | `images/effects/shade_pixel.png` | Claude Code 제작 (1×1 검정, 반투명 그림자를 찍는 데 씀, 2026-11-20) | 프로젝트 소유 | 1×1. D-055 |
 | `images/effects/mist_pixel.png` | Claude Code 제작 (1×1 흰색, 반투명 김·증기를 찍는 데 씀, 2026-11-20) | 프로젝트 소유 | 1×1. D-056 |
 | `images/effects/glow_pixel.png` | Claude Code 제작 (1×1 푸른색, 번개 둘레 반투명 번짐을 찍는 데 씀, 2026-11-20) | 프로젝트 소유 | 1×1. D-057 |
+| `images/player/shadow/` (`sword_attack/*`, `idle/*`, `weapons/old_sword*.png`) | 주인공 그림(사용자 PixelLab 계정 생성물 등)을 Claude Code가 그림자 색으로 바꿈 (`concepts/shadow_clone/build_shadow_images.py`, 2026-11-20) | 원본 그림과 같음 | 원본과 같은 칸. D-058 |
 | `images/golem/shock_<방향>_{black,white,charge,bones_light,bones_dark,rim}.png`, `images/dummy/stage<k>_{black,charge,bones_light,bones_dark,rim}.png` | 골렘·허수아비 서 있는 그림의 모양(알파)만 살려 Claude Code가 만든 감전 그림자 (`concepts/shock/build_shock_silhouettes.py`, 2026-11-20) | 원본 그림과 같음 (PixelLab 이용약관에 따름) | 골렘 96×96, 허수아비 48×56. D-057 |
 | `images/effects/sword_enchant/lightning.png`, `lightning_ignite.png`, `lightning_front_3_f5/f6.png` | Claude Code가 계산으로 직접 그린 번개 (`concepts/pixellab/sword_enchant/build_lightning.py`, 2026-11-20) | 프로젝트 소유 | 80×24 × 24장 / 12장, 찌르기용 96×64 × 24장. D-055 |
 | `images/effects/sword_enchant/fire.png`, `fire_ignite.png`, `fire_front_3_f5/f6.png` | Claude Code가 계산으로 직접 그린 타오르는 불꽃 (`concepts/pixellab/sword_enchant/build_fire_flame.py`, 2026-11-20. 이전 판: 오러 `build_fire_aura.py`, 불꽃 혀 `build_fire_handmade.py`). 처음의 PixelLab VFX 불은 `fire/dl/` 에 남김 | 프로젝트 소유 | 80×24 × 24장, 12 fps. D-055 |

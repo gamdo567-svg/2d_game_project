@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import math
+from pathlib import Path
 
 import os
 
@@ -29,6 +30,7 @@ from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
 from game.player.enchant import SwordEnchant
 from game.combat.burn import Burn, BurnFlames, draw_burn
+from game.player.shadow_clone import ShadowClones
 from game.player.enchant_fx import EnchantFX
 from game.player.sword_dark import DarkField
 from game.player.sword_lightning import SWORD_SHAPE, BladeShape, LightningField
@@ -51,6 +53,39 @@ class Afterimage:
 def dodge_ghost_sheet_path(view: str) -> str:
     """퍼펙트 회피 잔상 그림 (회피 그림을 그림자처럼 바꾼 것). 예: dodge_ghost/side.png"""
     return str(config.PLAYER_IMAGE_DIR / "dodge_ghost" / f"{view}.png")
+
+
+class ShadowRenderer:
+    """그림자 분신을 그리는 그리기 도구 감싸개 (2026-11-20 어둠 능력): 주인공 그림(player/...)은 그림자 그림(player/shadow/...)으로
+    바꿔 opacity 만큼 비치게 그리고, 그림자 그림이 없는 주인공 그림(등 칼 등)은 그리지 않는다. 나머지(이펙트·사각형)는 그대로."""
+
+    def __init__(self, renderer, opacity: float) -> None:
+        self._renderer = renderer
+        self._opacity = opacity
+
+    def _shadow_path(self, path: str) -> str | None:
+        root = config.PLAYER_IMAGE_DIR
+        try:
+            rel = Path(path).relative_to(root)
+        except ValueError:
+            return path  # 주인공 그림이 아님 (이펙트 등)
+        shadow = root / "shadow" / rel
+        return str(shadow) if shadow.exists() else None
+
+    def draw_sprite_frame(self, path: str, *args, opacity: float = 1.0, **kwargs):
+        shadow = self._shadow_path(path)
+        if shadow is None:
+            return True
+        return self._renderer.draw_sprite_frame(shadow, *args, opacity=opacity * self._opacity, **kwargs)
+
+    def draw_image_rotated(self, path: str, *args, opacity: float = 1.0, **kwargs):
+        shadow = self._shadow_path(path)
+        if shadow is None:
+            return True
+        return self._renderer.draw_image_rotated(shadow, *args, opacity=opacity * self._opacity, **kwargs)
+
+    def __getattr__(self, name: str):
+        return getattr(self._renderer, name)
 
 
 def sprite_sheet_path(state: str, view: str) -> str:
@@ -173,6 +208,8 @@ class Player:
         self._flicked = False  # 이번 입히기에서 털어내기 입자를 냈는지
         self.shake_requests: list[dict] = []  # 장면이 읽어 화면을 흔든다
         self.discharge_requested = False  # 검의 번개를 끈 프레임 (전기 방전, 장면이 처리)
+        self.clones = ShadowClones()  # 어둠 능력: 그림자 분신들
+        self._clone_key: tuple | None = None  # 분신에게 알린 주인공의 마지막 타
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
         self.posture = PostureGauge()
@@ -350,6 +387,7 @@ class Player:
         if effect is not None and effect[0] in config.SWORD_PROCEDURAL_ELEMENTS:
             self.procedural[effect[0]].update(dt, reach=effect[1])
         self._record_trail(dt)
+        self._update_clones(dt)
         self._emit_strike()
         self._buffer = {a: t - dt for a, t in self._buffer.items() if t - dt > 0.0}
 
@@ -470,9 +508,26 @@ class Player:
         key = (self.combo.strike_id, i)
         if self.combo.frame_index >= config.PLAYER_ATTACK_HIT_FRAMES[i] and key != self._last_strike:
             self._last_strike = key
-            self.strikes.append(Strike(self.col, self.row, self.facing.value,
-                                       config.PLAYER_ATTACK_REACH[i], self._strike_damage(i),
-                                       config.PLAYER_ATTACK_WIDTH[i], self.enchant.active))
+            strike = Strike(self.col, self.row, self.facing.value, config.PLAYER_ATTACK_REACH[i],
+                            self._strike_damage(i), config.PLAYER_ATTACK_WIDTH[i], self.enchant.active)
+            self.strikes.append(strike)
+            if self.enchant.active == config.SHADOW_ELEMENT:
+                self.strikes += self.clones.strikes(key, strike)  # 분신들도 같은 타를 자기 자리에서
+                if i == config.PLAYER_ATTACK_HITS - 1:  # 3타까지 다 때림: 그 자리·방향에 그림자 분신
+                    self.clones.spawn(self.col, self.row, self.facing)
+
+    def _update_clones(self, dt: float) -> None:
+        """그림자 분신: 주인공이 새 타를 시작하면 알리고(같은 칸의 분신은 흩어짐), 시간·거리·속성으로 흩어짐을 정한다."""
+        dark = self.enchant.active == config.SHADOW_ELEMENT
+        if self.state == ATTACK:
+            key = (self.combo.strike_id, self.combo.index)
+            if key != self._clone_key:
+                self._clone_key = key
+                if dark:
+                    self.clones.on_attack_start(key, (self.col, self.row))
+        else:
+            self._clone_key = None
+        self.clones.update(dt, (self.col, self.row), dark)
 
     def _strike_damage(self, hit: int) -> int:
         """이번 타의 피해: 전기를 입힌 검은 평타가 절반 (대신 감전이 세다, 2026-11-20 사용자)."""
@@ -494,10 +549,43 @@ class Player:
 
     # ----- 그리기 -----
     def draw(self, renderer) -> None:
+        self._draw_clones(renderer)
         self._draw_flames(renderer, behind=True)
         self._draw_body(renderer)
         self._draw_flames(renderer, behind=False)
         self._draw_fx(renderer)  # 입히기 폭발·털어내기 입자는 늘 맨 위에 (동작이 끝난 뒤에도 날아감)
+
+    def _draw_clones(self, renderer) -> None:
+        """그림자 분신: 발밑 어둠 + 반투명 그림자 그림. 주인공과 같은 타를 치는 중이면 그 공격 그림을, 아니면 서 있는 그림.
+        흩어짐·어둠 기운 연기는 그 위에."""
+        s = config.RENDER_SCALE
+        for clone in self.clones.clones:
+            left, bottom, right, _ = self.grid.tile_to_pixel_rect(clone.col, clone.row)
+            cx = (left + right) / 2
+            opacity = self.clones.opacity(clone)
+            for dy, half, a in ((0, 11, 0.3), (0, 8, 0.25)):  # 발밑에 고인 어둠 (납작한 두 겹)
+                renderer.fill_shade(cx - half * s, bottom - 2 * s + dy, cx + half * s, bottom + 2 * s, a * opacity)
+            ghost = ShadowRenderer(renderer, opacity)
+            saved = self.facing
+            self.facing = clone.facing  # 주인공 그리기 코드를 분신 방향으로 빌려 씀
+            try:
+                if self.state == ATTACK and clone.key == (self.combo.strike_id, self.combo.index):
+                    self._draw_attack(ghost, cx, bottom)
+                else:
+                    view, flip = sprite_view(clone.facing)
+                    w, h = config.PLAYER_SPRITE_WIDTH, config.PLAYER_SPRITE_HEIGHT
+                    ghost.draw_sprite_frame(sprite_sheet_path(IDLE, view), 0, w, h, cx, bottom, w * s, h * s,
+                                            flip_horizontal=flip)
+            finally:
+                self.facing = saved
+        for col, row, x, y, radius, alpha in self.clones.puff_discs():
+            left, bottom, right, _ = self.grid.tile_to_pixel_rect(col, row)
+            cx = (left + right) / 2
+            r = max(1, round(radius))
+            for py in range(-r, r + 1):
+                span = round(math.sqrt(max(0, r * r - py * py)))
+                renderer.fill_shade(cx + (x - span) * s, bottom + (y + py) * s, cx + (x + span + 1) * s,
+                                    bottom + (y + py + 1) * s, alpha)
 
     def _draw_flames(self, renderer, behind: bool) -> None:
         """불 붙은 몸의 불꽃 (발 밑 가운데 기준). 몸 뒤 불꽃은 몸 전에, 나머지와 불티·연기는 몸 다음에."""
