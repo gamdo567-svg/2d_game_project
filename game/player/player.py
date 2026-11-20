@@ -449,6 +449,7 @@ class Player:
         self.hit_flash_left = config.PLAYER_HIT_FLASH_TIME
         self.combo.cancel_window()
         self.fsm.trigger("hurt")
+        self.clones.scatter_all()  # 본체가 맞으면 그림자 분신이 모두 흩어짐 (분신 자신은 맞지 않음, 2026-11-20 사용자)
         return HIT
 
     def _check_perfect_dodge(self, attack: EnemyAttack) -> bool:

@@ -52,22 +52,11 @@ class ShadowCloneLogicTest(unittest.TestCase):
         c.update(DT, (3 + config.SHADOW_CLONE_RANGE + 1, 3), True)
         self.assertEqual(c.clones, [])
 
-    def test_monster_hit_and_losing_dark_scatter(self):
+    def test_losing_dark_scatters(self):
         c = ShadowClones()
         c.spawn(3, 3, Facing.LEFT)
         c.spawn(5, 3, Facing.LEFT)
-        c.hit_tiles(frozenset({(3, 3)}))
-        self.assertEqual([(k.col, k.row) for k in c.clones], [(5, 3)])
         c.update(DT, (5, 4), False)  # 검의 어둠이 풀림
-        self.assertEqual(c.clones, [])
-
-    def test_blocked_attack_spares_clones(self):
-        # 주인공이 퍼펙트 회피·패링으로 막은 공격에는 분신도 살아남음 (2026-11-20 사용자)
-        c = ShadowClones()
-        c.spawn(3, 3, Facing.LEFT)
-        c.hit_tiles(frozenset({(3, 3)}), blocked=True)
-        self.assertEqual(len(c.clones), 1)
-        c.hit_tiles(frozenset({(3, 3)}))
         self.assertEqual(c.clones, [])
 
     def test_at_most_three_oldest_scatters(self):
@@ -130,6 +119,17 @@ class PlayerShadowCloneTest(unittest.TestCase):
         self.assertEqual(len(mine), 1)
         self.assertEqual(len(theirs), 1)
         self.assertEqual(theirs[0].damage, round(mine[0].damage * config.SHADOW_CLONE_DAMAGE_SCALE))
+
+    def test_player_hit_scatters_all_clones_but_clones_are_never_hit(self):
+        # 맞으면 사라지는 건 본체, 그림자는 맞지 않음 (2026-11-20 사용자)
+        from game.combat.enemy_attack import EnemyAttack
+        self.player.clones.spawn(1, 1, Facing.DOWN)
+        self.player.clones.spawn(2, 1, Facing.DOWN)
+        self.player.receive_attack(EnemyAttack(frozenset({(1, 1), (2, 1)}), 10))  # 분신 칸만 덮는 공격
+        self.assertEqual(len(self.player.clones.clones), 2)
+        tile = (self.player.col, self.player.row)
+        self.player.receive_attack(EnemyAttack(frozenset({tile}), 10))  # 본체가 맞음
+        self.assertEqual(self.player.clones.clones, [])
 
     def test_no_clone_without_dark(self):
         self.combo()
