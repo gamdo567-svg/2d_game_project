@@ -411,7 +411,7 @@ SHADOW_ELEMENT = "dark"
 SHADOW_CLONE_MAX = 3  # 동시에 둘 수 있는 분신 수 (넘으면 가장 오래된 것이 흩어짐)
 SHADOW_CLONE_DAMAGE_SCALE = 0.5  # 분신 공격 피해 = 주인공 그 타 피해 × 이 값
 SHADOW_CLONE_IDLE = 5.0  # 같이 치지 않고 이만큼 지나면 흩어짐 (초)
-SHADOW_CLONE_RANGE = 6  # 주인공이 이 칸 수보다 멀어지면 흩어짐 (가로·세로 중 큰 쪽)
+SHADOW_CLONE_RANGE = 15  # 주인공이 이 칸 수보다 멀어지면 흩어짐 (가로·세로 중 큰 쪽). 6 → 15 (같은 날 사용자: 대쉬하면 금방 넘어 사라짐)
 SHADOW_CLONE_OPACITY = 0.85  # 분신 그림 불투명도 (반투명 검은 그림자)
 SHADOW_SCATTER_PUFFS = 16  # 흩어질 때 검은 연기 덩어리 수
 SHADOW_WISP_RATE = 6.0  # 분신 하나에서 초당 피어오르는 어둠 기운 수
