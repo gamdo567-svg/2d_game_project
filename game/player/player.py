@@ -28,6 +28,7 @@ from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
 from game.player.enchant import SwordEnchant
+from game.player.sword_dark import DarkField
 from game.player.sword_lightning import SWORD_SHAPE, BladeShape, LightningField
 from game.player.state_machine import (ATTACK, DODGE, ENCHANT, FREE_STATES, HURT, IDLE, JUMP, PARRY, WALK,
                                        PlayerStateMachine)
@@ -160,7 +161,8 @@ class Player:
         self.hurt = TimedAction(config.PLAYER_HURT_TIME, 1)
         self.enchant = SwordEnchant()  # 검 속성 (1·2·3 고르기, E 입히기)
         self.effect_clock = 0.0  # 검 이펙트 반복 재생 시간
-        self.lightning = LightningField()  # 전기 이펙트는 시트 대신 계산해 만든다 (SWORD_PROCEDURAL_ELEMENTS)
+        # 전기·어둠 이펙트는 시트 대신 게임이 도는 동안 계산해 만든다 (SWORD_PROCEDURAL_ELEMENTS)
+        self.procedural = {"lightning": LightningField(), "dark": DarkField()}
         self.max_hp = config.PLAYER_MAX_HP
         self.hp = self.max_hp
         self.posture = PostureGauge()
@@ -314,7 +316,7 @@ class Player:
             self.dodge_tail_left = 0.0  # 걷기·공격 등 다른 행동을 시작하면 멈춤 그림은 바로 끊긴다
         effect = self.sword_effect
         if effect is not None and effect[0] in config.SWORD_PROCEDURAL_ELEMENTS:
-            self.lightning.update(dt, reach=effect[1])
+            self.procedural[effect[0]].update(dt, reach=effect[1])
         self._record_trail(dt)
         self._emit_strike()
         self._buffer = {a: t - dt for a, t in self._buffer.items() if t - dt > 0.0}
@@ -638,7 +640,7 @@ class Player:
         if rise <= 0.0:
             return
         if element in config.SWORD_PROCEDURAL_ELEMENTS:
-            self._draw_procedural(renderer, x, y, angle, flip, SWORD_SHAPE, along, rise)
+            self._draw_procedural(renderer, element, x, y, angle, flip, SWORD_SHAPE, along, rise)
             return
         if rise < 1.0:  # 입히는 중: 점화 시트 (손잡이에서 붙은 불이 칼끝까지 번짐)
             path = config.SWORD_EFFECT_DIR / f"{element}_ignite.png"
@@ -654,9 +656,9 @@ class Player:
             renderer.draw_frame_rotated(str(path), frame, w, h, x, y, scale * along, angle, flip_horizontal=flip,
                                         scale_y=scale)
 
-    def _draw_procedural(self, renderer, x: float, y: float, angle: float, flip: bool, shape: BladeShape,
-                         along: float = 1.0, reach: float = 1.0) -> None:
-        """계산해 만든 전기(LightningField)를 원본 픽셀 격자에 1 픽셀씩 찍는다 (RENDER_SCALE 배 네모).
+    def _draw_procedural(self, renderer, element: str, x: float, y: float, angle: float, flip: bool,
+                         shape: BladeShape, along: float = 1.0, reach: float = 1.0) -> None:
+        """계산해 만든 이펙트(전기 LightningField, 어둠 DarkField)를 원본 픽셀 격자에 1 픽셀씩 찍는다 (RENDER_SCALE 배 네모).
 
         (x, y) = 화면의 손 자리, angle·flip = 칼 그림을 그릴 때와 같은 값 (뒤집으면 칼끝 방향이 반대).
         """
@@ -664,7 +666,7 @@ class Player:
         sign = -1.0 if flip else 1.0
         rad = math.radians(angle)
         direction = (sign * math.cos(rad), sign * math.sin(rad))
-        for px, py, colour in self.lightning.pixels((x / scale, y / scale), direction, shape, along, reach):
+        for px, py, colour in self.procedural[element].pixels((x / scale, y / scale), direction, shape, along, reach):
             renderer.fill_rect(px * scale, py * scale, (px + 1) * scale, (py + 1) * scale, colour)
 
     def _draw_sword_pose(self, renderer, center_x: float, bottom: float, frame: int, shift: tuple[int, int],
@@ -702,7 +704,7 @@ class Player:
                 ax, ay, a_angle, start, end, half_start, half_end = config.PLAYER_WEAPON_VIEW_ART_SHAPE[art_effect]
                 canvas_left = canvas_x - width * scale / 2
                 hx = width - ax - 0.5 if flip else ax + 0.5
-                self._draw_procedural(renderer, canvas_left + hx * scale,
+                self._draw_procedural(renderer, effect[0], canvas_left + hx * scale,
                                       canvas_bottom + (height - ay - 0.5) * scale, -a_angle if flip else a_angle,
                                       flip, BladeShape(start, end, half_start, half_end))
             elif art_effect is not None and effect is not None:  # 찌르기용 칼 그림 전용 불 (그 칼날 윤곽에서 피어오름)

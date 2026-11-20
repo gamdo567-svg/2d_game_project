@@ -295,7 +295,7 @@ SWORD_EFFECT_FPS = 12
 # (2026-11-20 사용자: 잘라 보여 주던 방식은 레이저처럼 올라가 불타오르는 느낌이 없었음)
 SWORD_EFFECT_IGNITE_FRAMES = 12
 # 시트 대신 게임이 도는 동안 계산해 만드는 속성 (game/player/sword_lightning.py). 2026-11-20 사용자: 미리 그린 번개는 일정해 보임.
-SWORD_PROCEDURAL_ELEMENTS = ("lightning",)
+SWORD_PROCEDURAL_ELEMENTS = ("lightning", "dark")  # 어둠: 블랙홀처럼 빨아들임 (sword_dark.py)
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.
