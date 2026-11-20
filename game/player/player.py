@@ -28,6 +28,7 @@ from game.player.animation import LoopAnimation
 from game.player.facing import Facing, facing_for_direction, sprite_view
 from game.player.movement import CanEnter, GridMover
 from game.player.enchant import SwordEnchant
+from game.combat.burn import Burn, BurnFlames
 from game.player.enchant_fx import EnchantFX
 from game.player.sword_dark import DarkField
 from game.player.sword_lightning import SWORD_SHAPE, BladeShape, LightningField
@@ -165,6 +166,9 @@ class Player:
         # 전기·어둠 이펙트는 시트 대신 게임이 도는 동안 계산해 만든다 (SWORD_PROCEDURAL_ELEMENTS)
         self.procedural = {"lightning": LightningField(), "dark": DarkField()}
         self.fx = EnchantFX()  # 입히기 폭발·털어내기 입자
+        # 불 붙음 (적과 같은 규칙, game/combat/burn.py). 주인공은 회피하면 꺼진다. 지금은 불을 쓰는 적이 없다.
+        self.burn = Burn()
+        self.flames = BurnFlames(*config.BURN_BODY_PLAYER)
         self._pending_fx: list[tuple[str, str]] = []  # 그릴 때 칼 자리를 알고 시작할 (종류, 속성)
         self._flicked = False  # 이번 입히기에서 털어내기 입자를 냈는지
         self.shake_requests: list[dict] = []  # 장면이 읽어 화면을 흔든다
@@ -233,6 +237,12 @@ class Player:
         self.effect_clock += dt
         self.shake_requests = []
         self.fx.update(dt)
+        burn_damage = self.burn.update(dt)
+        if burn_damage:  # 불 피해: 경직 없이 체력만
+            self.hp -= burn_damage
+            if self.hp <= 0:
+                self.hp = self.max_hp  # 사망은 기획 미정 (receive_attack 과 같음)
+        self.flames.update(dt, self.burn.burning)
         for index, action in enumerate(ELEMENT_KEYS):
             if input_state.was_pressed(action):
                 self.enchant.select(index)
@@ -444,6 +454,7 @@ class Player:
         self._since_dodge = 0.0
         self._perfect_this_dodge = False
         self._trail_clock = 0.0
+        self.burn.extinguish()  # 회피(대쉬)하면 불이 꺼진다 (2026-11-20 사용자 결정)
         self.fsm.trigger("dodge")
         return True
 
@@ -457,7 +468,7 @@ class Player:
             self._last_strike = key
             self.strikes.append(Strike(self.col, self.row, self.facing.value,
                                        config.PLAYER_ATTACK_REACH[i], config.PLAYER_ATTACK_DAMAGE[i],
-                                       config.PLAYER_ATTACK_WIDTH[i]))
+                                       config.PLAYER_ATTACK_WIDTH[i], self.enchant.active))
 
     def _on_state_changed(self, state: str) -> None:
         if state == PARRY:
@@ -473,7 +484,17 @@ class Player:
     # ----- 그리기 -----
     def draw(self, renderer) -> None:
         self._draw_body(renderer)
+        self._draw_flames(renderer)
         self._draw_fx(renderer)  # 입히기 폭발·털어내기 입자는 늘 맨 위에 (동작이 끝난 뒤에도 날아감)
+
+    def _draw_flames(self, renderer) -> None:
+        """불 붙은 몸에서 피어오르는 불꽃 (발 밑 가운데 기준)."""
+        s = config.RENDER_SCALE
+        vcol, vrow = self.mover.visual_position
+        left, bottom, right, _ = self.grid.tile_to_pixel_rect(vcol, vrow)
+        cx = (left + right) / 2
+        for fx, fy, size, colour in self.flames.pixels():
+            renderer.fill_rect(cx + fx * s, bottom + fy * s, cx + (fx + size) * s, bottom + (fy + size) * s, colour)
 
     def _draw_body(self, renderer) -> None:
         if self.perfect_text_left > 0.0:

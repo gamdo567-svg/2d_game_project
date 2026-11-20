@@ -15,6 +15,7 @@ import math
 from dataclasses import dataclass
 
 from game import config
+from game.combat.burn import Burn, BurnFlames
 from game.world.grid import Grid
 
 
@@ -22,6 +23,7 @@ from game.world.grid import Grid
 class DamagePopup:
     amount: int
     age: float = 0.0  # 초
+    color: tuple[int, int, int] = config.COLOR_DAMAGE_TEXT  # 불 피해는 주황 (COLOR_BURN_TEXT)
 
 
 @dataclass
@@ -73,6 +75,8 @@ class TrainingDummy:
         self.lean = Spring(0.0, config.DUMMY_WOBBLE_FREQ, config.DUMMY_WOBBLE_DAMPING)  # 기울기(도), 오른쪽 +
         self.squash = Spring(1.0, config.DUMMY_SQUASH_FREQ, config.DUMMY_SQUASH_DAMPING)  # 세로 비율
         self._kick_sign = 1
+        self.burn = Burn()  # 불 속성 칼에 맞으면 불이 붙음 (회피가 없어 다 탈 때까지 탐)
+        self.flames = BurnFlames(*config.BURN_BODY_DUMMY)
         self._seed = (col * 7349 + row * 1973 + 17) & 0x7FFFFFFF
 
     # ----- 상태 -----
@@ -128,10 +132,19 @@ class TrainingDummy:
         self.squash.velocity -= config.DUMMY_SQUASH_KICK * (1.6 if not dx else 1.0)
         self._spray(config.DUMMY_HIT_BITS, sign if dx else 0, 60)
         if self.hp == 0:
-            self.down_left = config.DUMMY_DOWN_TIME
-            self.break_age = 0.0
-            self._spray(config.DUMMY_BREAK_BITS, 0, 160)
+            self._break()
         return True
+
+    def ignite(self) -> None:
+        """불 속성 공격에 맞음 (take_hit 다음에 부름). 쓰러져 있으면 붙지 않는다."""
+        if not self.is_down:
+            self.burn.ignite()
+
+    def _break(self) -> None:
+        self.down_left = config.DUMMY_DOWN_TIME
+        self.break_age = 0.0
+        self.burn.extinguish()
+        self._spray(config.DUMMY_BREAK_BITS, 0, 160)
 
     @property
     def lean_right(self) -> float:
@@ -141,6 +154,13 @@ class TrainingDummy:
     # ----- 시간 -----
     def update(self, dt: float) -> None:
         self.flash_left = max(0.0, self.flash_left - dt)
+        burn_damage = self.burn.update(dt)
+        if burn_damage and not self.is_down:  # 불 피해: 흔들림 없이 체력만 (숫자는 주황)
+            self.hp = max(0, self.hp - burn_damage)
+            self.popups.append(DamagePopup(burn_damage, color=config.COLOR_BURN_TEXT))
+            if self.hp == 0:
+                self._break()
+        self.flames.update(dt, self.burn.burning)
         self.lean.update(dt)
         self.squash.update(dt)
         for popup in self.popups:
@@ -193,9 +213,11 @@ class TrainingDummy:
             renderer.fill_rect(px - 10 * s, top, px + 10 * s, top + 2 * s, config.COLOR_DUMMY_SHADOW)
             renderer.fill_rect(px - 10 * s, top, px - 10 * s + 20 * s * self.hp / self.max_hp, top + 2 * s,
                                config.COLOR_DUMMY_HP)
+        for fx, fy, size, colour in self.flames.pixels():  # 타는 불꽃
+            renderer.fill_rect(px + fx * s, py + fy * s, px + (fx + size) * s, py + (fy + size) * s, colour)
         for bit in self.bits:
             bx, by = px + bit.x * s, py + bit.y * s
             renderer.fill_rect(bx, by, bx + 2 * s, by + 1 * s, bit.color)
         for popup in self.popups:
             rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * grid.tile_size
-            renderer.draw_text(px - 6 * s, py + (pivot_y + 10) * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+            renderer.draw_text(px - 6 * s, py + (pivot_y + 10) * s + rise, str(popup.amount), popup.color)

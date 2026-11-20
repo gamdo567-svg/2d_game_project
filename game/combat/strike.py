@@ -17,6 +17,7 @@ class Strike:
     reach: int  # 앞으로 몇 칸까지
     damage: int
     width: int = 1  # 가로(바라보는 방향의 옆) 몇 칸. 홀수, 가운데 줄이 바라보는 방향 (2026-11-17)
+    element: str | None = None  # 검에 입힌 속성 (불이면 맞은 대상에 불이 붙음, 2026-11-20)
 
 
 def attack_tiles(strike: Strike, is_wall: Callable[[int, int], bool]) -> list[tuple[int, int]]:

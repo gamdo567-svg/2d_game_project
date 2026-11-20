@@ -97,11 +97,14 @@ class FieldScene:
         for strike in self.player.strikes:
             tiles = attack_tiles(strike, self.tile_map.is_wall)
             for dummy in self.dummies:
-                if (dummy.col, dummy.row) in tiles:
-                    dummy.take_hit(strike.damage, strike.direction)
+                if (dummy.col, dummy.row) in tiles and dummy.take_hit(strike.damage, strike.direction):
+                    if strike.element == config.BURN_ELEMENT:
+                        dummy.ignite()  # 불 속성 칼: 불이 붙음
             for golem in self.golems:
                 if golem.tiles.intersection(tiles) and golem.take_hit(strike.damage, strike.direction):
                     self.aggro.on_hit(golem)  # 휴면 중에 맞으면 (끈 몬스터가 없을 때) 깨어나 끌림
+                    if strike.element == config.BURN_ELEMENT:
+                        golem.ignite()
         for dummy in self.dummies:
             dummy.update(dt)
         player_tile = (self.player.col, self.player.row)

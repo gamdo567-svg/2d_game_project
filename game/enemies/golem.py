@@ -27,6 +27,7 @@ from game import config
 from game.combat.enemy_attack import HIT, PARRIED, EnemyAttack
 from game.physics.raycast import first_open_stop
 from game.combat.posture import PostureGauge
+from game.combat.burn import Burn, BurnFlames
 from game.combat.training_dummy import DamagePopup
 from game.effects.effect import SpriteEffect, draw_stun_stars
 from game.world.grid import Grid
@@ -122,11 +123,13 @@ class Golem:
         self.attacks: list[EnemyAttack] = []  # 이번 프레임에 터진 공격 (장면이 주인공에게 전달)
         self.effects: list[SpriteEffect] = []  # 이번 프레임에 시작한 이펙트 (장면이 받아서 재생)
         self.popups: list[DamagePopup] = []
+        self.flames = BurnFlames(*config.BURN_BODY_GOLEM)
         self._respawn()
 
     def _respawn(self) -> None:
         self.col, self.row = self.spawn
         self.hp = config.GOLEM_MAX_HP
+        self.burn = Burn()  # 불 속성 칼에 맞으면 불이 붙음 (몬스터형, 회피가 없어 다 탈 때까지 탐)
         self.posture = PostureGauge(decays=False)  # 몬스터형: 패링 게이지가 저절로 줄지 않음
         self.state = DORMANT if self.starts_dormant else REST
         self.state_left = config.GOLEM_REST_TIME
@@ -291,11 +294,20 @@ class Golem:
         self.flash_left = config.GOLEM_HIT_FLASH_TIME
         self.popups.append(DamagePopup(damage))
         if self.hp == 0:
-            self.state = DEAD
-            self.state_left = config.GOLEM_RESPAWN_TIME
-            self.target_tiles = frozenset()
-            self.beam_tiles = frozenset()
+            self._die()
         return True
+
+    def ignite(self) -> None:
+        """불 속성 공격에 맞음 (take_hit 다음에 부름). 죽었으면 붙지 않는다."""
+        if self.alive:
+            self.burn.ignite()
+
+    def _die(self) -> None:
+        self.state = DEAD
+        self.state_left = config.GOLEM_RESPAWN_TIME
+        self.target_tiles = frozenset()
+        self.beam_tiles = frozenset()
+        self.burn.extinguish()
 
     def on_attack_result(self, attack: EnemyAttack, result: str, perfect_dodged: bool) -> None:
         """방금 터진 공격의 결과(HIT/PARRIED/AVOIDED/MISSED)로 레이저 스택을 쌓는다 (2026-11-18 사용자 결정).
@@ -340,6 +352,13 @@ class Golem:
         for popup in self.popups:
             popup.age += dt
         self.popups = [p for p in self.popups if p.age < config.DAMAGE_POPUP_TIME]
+        burn_damage = self.burn.update(dt)
+        if burn_damage and self.alive:  # 불 피해: 체력만 깎임 (숫자는 주황)
+            self.hp = max(0, self.hp - burn_damage)
+            self.popups.append(DamagePopup(burn_damage, color=config.COLOR_BURN_TEXT))
+            if self.hp == 0:
+                self._die()
+        self.flames.update(dt, self.burn.burning)
         if self._move_t < 1.0:
             before = self._move_t
             self._move_t = min(1.0, self._move_t + dt * config.GOLEM_MOVE_SPEED)
@@ -600,6 +619,8 @@ class Golem:
         else:
             core_y = self._draw_shapes(renderer, cx, bottom)
             bar_top = bottom + 66 * s
+        for fx, fy, size, colour in self.flames.pixels():  # 타는 불꽃
+            renderer.fill_rect(cx + fx * s, bottom + fy * s, cx + (fx + size) * s, bottom + (fy + size) * s, colour)
         if self._draw_laser(renderer, grid, cx, bottom):
             pass
         elif self.state == WINDUP and self.pattern == LASER:
@@ -619,7 +640,7 @@ class Golem:
         if self.state == DORMANT:
             for popup in self.popups:  # 휴면 중에는 막대 없이 피해 숫자만
                 rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
-                renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+                renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), popup.color)
             return
         # 체력·패링 게이지 막대 (머리 위)
         renderer.fill_rect(cx - 26 * s, bar_top, cx + 26 * s, bar_top + 3 * s, config.COLOR_BAR_BACK)
@@ -630,7 +651,7 @@ class Golem:
                            config.COLOR_POSTURE)
         for popup in self.popups:
             rise = popup.age / config.DAMAGE_POPUP_TIME * config.DAMAGE_POPUP_RISE * tile
-            renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), config.COLOR_DAMAGE_TEXT)
+            renderer.draw_text(cx - 6 * s, bar_top + 18 * s + rise, str(popup.amount), popup.color)
 
     def _draw_aggro_mark(self, renderer, cx: float, base_y: float) -> None:
         """붉은 ! 를 아래 가운데가 base_y 에 오도록 그린다 (늘어나고 눌리고 흔들리고, 번쩍임·강조선)."""

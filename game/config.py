@@ -332,6 +332,21 @@ SWORD_EFFECT_FPS = 12
 SWORD_EFFECT_IGNITE_FRAMES = 12
 # 시트 대신 게임이 도는 동안 계산해 만드는 속성 (game/player/sword_lightning.py). 2026-11-20 사용자: 미리 그린 번개는 일정해 보임.
 SWORD_PROCEDURAL_ELEMENTS = ("lightning", "dark")  # 어둠: 블랙홀처럼 빨아들임 (sword_dark.py)
+# 불 능력 (2026-11-20 사용자 결정, game/combat/burn.py): 불 속성 칼로 맞으면 불이 붙어 체력이 서서히 깎인다.
+# 많이 때릴수록 오래 타고, 회피(대쉬)할 수 있는 캐릭터는 회피하면 꺼진다. 수치는 [임시값].
+BURN_ELEMENT = "fire"
+BURN_SECONDS_PER_HIT = 2.0  # 한 대 맞을 때마다 늘어나는 타는 시간
+BURN_MAX_SECONDS = 10.0  # 최대 타는 시간
+BURN_DAMAGE_PER_SECOND = 3
+BURN_TICK = 1.0  # 이 간격(초)마다 피해를 나눠 줌 (피해 숫자도 이때 뜸)
+BURN_BODY_DUMMY = (18, 50)  # 불꽃이 피어오르는 몸 크기 (가로, 세로 원본 픽셀, 발 밑 기준)
+BURN_BODY_GOLEM = (34, 78)
+BURN_BODY_PLAYER = (16, 40)
+BURN_FLAME_RATE = 2.4  # 타는 몸에서 초당 피어오르는 불꽃 알갱이 수 (몸 넓이 100 원본 픽셀²당)
+# 쌓인 열 → 색 (이 값 이상이면 그 색). 가장자리 짙은 빨강 → 주황 → 노랑 → 흰빛 가운데
+BURN_FLAME_LEVELS = ((0.25, (150, 40, 24)), (0.5, (222, 82, 30)), (0.85, (255, 150, 40)), (1.3, (255, 214, 90)),
+                     (1.9, (255, 248, 210)))
+COLOR_BURN_TEXT = (255, 150, 60)  # 불 피해 숫자
 # 등에 멘 칼 (2026-11-18 사용자 요청): 공격·패링 말고는 칼을 ~~칼집째~~ 등에 멘다. 그림은 무기마다
 # weapons/<무기>_back_<방향>.png (64×64, 아래 가운데가 발 밑, concepts/weapons/build_back_sword.py). 손잡이는 오른쪽 어깨 위.
 # 후면은 등 위(몸 다음에), 정면·측면은 몸 뒤(몸 전에) 그린다. 왼쪽은 측면을 뒤집는다.
