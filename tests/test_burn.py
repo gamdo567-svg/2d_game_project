@@ -67,13 +67,15 @@ class BurnLogicTest(unittest.TestCase):
         strong.update(1 / 60, 0.0)  # 꺼지는 순간: 연기가 뭉게뭉게
         for _ in range(round((config.BURN_PUFF_COUNT * config.BURN_PUFF_STAGGER + 0.05) * 60)):
             strong.update(1 / 60, 0.0)  # 흰 뭉게구름이 차례로 퐁퐁
-        self.assertGreaterEqual(len(strong.white_puffs()), config.BURN_PUFF_COUNT)
+        steam = strong.steam_pixels()  # 흰 김: 뒤가 비침
+        self.assertTrue(steam)
+        self.assertTrue(all(0.0 < alpha < 1.0 for _, _, alpha in steam))
         for _ in range(180):  # 새로 피지 않고 사그라들며, 불티·연기도 사라짐
             strong.update(1 / 60, 0.0)
         self.assertEqual(count(strong), 0)
         self.assertEqual(strong.spark_pixels(), [])
         self.assertEqual(strong.smoke_puffs(), [])
-        self.assertEqual(strong.white_puffs(), [])
+        self.assertEqual(strong.steam_pixels(), [])
 
 
 class TargetBurnTest(unittest.TestCase):
