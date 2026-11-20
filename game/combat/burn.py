@@ -64,6 +64,7 @@ class Spark:
     life: float
     size: float = 0.0
     alpha: float = 0.0  # 연기 짙기 (0 이면 BURN_SMOKE_ALPHA)
+    white: bool = False  # 식을 때 흰 뭉게구름 연기 (만화처럼)
     age: float = 0.0
 
 
@@ -134,9 +135,13 @@ class BurnFlames:
         self.tongues = [t for t in self.tongues if t.age < t.life]
         for p in self.sparks + self.smoke:
             p.age += dt
+            if p.age < 0.0:
+                continue
             p.x += p.vx * dt + math.sin(p.age * 9 + p.life * 20) * 6 * dt
             p.y += p.vy * dt
-            if p.size:
+            if p.white:
+                p.vy *= config.BURN_PUFF_DRAG ** (dt * 60)  # 흰 연기: 몸에서 확 솟았다가 머리 위에서 느려짐
+            elif p.size:
                 p.vy *= 0.985  # 연기는 오르며 느려짐
         self.sparks = [p for p in self.sparks if p.age < p.life]
         self.smoke = [p for p in self.smoke if p.age < p.life]
@@ -165,7 +170,10 @@ class BurnFlames:
         self._smoke_timer -= dt
         while self._smoke_timer <= 0.0:
             x, y, _ = rng.choice(self.hotspots)
-            self._add_smoke(x, y + 18 + rng.uniform(0, 8), heavy=False)
+            if smolder < 1.0 and rng.random() < 1.0 - smolder:  # 식는 중: 흰 연기가 퐁퐁
+                self._add_smoke(x, y + 10 + rng.uniform(0, 8), heavy=True)
+            else:
+                self._add_smoke(x, y + 18 + rng.uniform(0, 8), heavy=False)
             # 식을수록 연기가 짙어짐
             rate = config.BURN_SMOKE_RATE * (1 + config.BURN_SMOLDER_SMOKE * (1 - smolder))
             self._smoke_timer += rng.expovariate(rate)
@@ -215,11 +223,13 @@ class BurnFlames:
         self.tongues.append(Tongue(x, y, size, variant, rng.random() < 0.5, behind, rng.uniform(0.4, 0.85),
                                    rng.uniform(11, 17), rng.uniform(0, config.BURN_FLAME_FRAMES)))
 
-    def _add_smoke(self, x: float, y: float, heavy: bool) -> None:
+    def _add_smoke(self, x: float, y: float, heavy: bool, delay: float = 0.0) -> None:
         rng = self.rng
-        if heavy:  # 꺼질 때: 크고 느리게 오래
-            self.smoke.append(Spark(x + rng.uniform(-3, 3), y, rng.uniform(-6, 6), rng.uniform(10, 22),
-                                    rng.uniform(1.4, 2.2), rng.uniform(3.0, 5.0), config.BURN_PUFF_ALPHA))
+        if heavy:  # 식을 때: 흰 뭉게구름이 퐁 하고 솟아오름 (delay 만큼 늦게 나타남)
+            puff = Spark(x + rng.uniform(-4, 4), y, rng.uniform(-8, 8), rng.uniform(*config.BURN_PUFF_RISE),
+                         rng.uniform(*config.BURN_PUFF_LIFE), rng.uniform(*config.BURN_PUFF_SIZE), white=True)
+            puff.age = -delay
+            self.smoke.append(puff)
         else:
             self.smoke.append(Spark(x + rng.uniform(-3, 3), y, rng.uniform(-4, 4), rng.uniform(14, 24),
                                     rng.uniform(0.8, 1.3), rng.uniform(2.0, 3.2)))
@@ -229,7 +239,7 @@ class BurnFlames:
         spots = self.hotspots or [[0.0, self.body[1] * 0.5, 0.0]]
         for x, y, _ in spots:
             for k in range(config.BURN_PUFF_COUNT):
-                self._add_smoke(x, y + 4 + k * 5, heavy=True)
+                self._add_smoke(x, y + 10, heavy=True, delay=k * config.BURN_PUFF_STAGGER)
 
     def flames(self, behind: bool) -> list[tuple[float, float, float, int, bool, str]]:
         """그릴 불꽃 (x, y, 크기, 시트 장, 좌우 뒤집기, 모양). 시트 아래 가운데(불이 붙은 줄)를 (x, y) 에. 큰 것을 먼저."""
@@ -252,9 +262,28 @@ class BurnFlames:
                 for p in self.sparks]
 
     def smoke_puffs(self) -> list[tuple[float, float, float, float]]:
-        """연기 (x, y, 반지름, 짙기): 오르며 커지고 옅어진다."""
+        """탈 때 어두운 연기 (x, y, 반지름, 짙기): 오르며 커지고 옅어진다."""
         return [(p.x, p.y, p.size * (1 + p.age / p.life), (p.alpha or config.BURN_SMOKE_ALPHA) * (1 - p.age / p.life))
-                for p in self.smoke]
+                for p in self.smoke if not p.white]
+
+    def white_puffs(self) -> list[tuple[float, float, float]]:
+        """식을 때 흰 뭉게구름 연기를 이루는 원들 (x, y, 반지름): 덩어리마다 큰 원 하나 + 양옆 작은 원 둘(구름 모양).
+        퐁 하고 부풀었다가 오르며 커지고, 끝에서 작아져 사라진다 (만화처럼, 옅어지지 않음)."""
+        out = []
+        for p in self.smoke:
+            if not p.white:
+                continue
+            t = p.age / p.life
+            if t < 0.0:
+                continue  # 아직 안 나타남 (차례로 퐁퐁)
+            pop = min(1.0, t / 0.12) ** 0.5  # 퐁 하고 나타남
+            vanish = 1.0 - max(0.0, (t - 0.65) / 0.35)  # 끝에서 작아져 사라짐
+            r = p.size * (0.6 + 0.7 * t) * pop * vanish
+            tilt = 1 if p.life * 1000 % 2 < 1 else -1  # 덩어리마다 구름 모양을 좌우로 다르게
+            out.append((p.x, p.y, r))
+            out.append((p.x - tilt * 0.8 * r, p.y - 0.35 * r, 0.68 * r))
+            out.append((p.x + tilt * 0.75 * r, p.y - 0.2 * r, 0.55 * r))
+        return out
 
 
 def draw_burn(renderer, flames: BurnFlames, cx: float, bottom: float, behind: bool) -> None:
@@ -268,6 +297,7 @@ def draw_burn(renderer, flames: BurnFlames, cx: float, bottom: float, behind: bo
                                    bottom + (y - foot * size) * s, dw, dh, flip_horizontal=flip)
     if behind:
         return
+    _draw_white_puffs(renderer, flames.white_puffs(), cx, bottom)
     for x, y, radius, alpha in flames.smoke_puffs():
         # 두 겹: 바깥은 옅게, 안쪽(반지름 절반)은 한 번 더 덮여 짙게 → 뭉게뭉게한 덩어리
         for r, a in ((max(1, round(radius)), alpha * 0.6), (max(1, round(radius * 0.55)), alpha * 0.5)):
@@ -277,3 +307,33 @@ def draw_burn(renderer, flames: BurnFlames, cx: float, bottom: float, behind: bo
                                     bottom + (y + py + 1) * s, a)
     for x, y, colour in flames.spark_pixels():
         renderer.fill_rect(cx + x * s, bottom + y * s, cx + (x + 1) * s, bottom + (y + 1) * s, colour)
+
+
+def _disc(renderer, cx: float, bottom: float, x: float, y: float, r: float, colour) -> None:
+    """원본 픽셀 격자에 맞춘 꽉 찬 원 (가로 줄씩)."""
+    s = config.RENDER_SCALE
+    if r < 0.5:
+        return
+    for py in range(math.floor(y - r), math.ceil(y + r) + 1):
+        dy = py + 0.5 - y
+        if abs(dy) > r:
+            continue
+        span = math.sqrt(r * r - dy * dy)
+        x0, x1 = round(x - span), round(x + span)
+        if x1 > x0:
+            renderer.fill_rect(cx + x0 * s, bottom + py * s, cx + x1 * s, bottom + (py + 1) * s, colour)
+
+
+def _draw_white_puffs(renderer, puffs: list[tuple[float, float, float]], cx: float, bottom: float) -> None:
+    """흰 뭉게구름: 덩어리를 겹으로 나눠 그려 서로 붙은 한 구름이 되게 한다.
+    회색 테두리 → 옅은 회색 그늘(아래) → 흰 몸통(조금 위) → 맨 위 밝은 빛."""
+    outline, shade, body, light = config.BURN_PUFF_COLORS
+    big = [(x, y, r) for x, y, r in puffs if r >= 1.0]
+    for x, y, r in big:
+        _disc(renderer, cx, bottom, x, y, r + 1, outline)
+    for x, y, r in big:
+        _disc(renderer, cx, bottom, x, y, r, shade)
+    for x, y, r in big:
+        _disc(renderer, cx, bottom, x - 0.4, y + 0.8, r - 0.8, body)
+    for x, y, r in big:
+        _disc(renderer, cx, bottom, x - 0.8, y + 1.6, r * 0.45, light)

@@ -65,12 +65,15 @@ class BurnLogicTest(unittest.TestCase):
         self.assertGreater(len(sizes), 3)  # 크기가 제각각
         self.assertEqual({fl[5] for fl in strong.flames(False) + strong.flames(True)}, {"tall", "wide", "lick"})
         strong.update(1 / 60, 0.0)  # 꺼지는 순간: 연기가 뭉게뭉게
-        self.assertGreaterEqual(len(strong.smoke_puffs()), config.BURN_PUFF_COUNT)
+        for _ in range(round((config.BURN_PUFF_COUNT * config.BURN_PUFF_STAGGER + 0.05) * 60)):
+            strong.update(1 / 60, 0.0)  # 흰 뭉게구름이 차례로 퐁퐁
+        self.assertGreaterEqual(len(strong.white_puffs()), config.BURN_PUFF_COUNT)
         for _ in range(180):  # 새로 피지 않고 사그라들며, 불티·연기도 사라짐
             strong.update(1 / 60, 0.0)
         self.assertEqual(count(strong), 0)
         self.assertEqual(strong.spark_pixels(), [])
         self.assertEqual(strong.smoke_puffs(), [])
+        self.assertEqual(strong.white_puffs(), [])
 
 
 class TargetBurnTest(unittest.TestCase):
